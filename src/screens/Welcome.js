@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { useNavigation } from '@react-navigation/native'
+import { useIsFocused, useNavigation } from '@react-navigation/native'
 import {
   SafeAreaView,
   StatusBar,
@@ -11,6 +11,7 @@ import {
 
 const Welcome = () => {
   const { navigate } = useNavigation()
+  const isFocused = useIsFocused()
 
   const handleRegister = () => {
     navigate('SignUp')
@@ -21,8 +22,10 @@ const Welcome = () => {
   }
 
   useEffect(() => {
-    StatusBar.setBarStyle('light-content', true)
-  }, [])
+    if (isFocused) {
+      StatusBar.setBarStyle('light-content', true)
+    }
+  }, [isFocused])
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1A2225' }}>
