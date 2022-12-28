@@ -8,35 +8,44 @@ import Login from '../screens/Login'
 import Reset from '../screens/Reset'
 import Map from '../screens/Map'
 import AppleHealth from '../screens/AppleHealth'
+import { getUserData, getUserSettings } from '../services/database'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
 export function StackRoutes() {
-  const [loadingAuth, setLoadingAuth] = useState(true)
-  const [user, setUser] = useState(null)
+  const [initScreen, setInitScreen] = useState(null)
 
   useEffect(() => {
-    auth().onAuthStateChanged((_user) => {
-      setUser(_user)
-      setLoadingAuth(false)
+    auth().onAuthStateChanged(async (_user) => {
+      const { name } = (await getUserData()) || {}
+      const { healthConnected } = (await getUserSettings()) || {}
+      let flow = 'Welcome'
+      if (!!_user && !!name) {
+        if (!!healthConnected) {
+          flow = 'Map'
+        } else {
+          flow = 'AppleHealth'
+        }
+      }
+      setInitScreen(flow)
       SplashScreen.hide()
     })
   }, [])
 
-  if (loadingAuth) return <></>
+  if (!initScreen) return <></>
 
   return (
     <>
       <Navigator
-        initialRouteName={!!user ? 'Map' : 'Welcome'}
+        initialRouteName={initScreen}
         screenOptions={{ headerShown: false }}
       >
+        <Screen name="Map" component={Map} />
+        <Screen name="AppleHealth" component={AppleHealth} />
         <Screen name="Welcome" component={Welcome} />
         <Screen name="SignUp" component={SignUp} />
         <Screen name="Login" component={Login} />
         <Screen name="Reset" component={Reset} />
-        <Screen name="AppleHealth" component={AppleHealth} />
-        <Screen name="Map" component={Map} />
       </Navigator>
     </>
   )

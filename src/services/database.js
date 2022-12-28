@@ -43,6 +43,14 @@ const setUserData = async (value) => {
   return setListData('user_data', value)
 }
 
+const getUserSettings = async () => {
+  return getListData('user_settings')
+}
+
+const setUserSettings = async (value) => {
+  return setListData('user_settings', value)
+}
+
 export {
   getData,
   storeData,
@@ -50,5 +58,7 @@ export {
   getListData,
   setListData,
   getUserData,
-  setUserData
+  setUserData,
+  getUserSettings,
+  setUserSettings
 }

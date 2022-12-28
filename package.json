@@ -27,6 +27,7 @@
     "react": "18.1.0",
     "react-hook-form": "^7.41.1",
     "react-native": "0.70.6",
+    "react-native-health": "^1.13.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-keyboard-aware-view": "^0.0.14",
     "react-native-modal": "^13.0.1",
