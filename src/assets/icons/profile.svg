@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <g class="nc-icon-wrapper" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" fill="none" stroke="#A1A3AB">
+        <path d="M15,15H9 c-3.314,0-6,2.686-6,6v1c0,0,3.125,1,9,1s9-1,9-1v-1C21,17.686,18.314,15,15,15z"></path>
+        <path d="M7,6c0-2.761,2.239-5,5-5 s5,2.239,5,5s-2.239,6-5,6S7,8.761,7,6z" stroke="#A1A3AB"></path>
+</g>
+</svg>

@@ -23,7 +23,7 @@ const BaseScreen = ({
   const { goBack } = useNavigation()
   const { height } = Dimensions.get('window')
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F6F6F6' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
       <KeyboardAwareView useNativeDriver={true} animated={true}>
         <ScrollView
           style={{ flex: 1 }}

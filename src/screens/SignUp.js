@@ -35,7 +35,7 @@ const SignUp = () => {
       })
       reset({
         index: 0,
-        routes: [{ name: 'Map' }]
+        routes: [{ name: 'Main' }]
       })
     } catch (e) {
       console.log('handleLogIn', e)

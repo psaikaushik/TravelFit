@@ -6,6 +6,7 @@ import { Button, Container, Text, useToast } from 'native-base'
 import auth from '@react-native-firebase/auth'
 import { useQuery } from '@tanstack/react-query'
 import { getUserData } from '../services/database'
+import TabScreen from '../components/TabScreen'
 
 const Map = () => {
   const { reset } = useNavigation()
@@ -45,20 +46,11 @@ const Map = () => {
   if (profileLoading) return <></>
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F6F6F6' }}>
-      <KeyboardAwareScrollView>
-        <Container px="20px" mt="16px" w="100%" minW="100%">
-          <Text variant="title">Welcome back</Text>
-          <Text mt="20px" fontSize="20px" fontWeight="600">
-            {profile?.name || ''}
-          </Text>
-          <Text mt="8px">{user?.email || ''}</Text>
-          <Button size="lg" variant="primary" mt="30px" onPress={handleLogOut}>
-            Sign Out
-          </Button>
-        </Container>
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+    <TabScreen>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: '#F3F3F6' }}
+      ></SafeAreaView>
+    </TabScreen>
   )
 }
 

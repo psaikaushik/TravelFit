@@ -47,20 +47,20 @@ const AppleHealth = () => {
           return
         }
 
-        // AppleHealthKit.getHeartRateSamples(
-        //   {
-        //     startDate: new Date(2021, 1, 1).toISOString()
-        //   },
-        //   (callbackError, results) => {
-        //     console.log('getHeartRateSamples', callbackError, results)
-        //   }
-        // )
+        AppleHealthKit.getHeartRateSamples(
+          {
+            startDate: new Date(2021, 1, 1).toISOString()
+          },
+          (callbackError, results) => {
+            console.log('getHeartRateSamples', callbackError, results)
+          }
+        )
 
         const userSettings = (await getUserSettings()) || {}
         await setUserSettings({ ...userSettings, healthConnected: true })
         reset({
           index: 0,
-          routes: [{ name: 'Map' }]
+          routes: [{ name: 'Main' }]
         })
       }
     )

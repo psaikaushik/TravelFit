@@ -43,7 +43,7 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
       await setUserData(profile)
       reset({
         index: 0,
-        routes: [{ name: 'Map' }]
+        routes: [{ name: 'Main' }]
       })
     } catch (e) {
       setGoogleLoading(false)
@@ -64,7 +64,7 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
   }, [isFocused])
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F6F6F6' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
       <Flex align="flex-start">
         <Pressable ml="12px" mt="6px" p="4px" onPress={goBack}>
           <BackSVG />

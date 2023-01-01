@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import type { Node } from 'react'
 import { NativeBaseProvider } from 'native-base'
 import theme from './src/theme'
