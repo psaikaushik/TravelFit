@@ -46,6 +46,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>Allow access to your location so TravelFit can show your current location on map</string>
 	<key>NSHealthShareUsageDescription</key>
     <string>Allow access to Health so TravelFit can complete your profile and upload workouts</string>
 	<key>UILaunchStoryboardName</key>

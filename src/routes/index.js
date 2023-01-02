@@ -25,8 +25,8 @@ export const Routes = () => {
       authFlag = false
       let flow = 'Welcome'
       const { name } = (await getUserData()) || {}
-      const results = await checkAppleHealth()
       if (!!_user && !!name) {
+        const results = await checkAppleHealth()
         if (!!results) {
           flow = 'Main'
         } else {

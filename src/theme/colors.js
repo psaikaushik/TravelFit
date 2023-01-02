@@ -7,7 +7,8 @@ const colors = {
   },
   secondary: {
     400: '#C4EB64',
-    500: '#b5da58'
+    500: '#b5da58',
+    900: '#617921'
   },
   offWhite: '#F3F3F6',
   border: '#F5F7F8'

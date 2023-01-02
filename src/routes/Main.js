@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import Map from '../screens/Map'
 import Profile from '../screens/Profile'
 import Progress from '../screens/Progress'
-import { Flex, View } from 'native-base'
+import { Flex } from 'native-base'
 
 const Tab = createBottomTabNavigator()
 
@@ -19,14 +19,14 @@ const Main = () => {
   }, [isFocused])
 
   return (
-    <Tab.Navigator initialRouteName={'Profile'}>
+    <Tab.Navigator initialRouteName={'Map'}>
       <Tab.Screen
         name="Map"
         component={Map}
         options={{
           title: 'Map',
           tabBarStyle: { display: 'none' },
-          headerBackground: () => <Flex flex="1" bg="offWhite" />
+          header: () => <></>
         }}
       />
       <Tab.Screen
