@@ -13,7 +13,7 @@ import { getUserSettings, setUserSettings } from '../services/database'
 
 const Map = () => {
   const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { starting, destination, progress, distance } = settings || {}
+  const { starting, destination } = settings || {}
 
   // useEffect(() => {
   //   setUserSettings({
@@ -31,7 +31,7 @@ const Map = () => {
   //         longitude: -122.4726194
   //       }
   //     },
-  //     progress: 280,
+  //     steps: 122280,
   //     distance: 420
   //   }).then(() => null)
   // }, [])

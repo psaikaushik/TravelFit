@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SafeAreaView } from 'react-native'
+import { Animated, SafeAreaView } from 'react-native'
 import {
   Flex,
   Text,
@@ -12,18 +12,42 @@ import { getUserSettings } from '../services/database'
 import TabScreen from '../components/TabScreen'
 import WalkingIcon from '../assets/icons/walking.svg'
 import moment from 'moment'
+import {
+  calcProgress,
+  calcRemaining,
+  getStats,
+  prettifyNum,
+  stepsToDistance
+} from '../services/helpers'
 
 const Progress = () => {
-  const [stats, setStats] = useState([
-    { id: '1', date: new Date(), steps: 145 },
-    { id: '2', date: new Date(), steps: 344 },
-    { id: '3', date: new Date(), steps: 524 },
-    { id: '4', date: new Date(), steps: 1224 }
-  ])
+  const [activeColor, _] = useState(new Animated.Value(0))
   const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { destination, progress, distance, steps } = settings || {}
+  const { data: stats } = useQuery(['stats'], getStats)
+  const { destination, distance, steps } = settings || {}
 
-  const renderProgressItem = (item, index) => (
+  const color = activeColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgb(37,176,37)', 'rgb(184,250,184)']
+  })
+
+  Animated.loop(
+    Animated.sequence([
+      Animated.timing(activeColor, {
+        toValue: 1,
+        duration: 1000,
+        delay: 1000,
+        useNativeDriver: false
+      }),
+      Animated.timing(activeColor, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: false
+      })
+    ])
+  ).start()
+
+  const renderProgressItem = (item) => (
     <Flex
       key={item.id}
       bg="white"
@@ -37,7 +61,7 @@ const Progress = () => {
         flex="1"
         py="16px"
         justify="center"
-        borderBottomWidth={index === stats.length - 1 ? '0' : '1px'}
+        borderBottomWidth={item.id === 'ThreeDaysBefore' ? '0' : '1px'}
         borderColor="gray.200"
       >
         <Text
@@ -55,7 +79,7 @@ const Progress = () => {
           fontWeight="400"
           numberOfLines={1}
         >
-          {item.steps || '0'} KM
+          {stepsToDistance(item.steps)} KM
         </Text>
         <Text
           variant="progress"
@@ -63,7 +87,7 @@ const Progress = () => {
           fontWeight="400"
           numberOfLines={1}
         >
-          {item.steps || '0'} Steps
+          {prettifyNum(item.steps)} Steps
         </Text>
       </Flex>
     </Flex>
@@ -109,7 +133,7 @@ const Progress = () => {
                 fontWeight="900"
                 numberOfLines={1}
               >
-                {distance || '0'} KM
+                {prettifyNum(distance)} KM
               </Text>
             </Flex>
           </Flex>
@@ -117,7 +141,7 @@ const Progress = () => {
           <Flex direction="row">
             <Flex flex="1">
               <Text variant="progress" mr="10px" numberOfLines={1}>
-                {progress || '0'} KM
+                {stepsToDistance(steps)} KM
               </Text>
             </Flex>
             <Text
@@ -126,10 +150,14 @@ const Progress = () => {
               fontWeight="400"
               numberOfLines={1}
             >
-              Remaining {distance - progress || '0'} KM
+              Remaining {calcRemaining(steps, distance)} KM
             </Text>
           </Flex>
-          <ProgressNative colorScheme="green" value={55} mt="6px" />
+          <ProgressNative
+            colorScheme="green"
+            value={calcProgress(steps, distance)}
+            mt="6px"
+          />
         </Flex>
         <Flex flex="1" px="20px" mt="50px" w="100%" minW="100%">
           <Flex
@@ -142,6 +170,19 @@ const Progress = () => {
             borderRadius="50px"
             direction="row"
           >
+            <Animated.View
+              style={{
+                width: 20,
+                height: 20,
+                top: 0,
+                right: 2,
+                borderRadius: 20,
+                position: 'absolute',
+                borderColor: 'white',
+                borderWidth: 5,
+                backgroundColor: color
+              }}
+            />
             <Avatar w="54px" h="54px" mr="12px" bg="gray.100">
               <WalkingIcon width={30} />
             </Avatar>
@@ -161,7 +202,7 @@ const Progress = () => {
                 fontWeight="400"
                 numberOfLines={1}
               >
-                {steps || '0'} Steps
+                {prettifyNum((stats || [{}])[0].steps)} Steps
               </Text>
             </Flex>
             <Flex justify="center">
@@ -172,7 +213,7 @@ const Progress = () => {
                 textAlign="right"
                 numberOfLines={1}
               >
-                {steps || '0'}
+                {stepsToDistance((stats || [{}])[0].steps)}
               </Text>
               <Text
                 variant="progress"
@@ -192,7 +233,7 @@ const Progress = () => {
             bg="white"
             borderRadius="16px"
           >
-            {stats.map(renderProgressItem)}
+            {(stats || []).slice(1).map(renderProgressItem)}
           </Flex>
         </Flex>
       </SafeAreaView>
