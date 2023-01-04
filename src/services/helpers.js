@@ -5,6 +5,12 @@ const calcSteps = (steps = 0) => {
   return (Math.round(steps / 12) / 100).toFixed(2)
 }
 
+export const getDestinationStep = (idx, route) => {
+  if (idx < 0 || !route || route.length === 0) return null
+  if (idx >= route.length - 1) return route
+  return route.slice(0, idx)
+}
+
 export const prettifyNum = (num = 0) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
@@ -90,6 +96,15 @@ export const getStats = async () => {
     stats[i] = { ...stats[i], steps: data.value || 0 }
   }
   return stats
+}
+
+export const getTotalSteps = async () => {
+  // Check last time updated or account created time
+  // If last time is not today
+  // Get steps from last time till today
+  const steps = await getTodaySteps()
+  console.log('steps', steps)
+  return 0
 }
 
 export default {

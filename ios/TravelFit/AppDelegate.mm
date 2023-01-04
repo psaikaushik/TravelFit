@@ -35,7 +35,7 @@ static NSString *const kRNConcurrentRoot = @"concurrentRoot";
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
   [FIRApp configure];
-  [GMSServices provideAPIKey:@"AIzaSyDAF8309R-2mXHOWTB7d-fCNe-5DovkzOg"];
+  [GMSServices provideAPIKey:@"AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs"];
   RCTAppSetupPrepareApp(application);
 
   RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
