@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import TabScreen from '../components/TabScreen'
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps'
+import MapView, {
+  Circle,
+  Marker,
+  Polyline,
+  PROVIDER_GOOGLE
+} from 'react-native-maps'
 import MapPolyline from '@mapbox/polyline'
 import { hasNotch } from 'react-native-device-info'
 import { Flex, Box, Pressable, Text } from 'native-base'
@@ -11,19 +16,25 @@ import PinIcon from '../assets/icons/pin.svg'
 import OriginIcon from '../assets/icons/origin.svg'
 import { useQuery } from '@tanstack/react-query'
 import { getUserSettings, setUserSettings } from '../services/database'
-import { getRoute } from '../services/maps'
-import { calcProgress, getDestinationStep } from '../services/helpers'
+import { getPlaces } from '../services/maps'
+import {
+  calcProgress,
+  getDestinationStep,
+  getPolygonPoints,
+  prettifyNum
+} from '../services/helpers'
 
 const Map = () => {
+  const [badges, setBadges] = useState([])
+  const [breakPoints, setBreakPoints] = useState([])
   const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { starting, destination, route, distance } = settings || {}
-
+  const { starting, destination, route, polygon, steps, distance } =
+    settings || {}
+  const routeCenter = !!route ? route[Math.ceil(route.length / 2)] : null
   const progressIdx = Math.round(
-    (calcProgress(distance) / 100).toFixed(1) * route?.length
+    (calcProgress(steps, distance) / 100).toFixed(1) * route?.length
   )
   const progressRoute = getDestinationStep(progressIdx, route)
-
-  console.log('progressRoute', progressRoute?.length)
 
   // console.log(
   //   'route',
@@ -36,14 +47,20 @@ const Map = () => {
   // )
 
   useEffect(() => {
-    if (!starting) return
+    if (!route) return
+    getPlaces(route, distance).then(({ breakPoints, places }) => {
+      setBreakPoints(breakPoints)
+      setBadges(places)
+    })
     // getRoute(starting.coordinate, destination.coordinate).then(async (res) => {
     //   if (!res.routes || res.routes.length === 0) return
     //   let pts = MapPolyline.decode(res.routes[0].overview_polyline.points)
-    //   console.log('route', res.routes[0])
+    //   const polygonPoints = getPolygonPoints(pts)
+    //   console.log('route', polygonPoints)
     //   const userSettings = await getUserSettings()
     //   await setUserSettings({
     //     ...userSettings,
+    //     polygon: polygonPoints,
     //     bounds: res.routes[0].bounds,
     //     duration: res.routes[0].legs[0].duration.value,
     //     distance: res.routes[0].legs[0].distance.value / 1000,
@@ -69,7 +86,7 @@ const Map = () => {
     //   distance: 420,
     //   route
     // }).then(() => null)
-  }, [starting])
+  }, [route])
 
   const isIphoneX = hasNotch()
 
@@ -91,6 +108,13 @@ const Map = () => {
           backgroundColor: 'F3F3F6'
         }}
       >
+        {/*{!!polygon && (*/}
+        {/*  <Polyline*/}
+        {/*    coordinates={polygon}*/}
+        {/*    strokeWidth={60}*/}
+        {/*    strokeColor="#61792133"*/}
+        {/*  />*/}
+        {/*)}*/}
         {!!route && (
           <Polyline coordinates={route} strokeWidth={5} strokeColor="#AAA" />
         )}
@@ -141,6 +165,46 @@ const Map = () => {
             <PinIcon width={32} height={32} />
           </Marker>
         )}
+        {!!routeCenter && (
+          <Marker
+            title="150 KM"
+            tracksViewChanges={false}
+            coordinate={routeCenter}
+            centerOffset={{ x: 0.5, y: 0.5 }}
+          >
+            <Flex
+              bg="white"
+              px="6px"
+              py="5px"
+              align="center"
+              justify="center"
+              borderRadius="30px"
+              borderWidth="1px"
+              borderColor="#888"
+            >
+              <Text variant="distance">
+                {prettifyNum(distance.toFixed(2))} KM
+              </Text>
+            </Flex>
+          </Marker>
+        )}
+        {breakPoints.map((item) => (
+          <Circle
+            key={`${item.latitude}-${item.longitude}`}
+            center={item}
+            radius={50000}
+            fillColor="#61792140"
+          />
+        ))}
+        {badges.map((item) => (
+          <Marker
+            key={`${item.place_id}`}
+            coordinate={{
+              latitude: item.geometry.location.lat,
+              longitude: item.geometry.location.lng
+            }}
+          />
+        ))}
       </MapView>
       <Box
         position="absolute"

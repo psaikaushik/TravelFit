@@ -24,6 +24,11 @@ const Text = {
       fontSize: '14px',
       fontWeight: '500',
       color: 'gray.600'
+    },
+    distance: {
+      fontSize: '11px',
+      fontWeight: '500',
+      color: 'gray.600'
     }
   }
 }

@@ -107,7 +107,38 @@ export const getTotalSteps = async () => {
   return 0
 }
 
+const getPolygonArray = (latitude) => {
+  const R = 6378137
+  const pi = 3.14
+  //distance in meters
+  const upper_offset = 300
+  const lower_offset = -300
+
+  const lat_up = upper_offset / R
+  const lat_down = lower_offset / R
+
+  //OffsetPosition, decimal degrees
+  const lat_upper = latitude + (lat_up * 180) / pi
+  const lat_lower = latitude + (lat_down * 180) / pi
+
+  return [lat_upper, lat_lower]
+}
+
+export const getPolygonPoints = (waypoints) => {
+  let polyLength = waypoints.length
+  let upperBound = []
+  let lowerBound = []
+  for (let j = 0; j <= polyLength - 1; j++) {
+    let newPoints = getPolygonArray(waypoints[j][0])
+    upperBound.push({ latitude: newPoints[0], longitude: waypoints[j][1] })
+    lowerBound.push({ latitude: newPoints[1], longitude: waypoints[j][1] })
+  }
+  let reverseBound = lowerBound.reverse()
+  return upperBound.concat(reverseBound)
+}
+
 export default {
+  getPolygonPoints,
   checkAppleHealth,
   stepsToDistance,
   calcProgress,
