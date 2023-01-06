@@ -20,7 +20,6 @@ import { getPlaces } from '../services/maps'
 import {
   calcProgress,
   getDestinationStep,
-  getPolygonPoints,
   prettifyNum
 } from '../services/helpers'
 
@@ -48,10 +47,18 @@ const Map = () => {
 
   useEffect(() => {
     if (!route) return
-    getPlaces(route, distance).then(({ breakPoints, places }) => {
-      setBreakPoints(breakPoints)
-      setBadges(places)
-    })
+    getPlaces(destination.coordinate, route, distance).then(
+      ({ breakPoints, places }) => {
+        setBreakPoints(breakPoints)
+        setBadges(places)
+        // getUserSettings().then(async (userSettings) => {
+        //   await setUserSettings({
+        //     ...userSettings,
+        //     badges: places
+        //   })
+        // })
+      }
+    )
     // getRoute(starting.coordinate, destination.coordinate).then(async (res) => {
     //   if (!res.routes || res.routes.length === 0) return
     //   let pts = MapPolyline.decode(res.routes[0].overview_polyline.points)
@@ -176,6 +183,7 @@ const Map = () => {
               bg="white"
               px="6px"
               py="5px"
+              ml="50px"
               align="center"
               justify="center"
               borderRadius="30px"
@@ -192,13 +200,15 @@ const Map = () => {
           <Circle
             key={`${item.latitude}-${item.longitude}`}
             center={item}
-            radius={50000}
-            fillColor="#61792140"
+            radius={20000}
+            strokeColor="#61792125"
+            fillColor="#61792125"
           />
         ))}
         {badges.map((item) => (
           <Marker
             key={`${item.place_id}`}
+            title={item.name}
             coordinate={{
               latitude: item.geometry.location.lat,
               longitude: item.geometry.location.lng

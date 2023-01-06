@@ -137,7 +137,30 @@ export const getPolygonPoints = (waypoints) => {
   return upperBound.concat(reverseBound)
 }
 
+export const printPlacesGrid = (places) => {
+  const arr = []
+  for (let i = 0; i < places.length; i += 2) {
+    arr.push(places.slice(i, i + 2))
+  }
+  return arr
+}
+
+export const getTopPlace = (places) => {
+  // console.log('places', places.map((x) => x.name).join(', '))
+  places
+    .filter((x) => x.photos?.length > 0)
+    .forEach((place) => {
+      place.score =
+        (place.types || []).length * 10 +
+        (place.user_ratings_total || 0) +
+        (place.rating || 0) * 20 +
+        place.photos.length * 15
+    })
+  return places.sort((a, b) => b.score - a.score)[0]
+}
+
 export default {
+  getTopPlace,
   getPolygonPoints,
   checkAppleHealth,
   stepsToDistance,

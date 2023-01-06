@@ -133,7 +133,7 @@ const Progress = () => {
                 fontWeight="900"
                 numberOfLines={1}
               >
-                {prettifyNum(distance)} KM
+                {prettifyNum(distance.toFixed(2))} KM
               </Text>
             </Flex>
           </Flex>

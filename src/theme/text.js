@@ -29,6 +29,30 @@ const Text = {
       fontSize: '11px',
       fontWeight: '500',
       color: 'gray.600'
+    },
+    placeName: {
+      fontSize: '13px',
+      fontWeight: '500',
+      color: 'white',
+      textAlign: 'center'
+    },
+    placeNameAct: {
+      fontSize: '13px',
+      fontWeight: '600',
+      color: 'white',
+      textAlign: 'center'
+    },
+    placeDistance: {
+      fontSize: '13px',
+      fontWeight: '500',
+      color: 'white',
+      textAlign: 'center'
+    },
+    placeDistanceAct: {
+      fontSize: '13px',
+      fontWeight: '600',
+      color: 'white',
+      textAlign: 'center'
     }
   }
 }
