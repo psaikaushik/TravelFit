@@ -33,24 +33,39 @@ const Text = {
     placeName: {
       fontSize: '13px',
       fontWeight: '500',
-      color: 'white',
+      color: 'gray.400',
+      mb: '2px',
       textAlign: 'center'
     },
     placeNameAct: {
       fontSize: '13px',
       fontWeight: '600',
       color: 'white',
+      mb: '2px',
+      textAlign: 'center'
+    },
+    cityName: {
+      fontSize: '13px',
+      fontWeight: '600',
+      color: 'primary.400',
+      mb: '2px',
       textAlign: 'center'
     },
     placeDistance: {
       fontSize: '13px',
-      fontWeight: '500',
+      fontWeight: '700',
       color: 'white',
       textAlign: 'center'
     },
-    placeDistanceAct: {
-      fontSize: '13px',
-      fontWeight: '600',
+    milestone: {
+      fontSize: '32px',
+      fontWeight: '900',
+      color: 'white',
+      textAlign: 'center'
+    },
+    km: {
+      fontSize: '24px',
+      fontWeight: '700',
       color: 'white',
       textAlign: 'center'
     }

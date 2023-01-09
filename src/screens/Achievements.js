@@ -6,49 +6,54 @@ import {
   Animated,
   TouchableOpacity
 } from 'react-native'
-import { Flex, Image, ScrollView, Text, View } from 'native-base'
+import { Flex, Image, Progress, ScrollView, Text, View } from 'native-base'
 import TabScreen from '../components/TabScreen'
 import { useQuery } from '@tanstack/react-query'
 import { getUserSettings } from '../services/database'
-import { printPlacesGrid } from '../services/helpers'
+import {
+  prettifyNum,
+  printGrid,
+  printK,
+  stepsToDistance
+} from '../services/helpers'
 import { TabView, SceneMap } from 'react-native-tab-view'
 
 const FirstRoute = () => {
   const { data: settings } = useQuery(['settings'], getUserSettings)
   const { badges } = settings || {}
-  const badgesGroup = printPlacesGrid(badges)
+  const badgesGroup = printGrid(badges)
 
-  // console.log('badges', badgesGroup[0][0].photos)
-
-  const renderItem = (item) => (
+  const renderItem = ({ place_id, name, progress = 0, photos }) => (
     <Flex
-      key={`${item.place_id}`}
+      key={`${place_id}`}
       flex="1"
       bg="white"
       mx="10px"
       borderRadius="16px"
       borderWidth="5px"
-      borderColor={item.acitve ? 'secondary.400' : '#F3F3F6'}
+      borderColor={progress > 0 ? '#a3cb88' : '#F3F3F6'}
       align="center"
     >
       <Image
         w="100%"
         aspectRatio={1}
         borderRadius="12px"
-        alt={item.photos[0].photo_reference}
+        alt={photos[0].photo_reference}
         source={{
-          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${item.photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
         }}
       />
-      {/*<Flex*/}
-      {/*  left="0"*/}
-      {/*  right="0"*/}
-      {/*  top="0"*/}
-      {/*  bottom="0"*/}
-      {/*  borderRadius="16px"*/}
-      {/*  bg="#88888890"*/}
-      {/*  position="absolute"*/}
-      {/*/>*/}
+      {progress === 0 && (
+        <Flex
+          left="0"
+          right="0"
+          top="0"
+          bottom="0"
+          borderRadius="16px"
+          bg="#88888890"
+          position="absolute"
+        />
+      )}
       <Flex
         flex="1"
         left="0"
@@ -61,12 +66,16 @@ const FirstRoute = () => {
         position="absolute"
       >
         <Text
-          variant={`placeName${item.active ? 'Act' : ''}`}
+          variant={`placeName${progress > 0 ? 'Act' : ''}`}
           numberOfLines={2}
         >
-          {item.name}
+          {name}
         </Text>
-        <Text variant={`placeDistance${item.active ? 'Act' : ''}`}>130 KM</Text>
+        {progress === 100 && <Text variant="placeDistance">Completed</Text>}
+        {progress > 0 && progress < 100 && (
+          <Progress colorScheme="green" value={progress} my="5px" />
+        )}
+        {progress === 0 && <Progress colorScheme="gray" value={100} my="5px" />}
       </Flex>
     </Flex>
   )
@@ -84,9 +93,114 @@ const FirstRoute = () => {
   )
 }
 
-const SecondRoute = () => <View key="cities" flex="1" bg="#F3F3F6" />
+const SecondRoute = () => {
+  const { data: settings } = useQuery(['settings'], getUserSettings)
+  const { cities } = settings || {}
+  const citiesGroup = printGrid(cities)
 
-const ThreeRoute = () => <View key="milestones" flex="1" bg="#F3F3F6" />
+  const renderItem = ({ place_id, name, photos }) => (
+    <Flex
+      key={`${place_id}`}
+      flex="1"
+      bg="white"
+      mx="10px"
+      borderRadius="16px"
+      borderWidth="2px"
+      borderColor="border"
+      align="center"
+    >
+      <Image
+        w="100%"
+        aspectRatio={1.3}
+        borderTopRadius="12px"
+        alt={photos[0].photo_reference}
+        source={{
+          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+        }}
+      />
+      <Flex py="12px" px="5px" borderBottomRadius="10px" justify="center">
+        <Text variant="cityName" numberOfLines={2}>
+          {name}
+        </Text>
+      </Flex>
+    </Flex>
+  )
+
+  return (
+    <ScrollView key="cities" flex="1" mb="40px" mx="0">
+      <Flex pb="30px" pt="10px">
+        {citiesGroup.map((group, index) => (
+          <Flex key={index} direction="row" m="10px">
+            {group.map((city) => renderItem(city))}
+            {group.length === 1 && <Flex flex="1" />}
+          </Flex>
+        ))}
+      </Flex>
+    </ScrollView>
+  )
+}
+
+const ThreeRoute = () => {
+  const milestones = [
+    1, 5, 10, 50, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 100000
+  ]
+  const { data: settings } = useQuery(['settings'], getUserSettings)
+  const { steps } = settings || {}
+  const progress = stepsToDistance(steps)
+  const achieved = milestones.filter((x) => x <= progress)
+  const achievedGroup = printGrid(achieved)
+
+  const renderItem = (distance) => (
+    <Flex
+      key={`${distance}`}
+      flex="1"
+      bg="white"
+      mx="10px"
+      p="15px"
+      borderRadius="16px"
+      borderWidth="2px"
+      borderColor="border"
+      align="center"
+    >
+      <Flex
+        p="5px"
+        w="100%"
+        bg="primary.400"
+        aspectRatio={1}
+        justify="center"
+        borderRadius="120px"
+      >
+        <Text variant="milestone" numberOfLines={1}>
+          {printK(distance)}
+        </Text>
+        <Text variant="km" numberOfLines={1}>
+          KM
+        </Text>
+      </Flex>
+      <Flex pt="12px" px="5px" borderBottomRadius="10px" justify="center">
+        <Text variant="cityName" numberOfLines={1}>
+          {prettifyNum(distance)} KM
+        </Text>
+        <Text variant="cityName" numberOfLines={1}>
+          Completed
+        </Text>
+      </Flex>
+    </Flex>
+  )
+
+  return (
+    <ScrollView key="milestones" flex="1" mb="40px" mx="0">
+      <Flex pb="30px" pt="10px">
+        {achievedGroup.map((group, index) => (
+          <Flex key={index} direction="row" m="10px">
+            {group.map((distance) => renderItem(distance))}
+            {group.length === 1 && <Flex flex="1" />}
+          </Flex>
+        ))}
+      </Flex>
+    </ScrollView>
+  )
+}
 
 const renderScene = SceneMap({
   landmarks: FirstRoute,

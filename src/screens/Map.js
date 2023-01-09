@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import TabScreen from '../components/TabScreen'
 import MapView, {
   Circle,
@@ -6,17 +6,17 @@ import MapView, {
   Polyline,
   PROVIDER_GOOGLE
 } from 'react-native-maps'
-import MapPolyline from '@mapbox/polyline'
+// import MapPolyline from '@mapbox/polyline'
 import { hasNotch } from 'react-native-device-info'
-import { Flex, Box, Pressable, Text } from 'native-base'
+import { Avatar, Flex, Box, Pressable, Text } from 'native-base'
 import mapStyle from '../theme/mapStyle.json'
 import DistanceIcon from '../assets/icons/distance.svg'
 import RightIcon from '../assets/icons/arrow-right.svg'
 import PinIcon from '../assets/icons/pin.svg'
 import OriginIcon from '../assets/icons/origin.svg'
+import MarkIcon from '../assets/icons/mark.svg'
 import { useQuery } from '@tanstack/react-query'
-import { getUserSettings, setUserSettings } from '../services/database'
-import { getPlaces } from '../services/maps'
+import { getUserSettings } from '../services/database'
 import {
   calcProgress,
   getDestinationStep,
@@ -24,41 +24,115 @@ import {
 } from '../services/helpers'
 
 const Map = () => {
-  const [badges, setBadges] = useState([])
-  const [breakPoints, setBreakPoints] = useState([])
   const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { starting, destination, route, polygon, steps, distance } =
+  const { starting, destination, route, breakPoints, badges, steps, distance } =
     settings || {}
   const routeCenter = !!route ? route[Math.ceil(route.length / 2)] : null
   const progressIdx = Math.round(
-    (calcProgress(steps, distance) / 100).toFixed(1) * route?.length
-  )
+    (calcProgress(steps, distance) / 100) * route?.length
+  ) // 222280
   const progressRoute = getDestinationStep(progressIdx, route)
-
-  // console.log(
-  //   'route',
-  //   distance,
-  //   route?.length,
-  //   'steps',
-  //   calcProgress(distance).toFixed(1),
-  //   progressIdx,
-  //   currentStep
-  // )
+  const destinationPoint =
+    !!progressRoute && progressRoute.length > 0
+      ? progressRoute[progressRoute.length - 1]
+      : null
 
   useEffect(() => {
     if (!route) return
-    getPlaces(destination.coordinate, route, distance).then(
-      ({ breakPoints, places }) => {
-        setBreakPoints(breakPoints)
-        setBadges(places)
-        // getUserSettings().then(async (userSettings) => {
-        //   await setUserSettings({
-        //     ...userSettings,
-        //     badges: places
-        //   })
-        // })
-      }
-    )
+    if (!destinationPoint) return
+
+    // Everytime Route Changes
+    //   Create Break points inside route
+    //   Get Nearby Places in break points
+
+    // Everytime Progress Changes
+    //   Calculate distance from progress to each break point
+    //   Check if city is new then add city badge
+    //   Check if distance progressed is in new stage then add new milestone
+
+    // getUserSettings().then(async (userSettings) => {
+    //   const cities = userSettings.cities || []
+    //   console.log('cities', cities)
+    //   cities.push('Castaic')
+    //   await setUserSettings({
+    //     ...userSettings,
+    //     cities
+    //   })
+    // })
+
+    // try {
+    //   getLocationDetails(destinationPoint).then(async (data) => {
+    //     const { results } = data || {}
+    //     // console.log('results', JSON.stringify(results))
+    //     let city = null
+    //     for (let r = 0; r < (results || []).length; r++) {
+    //       const { address_components } = results[r]
+    //       for (let t = 0; t < address_components.length; t++) {
+    //         const address = address_components[t]
+    //         const types = address.types || []
+    //         if (types.find((x) => x === 'locality')) {
+    //           city = { name: address.long_name }
+    //         }
+    //         if (
+    //           !city?.name &&
+    //           types.find((x) => x === 'administrative_area_level_2')
+    //         ) {
+    //           city = { name: address.long_name }
+    //         }
+    //         if (types.find((x) => x === 'administrative_area_level_1')) {
+    //           city.state = address.long_name
+    //         }
+    //         if (types.find((x) => x === 'country')) {
+    //           city.country = address.short_name
+    //         }
+    //       }
+    //       if (!!city) break
+    //     }
+    //
+    //     if (!city?.name) return
+    //     const cityName = `${city.name}, ${city.state || ''}, ${
+    //       city.country || ''
+    //     }`
+    //     const details = await getCityDetails(city.name)
+    //     const prediction =
+    //       (details?.predictions || []).length > 0
+    //         ? details.predictions[0]
+    //         : null
+    //     if (!prediction) return
+    //     const place = await getPlaceDetails(prediction.place_id)
+    //
+    //     const userSettings = await getUserSettings()
+    //     const cities = []
+    //     // const { cities } = userSettings || {}
+    //     if (!!city && !cities.find((x) => x.place_id === prediction.place_id)) {
+    //       cities.push({
+    //         place_id: prediction.place_id,
+    //         name: cityName,
+    //         photos: place.result.photos || []
+    //       })
+    //       await setUserSettings({
+    //         ...userSettings,
+    //         cities
+    //       })
+    //     }
+    //   })
+    // } catch (error) {
+    //   console.log(error.code, error.message)
+    // }
+
+    // getPlaces(destination.coordinate, steps, route, badges, distance).then(
+    //   ({ breakPoints, places }) => {
+    //     setBreakPoints(breakPoints)
+    //     getUserSettings().then(async (userSettings) => {
+    //       await setUserSettings({
+    //         ...userSettings,
+    //         badges: places,
+    //         breakPoints: breakPoints
+    //       })
+    //     })
+    //   }
+    // )
+
     // getRoute(starting.coordinate, destination.coordinate).then(async (res) => {
     //   if (!res.routes || res.routes.length === 0) return
     //   let pts = MapPolyline.decode(res.routes[0].overview_polyline.points)
@@ -74,6 +148,7 @@ const Map = () => {
     //     route: pts.map((point) => ({ latitude: point[0], longitude: point[1] }))
     //   })
     // })
+
     // setUserSettings({
     //   starting: {
     //     title: 'Los Angeles, California, USA',
@@ -97,6 +172,8 @@ const Map = () => {
 
   const isIphoneX = hasNotch()
 
+  if (!destinationPoint) return <TabScreen />
+
   return (
     <TabScreen>
       <MapView
@@ -104,8 +181,8 @@ const Map = () => {
         mapPadding={{ bottom: isIphoneX ? 70 : 50, left: 16, right: 16 }}
         provider={PROVIDER_GOOGLE}
         initialRegion={{
-          latitude: 36.2044527,
-          longitude: -120.0665638,
+          latitude: destinationPoint.latitude,
+          longitude: destinationPoint.longitude,
           latitudeDelta: 9.4,
           longitudeDelta: 0.2
         }}
@@ -155,7 +232,7 @@ const Map = () => {
         {!!starting && (
           <Marker
             title="Starting"
-            tracksViewChanges={false}
+            tracksViewChanges={true}
             coordinate={starting?.coordinate}
             centerOffset={{ x: 0.5, y: 0.5 }}
           >
@@ -165,17 +242,80 @@ const Map = () => {
         {!!destination && (
           <Marker
             title="Destination"
-            tracksViewChanges={false}
+            tracksViewChanges={true}
             coordinate={destination?.coordinate}
             centerOffset={{ x: 0.5, y: 0.5 }}
           >
             <PinIcon width={32} height={32} />
           </Marker>
         )}
+        {(breakPoints || []).map((item) => (
+          <Circle
+            key={`${item.latitude}-${item.longitude}`}
+            center={item}
+            radius={20000}
+            strokeColor="#61792140"
+            fillColor="#61792115"
+          />
+        ))}
+        {(breakPoints || []).map((item, index) => {
+          const badge = badges[index]
+          return (
+            <Marker
+              key={`${item.place_id}`}
+              title={item.name}
+              coordinate={{
+                latitude: item.latitude,
+                longitude: item.longitude
+              }}
+              centerOffset={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={true}
+            >
+              <Flex>
+                <Flex position="absolute" bottom="0" left="7px">
+                  <MarkIcon />
+                </Flex>
+                <Avatar
+                  w="40px"
+                  h="40px"
+                  source={{
+                    uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${badge.photos[0].photo_reference}&sensor=false&maxheight=40&maxwidth=40&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+                  }}
+                  mb="6px"
+                  bg="#CCC"
+                  borderWidth="3px"
+                  borderColor="white"
+                />
+              </Flex>
+            </Marker>
+          )
+        })}
+        {/*{(breakPoints || []).map((item, index) => (*/}
+        {/*  <Marker*/}
+        {/*    key={`${item.place_id}`}*/}
+        {/*    title={item.name}*/}
+        {/*    coordinate={{*/}
+        {/*      latitude: item.latitude,*/}
+        {/*      longitude: item.longitude*/}
+        {/*    }}*/}
+        {/*    centerOffset={{ x: 0.5, y: 0.5 }}*/}
+        {/*    tracksViewChanges={false}*/}
+        {/*  />*/}
+        {/*))}*/}
+        {/*{(badges || []).map((item) => (*/}
+        {/*  <Marker*/}
+        {/*    key={`${item.place_id}`}*/}
+        {/*    title={item.name}*/}
+        {/*    coordinate={{*/}
+        {/*      latitude: item.geometry.location.lat,*/}
+        {/*      longitude: item.geometry.location.lng*/}
+        {/*    }}*/}
+        {/*  />*/}
+        {/*))}*/}
         {!!routeCenter && (
           <Marker
-            title="150 KM"
-            tracksViewChanges={false}
+            zIndex={9999}
+            tracksViewChanges={true}
             coordinate={routeCenter}
             centerOffset={{ x: 0.5, y: 0.5 }}
           >
@@ -183,7 +323,7 @@ const Map = () => {
               bg="white"
               px="6px"
               py="5px"
-              ml="50px"
+              ml="60px"
               align="center"
               justify="center"
               borderRadius="30px"
@@ -196,25 +336,6 @@ const Map = () => {
             </Flex>
           </Marker>
         )}
-        {breakPoints.map((item) => (
-          <Circle
-            key={`${item.latitude}-${item.longitude}`}
-            center={item}
-            radius={20000}
-            strokeColor="#61792125"
-            fillColor="#61792125"
-          />
-        ))}
-        {badges.map((item) => (
-          <Marker
-            key={`${item.place_id}`}
-            title={item.name}
-            coordinate={{
-              latitude: item.geometry.location.lat,
-              longitude: item.geometry.location.lng
-            }}
-          />
-        ))}
       </MapView>
       <Box
         position="absolute"

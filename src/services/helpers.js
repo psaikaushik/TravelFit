@@ -15,6 +15,12 @@ export const prettifyNum = (num = 0) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
+export const printK = (num = 0) => {
+  if (num >= 1000000) return `${num / 1000000}M`
+  if (num >= 1000) return `${num / 1000}K`
+  return `${num}`
+}
+
 export const stepsToDistance = (steps = 0) => {
   return prettifyNum(calcSteps(steps))
 }
@@ -137,7 +143,7 @@ export const getPolygonPoints = (waypoints) => {
   return upperBound.concat(reverseBound)
 }
 
-export const printPlacesGrid = (places) => {
+export const printGrid = (places) => {
   const arr = []
   for (let i = 0; i < places.length; i += 2) {
     arr.push(places.slice(i, i + 2))
