@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@gorhom/bottom-sheet": "^4.4.5",
     "@hookform/resolvers": "^2.9.10",
     "@mapbox/polyline": "^1.1.1",
     "@react-native-async-storage/async-storage": "^1.17.11",
@@ -23,6 +24,7 @@
     "@react-navigation/native": "^6.1.1",
     "@react-navigation/native-stack": "^6.9.7",
     "@tanstack/react-query": "^4.20.4",
+    "@th3rdwave/react-navigation-bottom-sheet": "^0.2.2",
     "axios": "^1.2.1",
     "moment": "^2.29.4",
     "native-base": "^3.4.25",
@@ -30,6 +32,7 @@
     "react-hook-form": "^7.41.1",
     "react-native": "0.70.6",
     "react-native-device-info": "^10.3.0",
+    "react-native-gesture-handler": "^2.8.0",
     "react-native-health": "^1.13.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-keyboard-aware-view": "^0.0.14",
@@ -37,6 +40,7 @@
     "react-native-maps-directions": "^1.9.0",
     "react-native-modal": "^13.0.1",
     "react-native-pager-view": "^6.1.2",
+    "react-native-reanimated": "^2.13.0",
     "react-native-safe-area-context": "^3.3.2",
     "react-native-safe-area-view": "^1.1.1",
     "react-native-screens": "^3.18.2",

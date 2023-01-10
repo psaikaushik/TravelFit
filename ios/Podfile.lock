@@ -364,8 +364,6 @@ PODS:
   - React-jsinspector (0.70.6)
   - React-logger (0.70.6):
     - glog
-  - react-native-geolocation (3.0.4):
-    - React-Core
   - react-native-google-maps (1.3.2):
     - Google-Maps-iOS-Utils (= 4.1.0)
     - GoogleMaps (= 7.0.0)
@@ -470,9 +468,38 @@ PODS:
     - Firebase/Database (= 10.3.0)
     - React-Core
     - RNFBApp
+  - RNGestureHandler (2.8.0):
+    - React-Core
   - RNGoogleSignin (9.0.2):
     - GoogleSignIn (~> 6.2)
     - React-Core
+  - RNReanimated (2.13.0):
+    - DoubleConversion
+    - FBLazyVector
+    - FBReactNativeSpec
+    - glog
+    - RCT-Folly
+    - RCTRequired
+    - RCTTypeSafety
+    - React-callinvoker
+    - React-Core
+    - React-Core/DevSupport
+    - React-Core/RCTWebSocket
+    - React-CoreModules
+    - React-cxxreact
+    - React-jsi
+    - React-jsiexecutor
+    - React-jsinspector
+    - React-RCTActionSheet
+    - React-RCTAnimation
+    - React-RCTBlob
+    - React-RCTImage
+    - React-RCTLinking
+    - React-RCTNetwork
+    - React-RCTSettings
+    - React-RCTText
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNScreens (3.18.2):
     - React-Core
     - React-RCTImage
@@ -506,7 +533,6 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
-  - "react-native-geolocation (from `../node_modules/@react-native-community/geolocation`)"
   - react-native-google-maps (from `../node_modules/react-native-maps`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
@@ -532,7 +558,9 @@ DEPENDENCIES:
   - "RNFBAuth (from `../node_modules/@react-native-firebase/auth`)"
   - "RNFBCrashlytics (from `../node_modules/@react-native-firebase/crashlytics`)"
   - "RNFBDatabase (from `../node_modules/@react-native-firebase/database`)"
+  - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
+  - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
@@ -606,8 +634,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   React-logger:
     :path: "../node_modules/react-native/ReactCommon/logger"
-  react-native-geolocation:
-    :path: "../node_modules/@react-native-community/geolocation"
   react-native-google-maps:
     :path: "../node_modules/react-native-maps"
   react-native-maps:
@@ -658,8 +684,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/crashlytics"
   RNFBDatabase:
     :path: "../node_modules/@react-native-firebase/database"
+  RNGestureHandler:
+    :path: "../node_modules/react-native-gesture-handler"
   RNGoogleSignin:
     :path: "../node_modules/@react-native-google-signin/google-signin"
+  RNReanimated:
+    :path: "../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNSVG:
@@ -712,7 +742,6 @@ SPEC CHECKSUMS:
   React-jsiexecutor: b4a65947391c658450151275aa406f2b8263178f
   React-jsinspector: 60769e5a0a6d4b32294a2456077f59d0266f9a8b
   React-logger: 1623c216abaa88974afce404dc8f479406bbc3a0
-  react-native-geolocation: 3ed60c3d7f613c36b777b9fd0bc3453214e1b0d5
   react-native-google-maps: 035ad2f9b4974f22af3d4d4c6993960a181b0aaf
   react-native-maps: 085f614cf14d3637b2048bb9752da5b1c27c2886
   react-native-pager-view: 54bed894cecebe28cede54c01038d9d1e122de43
@@ -738,7 +767,9 @@ SPEC CHECKSUMS:
   RNFBAuth: 0d480b9223fd9832e8a7ed314fa8c223b7ec8dfd
   RNFBCrashlytics: 78e6acca658f2d244ea96d1b12d9daa222d02c86
   RNFBDatabase: 3f5b2f3789c5eb0e3bdc8f6c754121416975d563
+  RNGestureHandler: 62232ba8f562f7dea5ba1b3383494eb5bf97a4d3
   RNGoogleSignin: 22e468a9474dbcb8618d8847205ad4f0b2575d13
+  RNReanimated: ce445c233a6ff5600223484a88ad5704945d972a
   RNScreens: 34cc502acf1b916c582c60003dc3089fa01dc66d
   RNSVG: 6adc5c52d2488a476248413064b7f2832e639057
   Yoga: 99caf8d5ab45e9d637ee6e0174ec16fbbb01bcfc

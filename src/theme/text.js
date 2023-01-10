@@ -68,6 +68,15 @@ const Text = {
       fontWeight: '700',
       color: 'white',
       textAlign: 'center'
+    },
+    place: {
+      fontSize: '20px',
+      fontWeight: '600',
+      color: 'primary.400'
+    },
+    vicinity: {
+      fontSize: '14px',
+      color: 'primary.400'
     }
   }
 }

@@ -6,6 +6,9 @@ import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
 import { setProfile } from '../services/users'
+import moment from 'moment'
+import { updateProgress } from '../services/helpers'
+import { setUserData } from '../services/database'
 
 const SignUp = () => {
   const { reset, navigate } = useNavigation()
@@ -27,12 +30,14 @@ const SignUp = () => {
         email,
         password
       )
-      console.log('user', user)
-      await setProfile({
+      const profile = {
         name,
         email,
-        createdTime: new Date()
-      })
+        createdTime: moment().toISOString()
+      }
+      await setProfile(profile)
+      await setUserData(profile)
+      await updateProgress(user)
       reset({
         index: 0,
         routes: [{ name: 'Main' }]

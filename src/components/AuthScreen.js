@@ -12,6 +12,8 @@ import { Container, Text, Button, Flex, useToast, Pressable } from 'native-base'
 import auth from '@react-native-firebase/auth'
 import { getProfile, setProfile, updateProfile } from '../services/users'
 import { setUserData } from '../services/database'
+import moment from 'moment'
+import { updateProgress } from '../services/helpers'
 
 const AuthScreen = ({ title, googleEnabled, footer, children }) => {
   const { reset, goBack } = useNavigation()
@@ -30,17 +32,18 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
       const { idToken } = await GoogleSignin.signIn()
       const googleCredential = auth.GoogleAuthProvider.credential(idToken)
       const { user } = await auth().signInWithCredential(googleCredential)
-      console.log('user', user)
       let profile = await getProfile()
+      console.log('handleGoogle', user.uid, profile)
       if (!profile) {
         profile = {
           name: user.displayName,
           email: user.email,
-          createdTime: new Date()
+          createdTime: moment().toISOString()
         }
         await setProfile(profile)
       }
       await setUserData(profile)
+      await updateProgress(user)
       reset({
         index: 0,
         routes: [{ name: 'Main' }]

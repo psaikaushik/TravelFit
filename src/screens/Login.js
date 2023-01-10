@@ -7,6 +7,7 @@ import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 import { getProfile } from '../services/users'
 import { setUserData } from '../services/database'
+import { updateProgress } from '../services/helpers'
 
 const Login = () => {
   const { reset, navigate } = useNavigation()
@@ -33,6 +34,7 @@ const Login = () => {
       const profile = await getProfile()
       console.log('profile', profile)
       await setUserData(profile)
+      await updateProgress(user)
       reset({
         index: 0,
         routes: [{ name: 'Main' }]

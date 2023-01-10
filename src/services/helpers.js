@@ -1,5 +1,12 @@
 import AppleHealthKit from 'react-native-health'
 import moment from 'moment'
+import { getUserData, getUserSettings, setUserSettings } from './database'
+import {
+  calcDistance,
+  getCityDetails,
+  getLocationDetails,
+  getPlaceDetails
+} from './maps'
 
 const calcSteps = (steps = 0) => {
   return (Math.round(steps / 12) / 100).toFixed(2)
@@ -33,16 +40,16 @@ export const calcRemaining = (steps = 0, distance = 1) => {
   return prettifyNum((((distance - calcSteps(steps)) * 100) / 100).toFixed(2))
 }
 
-export const checkAppleHealth = () =>
+export const getStepsNum = (date = null) =>
   new Promise((resolve, reject) => {
     try {
-      AppleHealthKit.getStepCount(
+      AppleHealthKit.getDailyStepCountSamples(
         {
-          startDate: new Date(2021, 1, 1).toISOString()
+          startDate: date
         },
         (callbackError, results) => {
           if (callbackError) {
-            console.log('checkAppleHealth Error', callbackError)
+            console.log('getStepsNum Error', callbackError)
             resolve(null)
           } else {
             resolve(results)
@@ -50,67 +57,31 @@ export const checkAppleHealth = () =>
         }
       )
     } catch (e) {
-      console.log('checkAppleHealth', e)
+      console.log('getStepsNum', e)
       resolve(null)
     }
   })
 
-export const getStepsNum = (startDate) =>
-  new Promise((resolve, reject) => {
-    try {
-      AppleHealthKit.getStepCount(
-        {
-          startDate: startDate
-        },
-        (callbackError, results) => {
-          if (callbackError) {
-            console.log('getStepsNum Error', callbackError)
-            reject(callbackError)
-          } else {
-            resolve(results)
-          }
-        }
-      )
-    } catch (e) {
-      console.log('getStepsNum', e)
-      reject(e)
-    }
-  })
-
-export const getTodaySteps = () => getStepsNum(moment().toISOString())
-
-export const getDateSteps = ({ queryKey }) =>
-  getStepsNum(queryKey[1].toISOString())
-
 export const getStats = async () => {
   const stats = [
-    { id: 'today', date: new moment() },
-    { id: 'yesterday', date: moment().subtract(1, 'days') },
-    { id: 'OneDayBefore', date: moment().subtract(2, 'days') },
-    { id: 'TwoDaysBefore', date: moment().subtract(3, 'days') },
-    { id: 'ThreeDaysBefore', date: moment().subtract(4, 'days') }
+    { id: 'today', date: new moment().toISOString() },
+    { id: 'yesterday', date: moment().subtract(1, 'days').toISOString() },
+    { id: 'OneDayBefore', date: moment().subtract(2, 'days').toISOString() },
+    { id: 'TwoDaysBefore', date: moment().subtract(3, 'days').toISOString() },
+    { id: 'ThreeDaysBefore', date: moment().subtract(4, 'days').toISOString() }
   ]
-  const steps = await Promise.all([
-    getTodaySteps,
-    () => getDateSteps(stats[1].date),
-    () => getDateSteps(stats[2].date),
-    () => getDateSteps(stats[3].date),
-    () => getDateSteps(stats[4].date)
-  ])
+  const results = await getStepsNum(stats[4].date)
+  console.log('results', results)
+  if (!results) return stats
+
   for (let i = 0; i < stats.length; i++) {
-    const data = steps[i]
-    stats[i] = { ...stats[i], steps: data.value || 0 }
+    const stat = stats[i]
+    const totalSteps = results
+      .filter((x) => moment(stat.date).isSame(x.startDate, 'day'))
+      .reduce((sum, item) => sum + item.value, 0)
+    stats[i] = { ...stats[i], steps: totalSteps }
   }
   return stats
-}
-
-export const getTotalSteps = async () => {
-  // Check last time updated or account created time
-  // If last time is not today
-  // Get steps from last time till today
-  const steps = await getTodaySteps()
-  console.log('steps', steps)
-  return 0
 }
 
 const getPolygonArray = (latitude) => {
@@ -165,10 +136,147 @@ export const getTopPlace = (places) => {
   return places.sort((a, b) => b.score - a.score)[0]
 }
 
+export const calcBreakpointsProgress = (
+  progressIdx,
+  destinationPoint,
+  route,
+  breakPoints,
+  badges
+) => {
+  const newBadges = [...badges]
+  breakPoints.forEach((item, index) => {
+    let progress = 0
+    const pointIdx = route.findIndex(
+      ({ latitude, longitude }) =>
+        latitude === item.latitude && longitude === item.longitude
+    )
+    const distance = calcDistance(destinationPoint, item).toFixed(1)
+    if (distance === '0.0') {
+      progress = 50
+    } else if (distance < 20) {
+      // Inside break point
+      if (pointIdx > progressIdx) {
+        progress = ((20 - distance) / 20) * 100
+      } else {
+        progress = (distance / 20) * 100
+      }
+    } else {
+      if (pointIdx < progressIdx) {
+        // Already Passed
+        progress = 100
+      } else {
+        // Not Passed
+        progress = 0
+      }
+    }
+    newBadges[index].progress = progress
+  })
+  return newBadges
+}
+
+export const checkCity = async (destinationPoint, cities) => {
+  const newCities = [...cities]
+  const data = await getLocationDetails(destinationPoint)
+  const { results } = data || {}
+  let city = null
+  for (let r = 0; r < (results || []).length; r++) {
+    const { address_components } = results[r]
+    for (let t = 0; t < address_components.length; t++) {
+      const address = address_components[t]
+      const types = address.types || []
+      if (types.find((x) => x === 'locality')) {
+        city = { name: address.long_name }
+      }
+      if (
+        !city?.name &&
+        types.find((x) => x === 'administrative_area_level_2')
+      ) {
+        city = { name: address.long_name }
+      }
+      if (types.find((x) => x === 'administrative_area_level_1')) {
+        city.state = address.long_name
+      }
+      if (types.find((x) => x === 'country')) {
+        city.country = address.short_name
+      }
+    }
+    if (!!city) break
+  }
+
+  if (!city?.name) return newCities
+  const cityName = `${city.name}, ${city.state || ''}, ${city.country || ''}`
+  const details = await getCityDetails(city.name)
+  const prediction =
+    (details?.predictions || []).length > 0 ? details.predictions[0] : null
+  if (!prediction) return newCities
+  const place = await getPlaceDetails(prediction.place_id)
+
+  if (!!city && !newCities.find((x) => x.place_id === prediction.place_id)) {
+    newCities.push({
+      place_id: prediction.place_id,
+      name: cityName,
+      photos: place.result.photos || []
+    })
+  }
+  return newCities
+}
+
+export const updateProgress = async (user) => {
+  // Everytime Progress Changes
+  const { name, createdTime } = (await getUserData()) || {}
+  const userSettings = (await getUserSettings()) || {}
+  const { steps, route, distance, breakPoints, badges, cities } = userSettings
+  if (!user || !name) return 'Welcome'
+
+  try {
+    // Get steps from createdTime till now
+    const stepsRes = await getStepsNum(createdTime)
+    if (!stepsRes) {
+      return 'AppleHealth'
+    }
+
+    const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
+    console.log('totalSteps', totalSteps, 'steps', steps)
+
+    // Check if total steps has changed
+    if (totalSteps === steps) return 'Main'
+
+    const progressIdx = Math.round(
+      (calcProgress(totalSteps, distance) / 100) * route?.length
+    ) // 222280
+    const progressRoute = getDestinationStep(progressIdx, route)
+    const destinationPoint =
+      !!progressRoute && progressRoute.length > 0
+        ? progressRoute[progressRoute.length - 1]
+        : null
+
+    // Calculate distance from progress to each break point
+    const newBadges = calcBreakpointsProgress(
+      progressIdx,
+      destinationPoint,
+      route,
+      breakPoints,
+      badges
+    )
+
+    //  Check if city is new then add city badge
+    const newCities = await checkCity(destinationPoint, cities)
+
+    await setUserSettings({
+      ...userSettings,
+      steps: totalSteps,
+      badges: newBadges,
+      cities: newCities
+    })
+  } catch (error) {
+    console.log(error.code, error.message)
+  }
+  return 'Main'
+}
+
 export default {
   getTopPlace,
   getPolygonPoints,
-  checkAppleHealth,
   stepsToDistance,
   calcProgress,
   prettifyNum,

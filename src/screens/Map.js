@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import TabScreen from '../components/TabScreen'
 import MapView, {
   Circle,
@@ -15,6 +15,7 @@ import RightIcon from '../assets/icons/arrow-right.svg'
 import PinIcon from '../assets/icons/pin.svg'
 import OriginIcon from '../assets/icons/origin.svg'
 import MarkIcon from '../assets/icons/mark.svg'
+import * as PlaceNavigation from '../routes/PlaceNavigation'
 import { useQuery } from '@tanstack/react-query'
 import { getUserSettings } from '../services/database'
 import {
@@ -24,6 +25,7 @@ import {
 } from '../services/helpers'
 
 const Map = () => {
+  const [selectedPlace, setSelectedPlace] = useState(null)
   const { data: settings } = useQuery(['settings'], getUserSettings)
   const { starting, destination, route, breakPoints, badges, steps, distance } =
     settings || {}
@@ -36,6 +38,13 @@ const Map = () => {
     !!progressRoute && progressRoute.length > 0
       ? progressRoute[progressRoute.length - 1]
       : null
+
+  const handlePressCity = (index) => {
+    const badge = badges[index]
+    PlaceNavigation.close()
+    setSelectedPlace(badge)
+    PlaceNavigation.navigate('PlaceModal', { badge })
+  }
 
   useEffect(() => {
     if (!route) return
@@ -262,12 +271,13 @@ const Map = () => {
           const badge = badges[index]
           return (
             <Marker
-              key={`${item.place_id}`}
+              key={`${item.latitude}-${item.longitude}`}
               title={item.name}
               coordinate={{
                 latitude: item.latitude,
                 longitude: item.longitude
               }}
+              onPress={() => handlePressCity(index)}
               centerOffset={{ x: 0.5, y: 0.5 }}
               tracksViewChanges={true}
             >

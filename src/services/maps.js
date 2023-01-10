@@ -1,5 +1,6 @@
 import axios from 'axios'
 import {
+  calcBreakpointsProgress,
   calcProgress,
   getDestinationStep,
   getTopPlace,
@@ -68,6 +69,7 @@ export const getLocationDetails = async (location) => {
     'https://maps.googleapis.com/maps/api/geocode/json',
     config
   )
+  console.log('response', response.data)
   return response.data
 }
 
@@ -137,7 +139,7 @@ export const getPlaces = async (
   const promises = []
   const breakPoints = []
   const placeKeys = {}
-  const places = [...(badges || [])]
+  let places = [...(badges || [])]
   const diameter = 40
 
   let i = 0
@@ -218,35 +220,12 @@ export const getPlaces = async (
     progressRoute.length > 0 ? progressRoute[progressRoute.length - 1] : 0
 
   // Calculate distance from progress to each break point
-  let count = 0
-  breakPoints.forEach((item, index) => {
-    let progress = 0
-    const pointIdx = route.findIndex(
-      ({ latitude, longitude }) =>
-        latitude === item.latitude && longitude === item.longitude
-    )
-    const distance = calcDistance(destinationPoint, item).toFixed(1)
-    if (distance === '0.0') {
-      progress = 50
-    } else if (distance < 20) {
-      // Inside break point
-      if (pointIdx > progressIdx) {
-        progress = ((20 - distance) / 20) * 100
-      } else {
-        progress = (distance / 20) * 100
-      }
-      count += 1
-    } else {
-      if (pointIdx < progressIdx) {
-        // Already Passed
-        progress = 100
-      } else {
-        // Not Passed
-        progress = 0
-      }
-    }
-    places[index].progress = progress
-  })
+  places = calcBreakpointsProgress(
+    progressIdx,
+    destinationPoint,
+    breakPoints,
+    places
+  )
 
   return { breakPoints, places }
 }

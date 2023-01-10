@@ -9,34 +9,33 @@ import Login from '../screens/Login'
 import Reset from '../screens/Reset'
 import Main from '../routes/Main'
 import AppleHealth from '../screens/AppleHealth'
-import { getUserData } from '../services/database'
-import { checkAppleHealth } from '../services/helpers'
+import { PlaceRoutes } from './Place'
+import { updateProgress } from '../services/helpers'
 import { navigationRef } from './RootNavigation'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
 export const Routes = () => {
   const [initScreen, setInitScreen] = useState(null)
+  const [user, setUser] = useState(undefined)
 
   useEffect(() => {
     let authFlag = true
-    auth().onAuthStateChanged(async (_user) => {
+    auth().onAuthStateChanged((_user) => {
       if (!authFlag) return
       authFlag = false
-      let flow = 'Welcome'
-      const { name } = (await getUserData()) || {}
-      if (!!_user && !!name) {
-        const results = await checkAppleHealth()
-        if (!!results) {
-          flow = 'Main'
-        } else {
-          flow = 'AppleHealth'
-        }
-      }
-      setInitScreen(flow)
-      SplashScreen.hide()
+      setUser(_user)
     })
   }, [])
+
+  useEffect(() => {
+    if (typeof user !== 'undefined') {
+      updateProgress(user).then(async (flow) => {
+        setInitScreen(flow)
+        SplashScreen.hide()
+      })
+    }
+  }, [user])
 
   if (!initScreen) return <></>
 
@@ -53,6 +52,7 @@ export const Routes = () => {
         <Screen name="Login" component={Login} />
         <Screen name="Reset" component={Reset} />
       </Navigator>
+      <PlaceRoutes />
     </NavigationContainer>
   )
 }

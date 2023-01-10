@@ -16,12 +16,10 @@ import {
   printK,
   stepsToDistance
 } from '../services/helpers'
-import { TabView, SceneMap } from 'react-native-tab-view'
+import { SceneMap, TabView } from 'react-native-tab-view'
 
-const FirstRoute = () => {
-  const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { badges } = settings || {}
-  const badgesGroup = printGrid(badges)
+const LandmarksRoute = ({ route: { data } }) => {
+  const badgesGroup = printGrid(data)
 
   const renderItem = ({ place_id, name, progress = 0, photos }) => (
     <Flex
@@ -81,7 +79,7 @@ const FirstRoute = () => {
   )
 
   return (
-    <ScrollView key="landmarks" flex="1" mb="40px" mx="0">
+    <ScrollView key="Landmarks" flex="1" mb="40px" mx="0">
       <Flex pb="30px" pt="10px">
         {badgesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
@@ -93,10 +91,8 @@ const FirstRoute = () => {
   )
 }
 
-const SecondRoute = () => {
-  const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { cities } = settings || {}
-  const citiesGroup = printGrid(cities)
+const CitiesRoute = ({ route: { data } }) => {
+  const citiesGroup = printGrid(data)
 
   const renderItem = ({ place_id, name, photos }) => (
     <Flex
@@ -127,7 +123,7 @@ const SecondRoute = () => {
   )
 
   return (
-    <ScrollView key="cities" flex="1" mb="40px" mx="0">
+    <ScrollView key="Cities" flex="1" mb="40px" mx="0">
       <Flex pb="30px" pt="10px">
         {citiesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
@@ -140,15 +136,8 @@ const SecondRoute = () => {
   )
 }
 
-const ThreeRoute = () => {
-  const milestones = [
-    1, 5, 10, 50, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 100000
-  ]
-  const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { steps } = settings || {}
-  const progress = stepsToDistance(steps)
-  const achieved = milestones.filter((x) => x <= progress)
-  const achievedGroup = printGrid(achieved)
+const MilestonesRoute = ({ route: { data } }) => {
+  const achievedGroup = printGrid(data)
 
   const renderItem = (distance) => (
     <Flex
@@ -189,7 +178,7 @@ const ThreeRoute = () => {
   )
 
   return (
-    <ScrollView key="milestones" flex="1" mb="40px" mx="0">
+    <ScrollView key="Milestones" flex="1" mb="40px" mx="0">
       <Flex pb="30px" pt="10px">
         {achievedGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
@@ -202,20 +191,24 @@ const ThreeRoute = () => {
   )
 }
 
-const renderScene = SceneMap({
-  landmarks: FirstRoute,
-  cities: SecondRoute,
-  milestones: ThreeRoute
-})
-
 const Achievements = () => {
   const { width } = useWindowDimensions()
   const [index, setIndex] = useState(0)
-  const [routes, setRoutes] = useState([
-    { key: 'landmarks', title: 'Landmarks' },
-    { key: 'cities', title: 'Cities' },
-    { key: 'milestones', title: 'Milestones' }
-  ])
+  const { data: settings } = useQuery(['settings'], getUserSettings)
+  const { badges, cities, steps } = settings || {}
+  const milestones = [
+    1, 5, 10, 50, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 100000
+  ]
+  const progress = stepsToDistance(steps)
+  const achieved = milestones.filter((x) => x <= progress)
+
+  if (typeof settings === 'undefined') return <TabScreen />
+
+  const routes = [
+    { key: 'Landmarks', title: 'Landmarks', data: badges },
+    { key: 'Cities', title: 'Cities', data: cities },
+    { key: 'Milestones', title: 'Milestones', data: achieved }
+  ]
 
   const renderTabBar = ({ navigationState, position }) => {
     const inputRange = navigationState.routes.map((x, i) => i)
@@ -244,6 +237,12 @@ const Achievements = () => {
     )
   }
 
+  const renderScene = SceneMap({
+    Landmarks: LandmarksRoute,
+    Cities: CitiesRoute,
+    Milestones: MilestonesRoute
+  })
+
   return (
     <TabScreen>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
@@ -257,7 +256,10 @@ const Achievements = () => {
           textAlign="center"
           position="absolute"
         >
-          6 Badges
+          {badges.filter((x) => x.progress > 0).length +
+            cities.length +
+            achieved.length}{' '}
+          Badges
         </Text>
         <TabView
           navigationState={{ index, routes }}
