@@ -15,7 +15,7 @@ const PlaceModal = ({ route }) => {
       </Text>
       <Image
         w="100%"
-        mt="16px"
+        my="16px"
         aspectRatio={1.3}
         borderRadius="16px"
         alt={photos[0].photo_reference}

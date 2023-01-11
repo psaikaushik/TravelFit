@@ -40,37 +40,70 @@ export const calcRemaining = (steps = 0, distance = 1) => {
   return prettifyNum((((distance - calcSteps(steps)) * 100) / 100).toFixed(2))
 }
 
-export const getStepsNum = (date = null) =>
+export const getStepsNumAtDate = async (date = null) =>
   new Promise((resolve, reject) => {
-    try {
-      AppleHealthKit.getDailyStepCountSamples(
-        {
-          startDate: date
-        },
-        (callbackError, results) => {
-          if (callbackError) {
-            console.log('getStepsNum Error', callbackError)
-            resolve(null)
-          } else {
-            resolve(results)
-          }
+    AppleHealthKit.getDailyStepCountSamples(
+      {
+        startDate: date
+      },
+      (callbackError, results) => {
+        if (callbackError) {
+          console.log('getStepsNum Error', callbackError)
+          resolve(callbackError)
+        } else {
+          resolve(results)
         }
-      )
-    } catch (e) {
-      console.log('getStepsNum', e)
-      resolve(null)
-    }
+      }
+    )
+  })
+
+export const getStepsNum = async (date = null) =>
+  new Promise((resolve, reject) => {
+    AppleHealthKit.getAuthStatus(
+      {
+        permissions: {
+          read: [AppleHealthKit.Constants.Permissions.StepCount],
+          write: []
+        }
+      },
+      async (error, result) => {
+        console.log('getAuthStatus', error, result)
+        if (
+          !!error ||
+          !result ||
+          (result?.permissions?.read || []).length === 0
+        ) {
+          resolve(error)
+        } else if (result.permissions.read[0] !== 1) {
+          resolve('notAllowed')
+        } else {
+          AppleHealthKit.getDailyStepCountSamples(
+            {
+              startDate: date
+            },
+            (callbackError, results) => {
+              if (callbackError) {
+                console.log('getStepsNum Error', callbackError)
+                resolve(callbackError)
+              } else {
+                resolve(results)
+              }
+            }
+          )
+        }
+      }
+    )
   })
 
 export const getStats = async () => {
   const stats = [
-    { id: 'today', date: new moment().toISOString() },
+    { id: 'today', date: moment().toISOString() },
     { id: 'yesterday', date: moment().subtract(1, 'days').toISOString() },
     { id: 'OneDayBefore', date: moment().subtract(2, 'days').toISOString() },
     { id: 'TwoDaysBefore', date: moment().subtract(3, 'days').toISOString() },
     { id: 'ThreeDaysBefore', date: moment().subtract(4, 'days').toISOString() }
   ]
-  const results = await getStepsNum(stats[4].date)
+  const results = await getStepsNumAtDate(stats[4].date)
   console.log('results', results)
   if (!results) return stats
 
@@ -124,15 +157,13 @@ export const printGrid = (places) => {
 
 export const getTopPlace = (places) => {
   // console.log('places', places.map((x) => x.name).join(', '))
-  places
-    .filter((x) => x.photos?.length > 0)
-    .forEach((place) => {
-      place.score =
-        (place.types || []).length * 10 +
-        (place.user_ratings_total || 0) +
-        (place.rating || 0) * 20 +
-        place.photos.length * 15
-    })
+  places.forEach((place) => {
+    place.score =
+      (place.types || []).length * 10 +
+      (place.user_ratings_total || 0) +
+      (place.rating || 0) * 20 +
+      place.photos.length * 15
+  })
   return places.sort((a, b) => b.score - a.score)[0]
 }
 
@@ -147,8 +178,8 @@ export const calcBreakpointsProgress = (
   breakPoints.forEach((item, index) => {
     let progress = 0
     const pointIdx = route.findIndex(
-      ({ latitude, longitude }) =>
-        latitude === item.latitude && longitude === item.longitude
+      (x) =>
+        !!x && x.latitude === item.latitude && x.longitude === item.longitude
     )
     const distance = calcDistance(destinationPoint, item).toFixed(1)
     if (distance === '0.0') {
@@ -169,13 +200,16 @@ export const calcBreakpointsProgress = (
         progress = 0
       }
     }
-    newBadges[index].progress = progress
+    if (!!newBadges[index]) {
+      newBadges[index].progress = progress
+    }
   })
   return newBadges
 }
 
 export const checkCity = async (destinationPoint, cities) => {
   const newCities = [...cities]
+  if (!destinationPoint) return newCities
   const data = await getLocationDetails(destinationPoint)
   const { results } = data || {}
   let city = null
@@ -221,22 +255,26 @@ export const checkCity = async (destinationPoint, cities) => {
   return newCities
 }
 
-export const updateProgress = async (user) => {
+export const updateProgress = async (user, queryClient) => {
   // Everytime Progress Changes
   const { name, createdTime } = (await getUserData()) || {}
   const userSettings = (await getUserSettings()) || {}
-  const { steps, route, distance, breakPoints, badges, cities } = userSettings
+  const { steps, route, distance, breakPoints, badges, cities, health } =
+    userSettings
   if (!user || !name) return 'Welcome'
 
   try {
     // Get steps from createdTime till now
-    const stepsRes = await getStepsNum(createdTime)
-    if (!stepsRes) {
+    const stepsRes = await getStepsNum(createdTime || moment().toISOString())
+    console.log('stepsRes', stepsRes)
+    if (!stepsRes || !Array.isArray(stepsRes) || !health) {
       return 'AppleHealth'
+    }
+    if (!route || !distance || !breakPoints) {
+      return 'Trip'
     }
 
     const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
-    console.log('totalSteps', totalSteps, 'steps', steps)
 
     // Check if total steps has changed
     if (totalSteps === steps) return 'Main'
@@ -248,7 +286,7 @@ export const updateProgress = async (user) => {
     const destinationPoint =
       !!progressRoute && progressRoute.length > 0
         ? progressRoute[progressRoute.length - 1]
-        : null
+        : route[0]
 
     // Calculate distance from progress to each break point
     const newBadges = calcBreakpointsProgress(
@@ -261,6 +299,9 @@ export const updateProgress = async (user) => {
 
     //  Check if city is new then add city badge
     const newCities = await checkCity(destinationPoint, cities)
+
+    await queryClient.invalidateQueries(['settings'])
+    await queryClient.invalidateQueries(['stats'])
 
     await setUserSettings({
       ...userSettings,

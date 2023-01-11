@@ -10,12 +10,14 @@ import BackSVG from '../assets/icons/back.svg'
 import GoogleSVG from '../assets/icons/google.svg'
 import { Container, Text, Button, Flex, useToast, Pressable } from 'native-base'
 import auth from '@react-native-firebase/auth'
-import { getProfile, setProfile, updateProfile } from '../services/users'
+import { getProfile, setProfile } from '../services/users'
 import { setUserData } from '../services/database'
 import moment from 'moment'
 import { updateProgress } from '../services/helpers'
+import { useQueryClient } from '@tanstack/react-query'
 
 const AuthScreen = ({ title, googleEnabled, footer, children }) => {
+  const queryClient = useQueryClient()
   const { reset, goBack } = useNavigation()
   const isFocused = useIsFocused()
   const [googleLoading, setGoogleLoading] = useState()
@@ -43,7 +45,7 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
         await setProfile(profile)
       }
       await setUserData(profile)
-      await updateProgress(user)
+      await updateProgress(user, queryClient)
       reset({
         index: 0,
         routes: [{ name: 'Main' }]

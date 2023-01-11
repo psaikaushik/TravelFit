@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
 import { Text, Button, useToast, Container, Flex } from 'native-base'
-import { Alert, Image, Linking, SafeAreaView, StatusBar } from 'react-native'
+import { Alert, Image, SafeAreaView, StatusBar } from 'react-native'
 import HealthIMG from '../assets/images/health.png'
 import AppleHealthKit from 'react-native-health'
 import { getUserSettings, setUserSettings } from '../services/database'
@@ -11,21 +11,33 @@ const AppleHealth = () => {
   const isFocused = useIsFocused()
   const toast = useToast()
 
+  const handleNext = async () => {
+    const userSettings = (await getUserSettings()) || {}
+    const { route, distance, breakPoints } = userSettings
+    await setUserSettings({ ...userSettings, health: true })
+    reset({
+      index: 0,
+      routes: [{ name: !route || !distance || !breakPoints ? 'Trip' : 'Main' }]
+    })
+  }
+
   const handleConnect = () => {
     AppleHealthKit.initHealthKit(
       {
         permissions: {
-          read: [AppleHealthKit.Constants.Permissions.Steps]
+          read: [AppleHealthKit.Constants.Permissions.StepCount]
         }
       },
       async (error, result) => {
-        console.log('result', error, result)
+        console.log('initHealthKit', result, error)
         if (!!error) {
-          console.log('[ERROR] Cannot grant permissions!', error)
           toast.show({
             status: 'error',
             description: error
           })
+          return
+        }
+        if (result !== 1) {
           Alert.alert(
             'Health Permission Denied',
             'TravelFit is not longer able to ask for Health Permission, ' +
@@ -34,25 +46,17 @@ const AppleHealth = () => {
               {
                 text: 'Cancel',
                 style: 'cancel',
-                onPress: () => {}
+                onPress: handleNext
               },
               {
-                text: 'Open Settings',
-                onPress: () => {
-                  Linking.openSettings()
-                }
+                text: 'Enable Access',
+                onPress: handleConnect
               }
             ]
           )
           return
         }
-
-        const userSettings = (await getUserSettings()) || {}
-        await setUserSettings({ ...userSettings, healthConnected: true })
-        reset({
-          index: 0,
-          routes: [{ name: 'Main' }]
-        })
+        await handleNext()
       }
     )
   }

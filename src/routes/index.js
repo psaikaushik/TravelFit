@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { View } from 'native-base'
 import Welcome from '../screens/Welcome'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
@@ -9,13 +10,16 @@ import Login from '../screens/Login'
 import Reset from '../screens/Reset'
 import Main from '../routes/Main'
 import AppleHealth from '../screens/AppleHealth'
+import Trip from '../screens/Trip'
 import { PlaceRoutes } from './Place'
 import { updateProgress } from '../services/helpers'
 import { navigationRef } from './RootNavigation'
+import { useQueryClient } from '@tanstack/react-query'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
 export const Routes = () => {
+  const queryClient = useQueryClient()
   const [initScreen, setInitScreen] = useState(null)
   const [user, setUser] = useState(undefined)
 
@@ -30,14 +34,16 @@ export const Routes = () => {
 
   useEffect(() => {
     if (typeof user !== 'undefined') {
-      updateProgress(user).then(async (flow) => {
+      updateProgress(user, queryClient).then(async (flow) => {
+        console.log('flow', flow)
         setInitScreen(flow)
         SplashScreen.hide()
       })
     }
   }, [user])
 
-  if (!initScreen) return <></>
+  if (!initScreen)
+    return <View style={{ flex: 1, backgroundColor: '#F3F3F6' }} />
 
   return (
     <NavigationContainer ref={navigationRef}>
@@ -47,6 +53,7 @@ export const Routes = () => {
       >
         <Screen name="Main" component={Main} />
         <Screen name="AppleHealth" component={AppleHealth} />
+        <Screen name="Trip" component={Trip} />
         <Screen name="Welcome" component={Welcome} />
         <Screen name="SignUp" component={SignUp} />
         <Screen name="Login" component={Login} />

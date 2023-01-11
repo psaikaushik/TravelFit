@@ -8,8 +8,10 @@ import AuthScreen from '../components/AuthScreen'
 import { getProfile } from '../services/users'
 import { setUserData } from '../services/database'
 import { updateProgress } from '../services/helpers'
+import { useQueryClient } from '@tanstack/react-query'
 
 const Login = () => {
+  const queryClient = useQueryClient()
   const { reset, navigate } = useNavigation()
   const toast = useToast()
   const {
@@ -34,7 +36,7 @@ const Login = () => {
       const profile = await getProfile()
       console.log('profile', profile)
       await setUserData(profile)
-      await updateProgress(user)
+      await updateProgress(user, queryClient)
       reset({
         index: 0,
         routes: [{ name: 'Main' }]

@@ -3,8 +3,7 @@ import {
   calcBreakpointsProgress,
   calcProgress,
   getDestinationStep,
-  getTopPlace,
-  handleOrdering
+  getTopPlace
 } from './helpers'
 
 export const getRoute = async (origin, destination) => {
@@ -69,7 +68,6 @@ export const getLocationDetails = async (location) => {
     'https://maps.googleapis.com/maps/api/geocode/json',
     config
   )
-  console.log('response', response.data)
   return response.data
 }
 
@@ -94,7 +92,7 @@ export const getCityDetails = async (name) => {
   return response.data
 }
 
-export const getPlaceDetails = async (id) => {
+export const getPlaceDetails = async (id, fields = 'photo') => {
   const headers = {
     Accept: 'application/json',
     'Content-Type': 'application/json'
@@ -104,7 +102,7 @@ export const getPlaceDetails = async (id) => {
     params: {
       key: 'AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs',
       place_id: id,
-      fields: 'photo'
+      fields
     },
     timeout: 30000
   }
@@ -129,13 +127,7 @@ export const calcDistance = (coordinate1, coordinate2) => {
   return R * c
 }
 
-export const getPlaces = async (
-  destination,
-  steps,
-  route,
-  badges,
-  distance
-) => {
+export const getPlaces = async (steps, route, badges, distance) => {
   const promises = []
   const breakPoints = []
   const placeKeys = {}
@@ -153,7 +145,6 @@ export const getPlaces = async (
       if (distance >= diameter) {
         closest = x
         l = x
-        console.log('distance', i, 'closest', closest)
         breakPoints.push(route[i])
         break
       }
@@ -170,7 +161,6 @@ export const getPlaces = async (
       const distance = calcDistance(point, route[x])
       if (distance >= diameter) {
         closest = x
-        console.log('distance', j, 'closest', closest)
         breakPoints.push(route[j])
         break
       }
@@ -195,7 +185,10 @@ export const getPlaces = async (
         const _places = result.results || []
         const filtered = _places.filter(
           (x) =>
-            x.types.includes('tourist_attraction') && !placeKeys[x.place_id]
+            x.types.includes('tourist_attraction') &&
+            !!x.photos &&
+            x.photos.length > 0 &&
+            !placeKeys[x.place_id]
         )
         if (filtered.length > 1) {
           // Order by score
@@ -205,8 +198,8 @@ export const getPlaces = async (
         }
         if (!!place) {
           placeKeys[place.place_id] = true
+          console.log('point', i, place?.name || '-') // filtered.map((x) => x.name).join(', ')
         }
-        console.log('point', i, place?.name || '-') // filtered.map((x) => x.name).join(', ')
       }
       places.push(place)
     }
@@ -223,6 +216,7 @@ export const getPlaces = async (
   places = calcBreakpointsProgress(
     progressIdx,
     destinationPoint,
+    route,
     breakPoints,
     places
   )

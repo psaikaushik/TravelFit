@@ -1,12 +1,6 @@
 import React, { useState } from 'react'
 import { Animated, SafeAreaView } from 'react-native'
-import {
-  Flex,
-  Text,
-  Progress as ProgressNative,
-  Avatar,
-  Box
-} from 'native-base'
+import { Flex, Text, Avatar, Progress as ProgressNative } from 'native-base'
 import { useQuery } from '@tanstack/react-query'
 import { getUserSettings } from '../services/database'
 import TabScreen from '../components/TabScreen'
@@ -56,22 +50,37 @@ const Progress = () => {
       direction="row"
       align="center"
     >
-      <Box w="70px" h="70px" mr="16px" bg="gray.300" borderRadius="12px" />
+      <Flex
+        w="70px"
+        h="70px"
+        mr="16px"
+        bg="gray.300"
+        align="center"
+        justify="center"
+        borderRadius="12px"
+      >
+        <Text variant="place">
+          {moment(item.date).format('DD').toUpperCase()}
+        </Text>
+        <Text variant="cityName">
+          {moment(item.date).format('MMM').toUpperCase()}
+        </Text>
+      </Flex>
       <Flex
         flex="1"
-        py="16px"
+        py="25px"
         justify="center"
-        borderBottomWidth={item.id === 'ThreeDaysBefore' ? '0' : '1px'}
         borderColor="gray.200"
+        borderBottomWidth={item.id === 'ThreeDaysBefore' ? '0' : '1px'}
       >
-        <Text
-          variant="progress"
-          color="gray.500"
-          fontWeight="300"
-          numberOfLines={1}
-        >
-          {moment(item.date).format('DD MMM').toUpperCase()}
-        </Text>
+        {/*<Text*/}
+        {/*  variant="progress"*/}
+        {/*  color="gray.500"*/}
+        {/*  fontWeight="300"*/}
+        {/*  numberOfLines={1}*/}
+        {/*>*/}
+        {/*  {moment(item.date).format('DD MMM').toUpperCase()}*/}
+        {/*</Text>*/}
         <Text
           m="0"
           variant="to"

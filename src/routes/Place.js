@@ -13,7 +13,7 @@ const Closed = () => null
 export const PlaceRoutes = () => {
   const isIphoneX = hasNotch()
   const { height } = Dimensions.get('window')
-  const rewardModalHeight = (400 / height) * 100
+  const rewardModalHeight = (420 / height) * 100
 
   return (
     <NavigationContainer independent ref={navigationRef}>

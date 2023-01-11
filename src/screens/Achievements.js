@@ -19,7 +19,7 @@ import {
 import { SceneMap, TabView } from 'react-native-tab-view'
 
 const LandmarksRoute = ({ route: { data } }) => {
-  const badgesGroup = printGrid(data)
+  const badgesGroup = printGrid((data || []).filter((x) => !!x))
 
   const renderItem = ({ place_id, name, progress = 0, photos }) => (
     <Flex
@@ -32,15 +32,17 @@ const LandmarksRoute = ({ route: { data } }) => {
       borderColor={progress > 0 ? '#a3cb88' : '#F3F3F6'}
       align="center"
     >
-      <Image
-        w="100%"
-        aspectRatio={1}
-        borderRadius="12px"
-        alt={photos[0].photo_reference}
-        source={{
-          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
-        }}
-      />
+      {!!photos && photos.length > 0 && (
+        <Image
+          w="100%"
+          aspectRatio={1}
+          borderRadius="12px"
+          alt={photos[0].photo_reference}
+          source={{
+            uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+          }}
+        />
+      )}
       {progress === 0 && (
         <Flex
           left="0"
@@ -83,7 +85,7 @@ const LandmarksRoute = ({ route: { data } }) => {
       <Flex pb="30px" pt="10px">
         {badgesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
-            {group.map((badge) => renderItem(badge))}
+            {group.map((badge) => !!badge && renderItem(badge))}
           </Flex>
         ))}
       </Flex>
@@ -92,7 +94,7 @@ const LandmarksRoute = ({ route: { data } }) => {
 }
 
 const CitiesRoute = ({ route: { data } }) => {
-  const citiesGroup = printGrid(data)
+  const citiesGroup = printGrid((data || []).filter((x) => !!x))
 
   const renderItem = ({ place_id, name, photos }) => (
     <Flex
@@ -105,15 +107,17 @@ const CitiesRoute = ({ route: { data } }) => {
       borderColor="border"
       align="center"
     >
-      <Image
-        w="100%"
-        aspectRatio={1.3}
-        borderTopRadius="12px"
-        alt={photos[0].photo_reference}
-        source={{
-          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
-        }}
-      />
+      {!!photos && photos.length > 0 && (
+        <Image
+          w="100%"
+          aspectRatio={1.3}
+          borderTopRadius="12px"
+          alt={photos[0].photo_reference}
+          source={{
+            uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+          }}
+        />
+      )}
       <Flex py="12px" px="5px" borderBottomRadius="10px" justify="center">
         <Text variant="cityName" numberOfLines={2}>
           {name}
@@ -127,7 +131,7 @@ const CitiesRoute = ({ route: { data } }) => {
       <Flex pb="30px" pt="10px">
         {citiesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
-            {group.map((city) => renderItem(city))}
+            {group.map((city) => !!city && renderItem(city))}
             {group.length === 1 && <Flex flex="1" />}
           </Flex>
         ))}
@@ -256,7 +260,7 @@ const Achievements = () => {
           textAlign="center"
           position="absolute"
         >
-          {badges.filter((x) => x.progress > 0).length +
+          {badges.filter((x) => x?.progress > 0).length +
             cities.length +
             achieved.length}{' '}
           Badges
