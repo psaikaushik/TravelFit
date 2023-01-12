@@ -35,7 +35,7 @@ const SignUp = () => {
       const profile = {
         name,
         email,
-        createdTime: moment().toISOString()
+        createdTime: moment().startOf('day').toISOString()
       }
       await setProfile(profile)
       await setUserData(profile)

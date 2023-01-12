@@ -40,7 +40,7 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
         profile = {
           name: user.displayName,
           email: user.email,
-          createdTime: moment().toISOString()
+          createdTime: moment().startOf('day').toISOString()
         }
         await setProfile(profile)
       }

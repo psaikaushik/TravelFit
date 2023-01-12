@@ -198,7 +198,10 @@ const Trip = ({ fromMap }) => {
         }
       },
       steps: totalSteps,
-      startedTime: resetSteps ? moment().toISOString() : startedTime,
+      startedTime:
+        resetSteps || !startedTime
+          ? moment().startOf('day').toISOString()
+          : startedTime,
       completed: progress >= distance ? moment().toISOString() : undefined,
       bounds: routeDetails.bounds,
       duration,

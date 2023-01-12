@@ -278,7 +278,7 @@ export const updateProgress = async (user, queryClient) => {
   try {
     // Get steps from startedTime till now
     const stepsRes = await getStepsNum(
-      startedTime || createdTime || moment().toISOString()
+      startedTime || createdTime || moment().startOf('day').toISOString()
     )
     console.log('stepsRes', stepsRes)
     if (!stepsRes || !Array.isArray(stepsRes) || !health) {
