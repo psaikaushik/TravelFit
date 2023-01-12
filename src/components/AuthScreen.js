@@ -45,10 +45,10 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
         await setProfile(profile)
       }
       await setUserData(profile)
-      await updateProgress(user, queryClient)
+      const flow = await updateProgress(user, queryClient)
       reset({
         index: 0,
-        routes: [{ name: 'Main' }]
+        routes: [{ name: flow }]
       })
     } catch (e) {
       setGoogleLoading(false)

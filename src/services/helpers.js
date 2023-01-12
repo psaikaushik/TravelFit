@@ -8,7 +8,7 @@ import {
   getPlaceDetails
 } from './maps'
 
-const calcSteps = (steps = 0) => {
+export const calcSteps = (steps = 0) => {
   return (Math.round(steps / 12) / 100).toFixed(2)
 }
 
@@ -183,7 +183,11 @@ export const calcBreakpointsProgress = (
     )
     const distance = calcDistance(destinationPoint, item).toFixed(1)
     if (distance === '0.0') {
-      progress = 50
+      if (index === breakPoints.length - 1) {
+        progress = 100
+      } else {
+        progress = 50
+      }
     } else if (distance < 20) {
       // Inside break point
       if (pointIdx > progressIdx) {
@@ -257,15 +261,25 @@ export const checkCity = async (destinationPoint, cities) => {
 
 export const updateProgress = async (user, queryClient) => {
   // Everytime Progress Changes
-  const { name, createdTime } = (await getUserData()) || {}
+  const { name, startedTime, createdTime } = (await getUserData()) || {}
   const userSettings = (await getUserSettings()) || {}
-  const { steps, route, distance, breakPoints, badges, cities, health } =
-    userSettings
+  const {
+    steps,
+    route,
+    distance,
+    breakPoints,
+    badges,
+    cities,
+    health,
+    completed
+  } = userSettings
   if (!user || !name) return 'Welcome'
 
   try {
-    // Get steps from createdTime till now
-    const stepsRes = await getStepsNum(createdTime || moment().toISOString())
+    // Get steps from startedTime till now
+    const stepsRes = await getStepsNum(
+      startedTime || createdTime || moment().toISOString()
+    )
     console.log('stepsRes', stepsRes)
     if (!stepsRes || !Array.isArray(stepsRes) || !health) {
       return 'AppleHealth'
@@ -275,9 +289,13 @@ export const updateProgress = async (user, queryClient) => {
     }
 
     const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
+    const progress = calcSteps(totalSteps)
+
+    console.log('progress', totalSteps, steps, progress, distance, completed)
 
     // Check if total steps has changed
-    if (totalSteps === steps) return 'Main'
+    if ((totalSteps === steps && progress < distance) || !!completed)
+      return 'Main'
 
     const progressIdx = Math.round(
       (calcProgress(totalSteps, distance) / 100) * route?.length
@@ -300,15 +318,16 @@ export const updateProgress = async (user, queryClient) => {
     //  Check if city is new then add city badge
     const newCities = await checkCity(destinationPoint, cities)
 
-    await queryClient.invalidateQueries(['settings'])
-    await queryClient.invalidateQueries(['stats'])
-
     await setUserSettings({
       ...userSettings,
       steps: totalSteps,
       badges: newBadges,
-      cities: newCities
+      cities: newCities,
+      completed: progress >= distance ? moment().toISOString() : undefined
     })
+
+    await queryClient.invalidateQueries(['settings'])
+    await queryClient.invalidateQueries(['stats'])
   } catch (error) {
     console.log(error.code, error.message)
   }

@@ -7,7 +7,8 @@ import {
   Container,
   Flex,
   WarningOutlineIcon,
-  FormControl
+  FormControl,
+  Checkbox
 } from 'native-base'
 import { SafeAreaView, StatusBar } from 'react-native'
 import TripSVG from '../assets/icons/trip.svg'
@@ -24,16 +25,19 @@ import { getUserSettings, setUserSettings } from '../services/database'
 import MapPolyline from '@mapbox/polyline'
 import {
   calcProgress,
+  calcSteps,
   checkCity,
   getDestinationStep
 } from '../services/helpers'
 import { useQueryClient } from '@tanstack/react-query'
+import moment from 'moment'
 
 const Trip = ({ fromMap }) => {
   let SEARCHING = false
   let SHOULD_SEARCH = null
   const [addExtra, setAddExtra] = useState(-1)
   const [originText, setOriginText] = useState(null)
+  const [resetSteps, setResetSteps] = useState(false)
   const [originItems, setOriginItems] = useState([
     { id: 'ChIJE9on3F3HwoAR9AhGJW_fL-I', name: 'Los Angeles, CA, USA' },
     { id: 'ChIJdd4hrwug2EcRmSrV3Vo6llI', name: 'London, UK' }
@@ -101,7 +105,9 @@ const Trip = ({ fromMap }) => {
   const handleSave = async () => {
     const { origin, destination } = getValues()
     const userSettings = await getUserSettings()
-    const { steps } = userSettings || {}
+    const { steps, startedTime } = userSettings || {}
+
+    console.log('resetSteps', resetSteps)
 
     // Get Location details of origin and destination
     const promises = []
@@ -146,12 +152,14 @@ const Trip = ({ fromMap }) => {
     }))
     const distance = routeDetails.legs[0].distance.value / 1000
     const duration = routeDetails.legs[0].duration.value
+    const totalSteps = resetSteps ? 0 : steps || 0
+    const progress = calcSteps(totalSteps)
 
     console.log('route', route.length)
 
     // Create Break points and Nearby Places in each break point
     const { breakPoints, places } = await getPlaces(
-      steps || 0,
+      totalSteps,
       route,
       [],
       distance
@@ -160,7 +168,7 @@ const Trip = ({ fromMap }) => {
     console.log('getPlaces', places.length)
 
     const progressIdx = Math.round(
-      (calcProgress(steps, distance) / 100) * route?.length
+      (calcProgress(totalSteps, distance) / 100) * route?.length
     )
     const progressRoute = getDestinationStep(progressIdx, route)
     const destinationPoint =
@@ -189,6 +197,9 @@ const Trip = ({ fromMap }) => {
           longitude: destinationLocation.lng
         }
       },
+      steps: totalSteps,
+      startedTime: resetSteps ? moment().toISOString() : startedTime,
+      completed: progress >= distance ? moment().toISOString() : undefined,
       bounds: routeDetails.bounds,
       duration,
       distance,
@@ -367,6 +378,16 @@ const Trip = ({ fromMap }) => {
                 </FormControl.ErrorMessage>
               </FormControl>
             )}
+            <Checkbox.Group mt="28px">
+              <Checkbox
+                value="resetSteps"
+                colorScheme="green"
+                size="sm"
+                onChange={(val) => setResetSteps(val)}
+              >
+                Reset Steps Count
+              </Checkbox>
+            </Checkbox.Group>
           </Flex>
           <Button
             size="lg"

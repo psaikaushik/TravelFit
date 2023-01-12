@@ -18,7 +18,7 @@ const Progress = () => {
   const [activeColor, _] = useState(new Animated.Value(0))
   const { data: settings } = useQuery(['settings'], getUserSettings)
   const { data: stats } = useQuery(['stats'], getStats)
-  const { destination, distance, steps } = settings || {}
+  const { destination, distance, steps, completed } = settings || {}
 
   const color = activeColor.interpolate({
     inputRange: [0, 1],
@@ -150,17 +150,19 @@ const Progress = () => {
           <Flex direction="row">
             <Flex flex="1">
               <Text variant="progress" mr="10px" numberOfLines={1}>
-                {stepsToDistance(steps)} KM
+                {!!completed ? 'Completed' : `${stepsToDistance(steps)} KM`}
               </Text>
             </Flex>
-            <Text
-              variant="progress"
-              color="gray.400"
-              fontWeight="400"
-              numberOfLines={1}
-            >
-              Remaining {calcRemaining(steps, distance)} KM
-            </Text>
+            {!completed && (
+              <Text
+                variant="progress"
+                color="gray.400"
+                fontWeight="400"
+                numberOfLines={1}
+              >
+                Remaining {calcRemaining(steps, distance)} KM
+              </Text>
+            )}
           </Flex>
           <ProgressNative
             colorScheme="green"

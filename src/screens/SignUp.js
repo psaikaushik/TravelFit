@@ -39,10 +39,10 @@ const SignUp = () => {
       }
       await setProfile(profile)
       await setUserData(profile)
-      await updateProgress(user, queryClient)
+      const flow = await updateProgress(user, queryClient)
       reset({
         index: 0,
-        routes: [{ name: 'Main' }]
+        routes: [{ name: flow }]
       })
     } catch (e) {
       console.log('handleLogIn', e)

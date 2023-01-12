@@ -35,7 +35,6 @@ export const Routes = () => {
   useEffect(() => {
     if (typeof user !== 'undefined') {
       updateProgress(user, queryClient).then(async (flow) => {
-        console.log('flow', flow)
         setInitScreen(flow)
         SplashScreen.hide()
       })
