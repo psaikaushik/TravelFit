@@ -73,14 +73,6 @@ const Progress = () => {
         borderColor="gray.200"
         borderBottomWidth={item.id === 'ThreeDaysBefore' ? '0' : '1px'}
       >
-        {/*<Text*/}
-        {/*  variant="progress"*/}
-        {/*  color="gray.500"*/}
-        {/*  fontWeight="300"*/}
-        {/*  numberOfLines={1}*/}
-        {/*>*/}
-        {/*  {moment(item.date).format('DD MMM').toUpperCase()}*/}
-        {/*</Text>*/}
         <Text
           m="0"
           variant="to"
@@ -96,7 +88,7 @@ const Progress = () => {
           fontWeight="400"
           numberOfLines={1}
         >
-          {prettifyNum(item.steps)} Steps
+          {prettifyNum(Math.round(item.steps))} Steps
         </Text>
       </Flex>
     </Flex>
@@ -213,7 +205,7 @@ const Progress = () => {
                 fontWeight="400"
                 numberOfLines={1}
               >
-                {prettifyNum((stats || [{}])[0].steps)} Steps
+                {prettifyNum(Math.round((stats || [{}])[0].steps))} Steps
               </Text>
             </Flex>
             <Flex justify="center">

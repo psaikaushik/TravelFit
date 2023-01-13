@@ -167,14 +167,41 @@ export const getTopPlace = (places) => {
   return places.sort((a, b) => b.score - a.score)[0]
 }
 
+export const getZoom = (distance = 0) => {
+  if (distance === 0) return {}
+  if (distance > 2000) return { latitudeDelta: 0.001, longitudeDelta: 43 }
+  if (distance > 1400) return { latitudeDelta: 0.001, longitudeDelta: 25 }
+  if (distance > 900) return { latitudeDelta: 0.001, longitudeDelta: 15 }
+  if (distance > 600) return { latitudeDelta: 0.001, longitudeDelta: 12 }
+  if (distance > 300) return { latitudeDelta: 0.001, longitudeDelta: 8 }
+  if (distance > 150) return { latitudeDelta: 0.001, longitudeDelta: 3 }
+  if (distance > 100) return { latitudeDelta: 0.001, longitudeDelta: 1.4 }
+  if (distance > 50) return { latitudeDelta: 0.001, longitudeDelta: 0.8 }
+  if (distance > 10) return { latitudeDelta: 0.001, longitudeDelta: 0.75 }
+  if (distance > 5) return { latitudeDelta: 0.001, longitudeDelta: 0.25 }
+  return { latitudeDelta: 0.001, longitudeDelta: 0.08 }
+}
+
+export const getRadius = (distance) => {
+  if (distance > 600) return Math.round(distance / 35)
+  if (distance > 300) return Math.round(distance / 30)
+  if (distance > 150) return Math.round(distance / 25)
+  if (distance > 100) return Math.round(distance / 20)
+  if (distance > 50) return Math.round(distance / 12)
+  if (distance > 10) return Math.round(distance / 5)
+  return (distance / 10).toFixed(1)
+}
+
 export const calcBreakpointsProgress = (
   progressIdx,
   destinationPoint,
   route,
   breakPoints,
-  badges
+  badges,
+  radius
 ) => {
   const newBadges = [...badges]
+
   breakPoints.forEach((item, index) => {
     let progress = 0
     const pointIdx = route.findIndex(
@@ -188,12 +215,12 @@ export const calcBreakpointsProgress = (
       } else {
         progress = 50
       }
-    } else if (distance < 20) {
+    } else if (distance < radius) {
       // Inside break point
       if (pointIdx > progressIdx) {
-        progress = ((20 - distance) / 20) * 100
+        progress = ((radius - distance) / radius) * 100
       } else {
-        progress = (distance / 20) * 100
+        progress = (distance / radius) * 100
       }
     } else {
       if (pointIdx < progressIdx) {
@@ -290,6 +317,7 @@ export const updateProgress = async (user, queryClient) => {
 
     const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
     const progress = calcSteps(totalSteps)
+    const radius = getRadius(distance)
 
     console.log('progress', totalSteps, steps, progress, distance, completed)
 
@@ -312,7 +340,8 @@ export const updateProgress = async (user, queryClient) => {
       destinationPoint,
       route,
       breakPoints,
-      badges
+      badges,
+      radius
     )
 
     //  Check if city is new then add city badge

@@ -3,6 +3,7 @@ import {
   calcBreakpointsProgress,
   calcProgress,
   getDestinationStep,
+  getRadius,
   getTopPlace
 } from './helpers'
 
@@ -29,7 +30,7 @@ export const getRoute = async (origin, destination) => {
   return response.data
 }
 
-export const getNearbyPlaces = async (location) => {
+export const getNearbyPlaces = async (location, radius = 20000) => {
   const headers = {
     Accept: 'application/json',
     'Content-Type': 'application/json'
@@ -39,7 +40,7 @@ export const getNearbyPlaces = async (location) => {
     params: {
       key: 'AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs',
       location: `${location.latitude},${location.longitude}`,
-      radius: '20000',
+      radius: `${radius}`,
       type: 'tourist_attraction'
     },
     timeout: 30000
@@ -132,7 +133,10 @@ export const getPlaces = async (steps, route, badges, distance) => {
   const breakPoints = []
   const placeKeys = {}
   let places = [...(badges || [])]
-  const diameter = 40
+  const radius = getRadius(distance)
+  const diameter = radius * 2
+
+  console.log('radius', radius)
 
   let i = 0
   let l = 0
@@ -175,7 +179,7 @@ export const getPlaces = async (steps, route, badges, distance) => {
   if (places.length === 0) {
     // Only fetch places if empty
     breakPoints.forEach((item) => {
-      promises.push(getNearbyPlaces(item))
+      promises.push(getNearbyPlaces(item, radius * 1000))
     })
     const results = await Promise.all(promises)
     for (let i = 0; i < results.length; i++) {
@@ -218,7 +222,8 @@ export const getPlaces = async (steps, route, badges, distance) => {
     destinationPoint,
     route,
     breakPoints,
-    places
+    places,
+    radius
   )
 
   return { breakPoints, places }

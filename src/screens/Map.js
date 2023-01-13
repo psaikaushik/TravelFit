@@ -21,6 +21,8 @@ import { getUserSettings } from '../services/database'
 import {
   calcProgress,
   getDestinationStep,
+  getRadius,
+  getZoom,
   prettifyNum
 } from '../services/helpers'
 
@@ -40,6 +42,7 @@ const Map = () => {
       : !!route
       ? route[0]
       : null
+  const { latitudeDelta, longitudeDelta } = getZoom(distance)
 
   const handlePressCity = (index) => {
     const badge = badges[index]
@@ -49,7 +52,7 @@ const Map = () => {
 
   const handleTrip = () => {
     PlaceNavigation.close()
-    navigate('Trip')
+    navigate('Trip', { fromMap: true })
   }
 
   const isIphoneX = hasNotch()
@@ -65,8 +68,8 @@ const Map = () => {
         initialRegion={{
           latitude: destinationPoint.latitude,
           longitude: destinationPoint.longitude,
-          latitudeDelta: 9.4,
-          longitudeDelta: 0.2
+          latitudeDelta,
+          longitudeDelta
         }}
         style={{
           width: '100%',
@@ -108,7 +111,7 @@ const Map = () => {
           <Circle
             key={`${item.latitude}-${item.longitude}`}
             center={item}
-            radius={20000}
+            radius={getRadius(distance) * 1000}
             strokeColor="#61792140"
             fillColor="#61792115"
           />

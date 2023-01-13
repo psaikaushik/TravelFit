@@ -35,7 +35,6 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
       const googleCredential = auth.GoogleAuthProvider.credential(idToken)
       const { user } = await auth().signInWithCredential(googleCredential)
       let profile = await getProfile()
-      console.log('handleGoogle', user.uid, profile)
       if (!profile) {
         profile = {
           name: user.displayName,
@@ -46,6 +45,7 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
       }
       await setUserData(profile)
       const flow = await updateProgress(user, queryClient)
+      console.log('flow', flow)
       reset({
         index: 0,
         routes: [{ name: flow }]

@@ -8,7 +8,8 @@ import {
   Flex,
   WarningOutlineIcon,
   FormControl,
-  Checkbox
+  Checkbox,
+  Pressable
 } from 'native-base'
 import { SafeAreaView, StatusBar } from 'react-native'
 import TripSVG from '../assets/icons/trip.svg'
@@ -31,10 +32,12 @@ import {
 } from '../services/helpers'
 import { useQueryClient } from '@tanstack/react-query'
 import moment from 'moment'
+import BackSVG from '../assets/icons/back.svg'
 
-const Trip = ({ fromMap }) => {
+const Trip = ({ route }) => {
   let SEARCHING = false
   let SHOULD_SEARCH = null
+  const { fromMap } = route?.params || {}
   const [addExtra, setAddExtra] = useState(-1)
   const [originText, setOriginText] = useState(null)
   const [resetSteps, setResetSteps] = useState(false)
@@ -49,7 +52,7 @@ const Trip = ({ fromMap }) => {
   ])
   const queryClient = useQueryClient()
   const isFocused = useIsFocused()
-  const { reset } = useNavigation()
+  const { goBack, reset } = useNavigation()
   const toast = useToast()
   const {
     getValues,
@@ -259,6 +262,16 @@ const Trip = ({ fromMap }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
+      <Flex align="flex-start">
+        <Pressable
+          ml="12px"
+          mt="6px"
+          p="4px"
+          onPress={() => (fromMap ? goBack() : {})}
+        >
+          <BackSVG />
+        </Pressable>
+      </Flex>
       <KeyboardAwareScrollView
         innerRef={(ref) => (this.flatListRef = ref)}
         style={{ flex: 1 }}
