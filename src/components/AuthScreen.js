@@ -13,11 +13,9 @@ import auth from '@react-native-firebase/auth'
 import { getProfile, setProfile } from '../services/users'
 import { setUserData } from '../services/database'
 import moment from 'moment'
-import { updateProgress } from '../services/helpers'
-import { useQueryClient } from '@tanstack/react-query'
+import { checkFlow } from '../services/helpers'
 
 const AuthScreen = ({ title, googleEnabled, footer, children }) => {
-  const queryClient = useQueryClient()
   const { reset, goBack } = useNavigation()
   const isFocused = useIsFocused()
   const [googleLoading, setGoogleLoading] = useState()
@@ -44,7 +42,7 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
         await setProfile(profile)
       }
       await setUserData(profile)
-      const flow = await updateProgress(user, queryClient)
+      const flow = await checkFlow(user)
       console.log('flow', flow)
       reset({
         index: 0,

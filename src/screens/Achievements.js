@@ -21,9 +21,9 @@ import { SceneMap, TabView } from 'react-native-tab-view'
 const LandmarksRoute = ({ route: { data } }) => {
   const badgesGroup = printGrid((data || []).filter((x) => !!x))
 
-  const renderItem = ({ place_id, name, progress = 0, photos }) => (
+  const renderItem = ({ place_id, name, progress = 0, photos }, index) => (
     <Flex
-      key={`${place_id}`}
+      key={`${index}${place_id}`}
       flex="1"
       bg="white"
       mx="10px"
@@ -85,7 +85,7 @@ const LandmarksRoute = ({ route: { data } }) => {
       <Flex pb="30px" pt="10px">
         {badgesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
-            {group.map((badge) => !!badge && renderItem(badge))}
+            {group.map((badge, index) => !!badge && renderItem(badge, index))}
           </Flex>
         ))}
       </Flex>
@@ -96,9 +96,9 @@ const LandmarksRoute = ({ route: { data } }) => {
 const CitiesRoute = ({ route: { data } }) => {
   const citiesGroup = printGrid((data || []).filter((x) => !!x))
 
-  const renderItem = ({ place_id, name, photos }) => (
+  const renderItem = ({ place_id, name, photos }, index) => (
     <Flex
-      key={`${place_id}`}
+      key={`${index}${place_id}`}
       flex="1"
       bg="white"
       mx="10px"
@@ -131,7 +131,7 @@ const CitiesRoute = ({ route: { data } }) => {
       <Flex pb="30px" pt="10px">
         {citiesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
-            {group.map((city) => !!city && renderItem(city))}
+            {group.map((city, index) => !!city && renderItem(city, index))}
             {group.length === 1 && <Flex flex="1" />}
           </Flex>
         ))}
@@ -143,9 +143,9 @@ const CitiesRoute = ({ route: { data } }) => {
 const MilestonesRoute = ({ route: { data } }) => {
   const achievedGroup = printGrid(data)
 
-  const renderItem = (distance) => (
+  const renderItem = (distance, index) => (
     <Flex
-      key={`${distance}`}
+      key={`${index}${distance}`}
       flex="1"
       bg="white"
       mx="10px"
@@ -186,7 +186,7 @@ const MilestonesRoute = ({ route: { data } }) => {
       <Flex pb="30px" pt="10px">
         {achievedGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
-            {group.map((distance) => renderItem(distance))}
+            {group.map((distance, index) => renderItem(distance, index))}
             {group.length === 1 && <Flex flex="1" />}
           </Flex>
         ))}

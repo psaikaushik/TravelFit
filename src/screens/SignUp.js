@@ -7,12 +7,10 @@ import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
 import { setProfile } from '../services/users'
 import moment from 'moment'
-import { updateProgress } from '../services/helpers'
+import { checkFlow } from '../services/helpers'
 import { setUserData } from '../services/database'
-import { useQueryClient } from '@tanstack/react-query'
 
 const SignUp = () => {
-  const queryClient = useQueryClient()
   const { reset, navigate } = useNavigation()
   const toast = useToast()
   const {
@@ -39,7 +37,7 @@ const SignUp = () => {
       }
       await setProfile(profile)
       await setUserData(profile)
-      const flow = await updateProgress(user, queryClient)
+      const flow = await checkFlow(user)
       reset({
         index: 0,
         routes: [{ name: flow }]

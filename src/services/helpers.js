@@ -86,6 +86,7 @@ export const getStepsNum = async (date = null) =>
                 console.log('getStepsNum Error', callbackError)
                 resolve(callbackError)
               } else {
+                console.log('getDailyStepCountSamples results', results.length)
                 resolve(results)
               }
             }
@@ -238,8 +239,9 @@ export const calcBreakpointsProgress = (
   return newBadges
 }
 
-export const checkCity = async (destinationPoint, cities) => {
-  const newCities = [...cities]
+export const checkCity = async (destinationPoint) => {
+  console.log('checkCity', destinationPoint)
+  const newCities = []
   if (!destinationPoint) return newCities
   const data = await getLocationDetails(destinationPoint)
   const { results } = data || {}
@@ -300,15 +302,20 @@ export const updateProgress = async (queryClient) => {
     health,
     completed
   } = userSettings
-  if (!name) return false
+  if (!name) return { success: false }
 
   try {
     // Get steps from startedTime till now
     const stepsRes = await getStepsNum(
       startedTime || createdTime || moment().startOf('day').toISOString()
     )
-    if (!stepsRes || !Array.isArray(stepsRes) || !health) return false
-    if (!route || !distance || !breakPoints) return false
+    if (!stepsRes || !Array.isArray(stepsRes) || !health)
+      return {
+        success: false,
+        error: 'Could not fetch steps count from Apple Health'
+      }
+    if (!route || !distance || !breakPoints)
+      return { success: false, error: 'No trip is configured' }
 
     const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
     const progress = calcSteps(totalSteps)
@@ -318,7 +325,12 @@ export const updateProgress = async (queryClient) => {
 
     // Check if total steps has changed
     if ((totalSteps === steps && progress < distance) || !!completed)
-      return false
+      return {
+        success: false,
+        error: 'Total steps did not change or trip is completed'
+      }
+
+    console.log('new progress')
 
     const progressIdx = Math.round(
       (calcProgress(totalSteps, distance) / 100) * route?.length
@@ -328,6 +340,8 @@ export const updateProgress = async (queryClient) => {
       !!progressRoute && progressRoute.length > 0
         ? progressRoute[progressRoute.length - 1]
         : route[0]
+
+    console.log('new progress 1', destinationPoint)
 
     // Calculate distance from progress to each break point
     const newBadges = calcBreakpointsProgress(
@@ -339,23 +353,36 @@ export const updateProgress = async (queryClient) => {
       radius
     )
 
+    console.log('new progress 2', newBadges.length)
+
     //  Check if city is new then add city badge
     const newCities = await checkCity(destinationPoint, cities)
+
+    console.log('new progress 3', newCities.length)
 
     await setUserSettings({
       ...userSettings,
       steps: totalSteps,
       badges: newBadges,
-      cities: newCities,
+      cities: [...cities, ...newCities],
       completed: progress >= distance ? moment().toISOString() : undefined
     })
 
     await queryClient?.invalidateQueries(['settings'])
     await queryClient?.invalidateQueries(['stats'])
+
+    const alerts = []
+    newCities.forEach((city) => {
+      alerts.push({ type: 'cities', name: city.name })
+    })
+
+    console.log('new progress 4', alerts.length)
+
+    return { success: true, alerts }
   } catch (error) {
     console.log(error.code, error.message)
   }
-  return true
+  return { success: true }
 }
 
 export const checkFlow = async (user) => {

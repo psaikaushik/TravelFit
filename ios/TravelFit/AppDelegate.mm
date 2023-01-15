@@ -9,6 +9,7 @@
 #import <GoogleMaps/GoogleMaps.h>
 #import "RNSplashScreen.h"
 #import "RCTAppleHealthKit.h"
+#import "RNNotifications.h"
 
 #if RCT_NEW_ARCH_ENABLED
 #import <React/CoreModulesPlugins.h>
@@ -65,6 +66,7 @@ static NSString *const kRNConcurrentRoot = @"concurrentRoot";
   [self.window makeKeyAndVisible];
   [RNSplashScreen show];
   [[RCTAppleHealthKit new] initializeBackgroundObservers:bridge];
+  [RNNotifications startMonitorNotifications];
   return YES;
 }
 
@@ -97,6 +99,18 @@ static NSString *const kRNConcurrentRoot = @"concurrentRoot";
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif
+}
+
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+  [RNNotifications didRegisterForRemoteNotificationsWithDeviceToken:deviceToken];
+}
+
+- (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
+  [RNNotifications didFailToRegisterForRemoteNotificationsWithError:error];
+}
+
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler {
+  [RNNotifications didReceiveBackgroundNotification:userInfo withCompletionHandler:completionHandler];
 }
 
 #if RCT_NEW_ARCH_ENABLED

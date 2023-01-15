@@ -65,11 +65,17 @@ export const getLocationDetails = async (location) => {
     },
     timeout: 30000
   }
-  const response = await axios.get(
-    'https://maps.googleapis.com/maps/api/geocode/json',
-    config
-  )
-  return response.data
+  try {
+    console.log('getLocationDetails', location)
+    const response = await axios.get(
+      'https://maps.googleapis.com/maps/api/geocode/json',
+      config
+    )
+    return response.data
+  } catch (e) {
+    console.log('getLocationDetails', e)
+    return { results: [] }
+  }
 }
 
 export const getCityDetails = async (name) => {
