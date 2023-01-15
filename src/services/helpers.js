@@ -172,7 +172,7 @@ export const getZoom = (distance = 0) => {
   if (distance > 2000) return { latitudeDelta: 0.001, longitudeDelta: 43 }
   if (distance > 1400) return { latitudeDelta: 0.001, longitudeDelta: 25 }
   if (distance > 900) return { latitudeDelta: 0.001, longitudeDelta: 15 }
-  if (distance > 600) return { latitudeDelta: 0.001, longitudeDelta: 12 }
+  if (distance > 600) return { latitudeDelta: 0.001, longitudeDelta: 9 }
   if (distance > 300) return { latitudeDelta: 0.001, longitudeDelta: 8 }
   if (distance > 150) return { latitudeDelta: 0.001, longitudeDelta: 3 }
   if (distance > 100) return { latitudeDelta: 0.001, longitudeDelta: 1.4 }
@@ -286,7 +286,7 @@ export const checkCity = async (destinationPoint, cities) => {
   return newCities
 }
 
-export const updateProgress = async (user, queryClient) => {
+export const updateProgress = async (queryClient) => {
   // Everytime Progress Changes
   const { name, startedTime, createdTime } = (await getUserData()) || {}
   const userSettings = (await getUserSettings()) || {}
@@ -300,20 +300,15 @@ export const updateProgress = async (user, queryClient) => {
     health,
     completed
   } = userSettings
-  if (!user || !name) return 'Welcome'
+  if (!name) return false
 
   try {
     // Get steps from startedTime till now
     const stepsRes = await getStepsNum(
       startedTime || createdTime || moment().startOf('day').toISOString()
     )
-    console.log('stepsRes', stepsRes)
-    if (!stepsRes || !Array.isArray(stepsRes) || !health) {
-      return 'AppleHealth'
-    }
-    if (!route || !distance || !breakPoints) {
-      return 'Trip'
-    }
+    if (!stepsRes || !Array.isArray(stepsRes) || !health) return false
+    if (!route || !distance || !breakPoints) return false
 
     const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
     const progress = calcSteps(totalSteps)
@@ -323,7 +318,7 @@ export const updateProgress = async (user, queryClient) => {
 
     // Check if total steps has changed
     if ((totalSteps === steps && progress < distance) || !!completed)
-      return 'Main'
+      return false
 
     const progressIdx = Math.round(
       (calcProgress(totalSteps, distance) / 100) * route?.length
@@ -355,8 +350,33 @@ export const updateProgress = async (user, queryClient) => {
       completed: progress >= distance ? moment().toISOString() : undefined
     })
 
-    await queryClient.invalidateQueries(['settings'])
-    await queryClient.invalidateQueries(['stats'])
+    await queryClient?.invalidateQueries(['settings'])
+    await queryClient?.invalidateQueries(['stats'])
+  } catch (error) {
+    console.log(error.code, error.message)
+  }
+  return true
+}
+
+export const checkFlow = async (user) => {
+  // Everytime Progress Changes
+  const { name, startedTime, createdTime } = (await getUserData()) || {}
+  const userSettings = (await getUserSettings()) || {}
+  const { steps, route, distance, breakPoints, health, completed } =
+    userSettings
+  if (!user || !name) return 'Welcome'
+
+  try {
+    // Get steps from startedTime till now
+    const stepsRes = await getStepsNum(
+      startedTime || createdTime || moment().startOf('day').toISOString()
+    )
+    if (!stepsRes || !Array.isArray(stepsRes) || !health) {
+      return 'AppleHealth'
+    }
+    if (!route || !distance || !breakPoints) {
+      return 'Trip'
+    }
   } catch (error) {
     console.log(error.code, error.message)
   }

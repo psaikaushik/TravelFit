@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import TabScreen from '../components/TabScreen'
 import MapView, {
   Circle,
@@ -25,9 +25,11 @@ import {
   getZoom,
   prettifyNum
 } from '../services/helpers'
+import useBackgroundTasks from '../services/background'
 
 const Map = () => {
   const { navigate } = useNavigation()
+  const backgroundTasks = useBackgroundTasks()
   const { data: settings } = useQuery(['settings'], getUserSettings)
   const { starting, destination, route, breakPoints, badges, steps, distance } =
     settings || {}

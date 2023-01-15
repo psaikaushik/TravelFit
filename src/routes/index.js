@@ -12,14 +12,12 @@ import Main from '../routes/Main'
 import AppleHealth from '../screens/AppleHealth'
 import Trip from '../screens/Trip'
 import { PlaceRoutes } from './Place'
-import { updateProgress } from '../services/helpers'
+import { checkFlow } from '../services/helpers'
 import { navigationRef } from './RootNavigation'
-import { useQueryClient } from '@tanstack/react-query'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
 export const Routes = () => {
-  const queryClient = useQueryClient()
   const [initScreen, setInitScreen] = useState(null)
   const [user, setUser] = useState(undefined)
 
@@ -34,7 +32,7 @@ export const Routes = () => {
 
   useEffect(() => {
     if (typeof user !== 'undefined') {
-      updateProgress(user, queryClient).then(async (flow) => {
+      checkFlow(user).then(async (flow) => {
         setInitScreen(flow)
         SplashScreen.hide()
       })

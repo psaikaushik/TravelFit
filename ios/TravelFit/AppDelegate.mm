@@ -8,6 +8,7 @@
 #import <Firebase.h>
 #import <GoogleMaps/GoogleMaps.h>
 #import "RNSplashScreen.h"
+#import "RCTAppleHealthKit.h"
 
 #if RCT_NEW_ARCH_ENABLED
 #import <React/CoreModulesPlugins.h>
@@ -63,6 +64,7 @@ static NSString *const kRNConcurrentRoot = @"concurrentRoot";
   self.window.rootViewController = rootViewController;
   [self.window makeKeyAndVisible];
   [RNSplashScreen show];
+  [[RCTAppleHealthKit new] initializeBackgroundObservers:bridge];
   return YES;
 }
 
