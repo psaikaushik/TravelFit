@@ -46,6 +46,10 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+  <array>
+      <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+  </array>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Allow access to Health so TravelFit can complete your profile and upload workouts</string>
 	<key>NSHealthUpdateUsageDescription</key>

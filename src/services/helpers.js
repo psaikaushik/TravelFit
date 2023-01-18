@@ -239,7 +239,7 @@ export const calcBreakpointsProgress = (
   return newBadges
 }
 
-export const checkCity = async (destinationPoint) => {
+export const checkCity = async (destinationPoint, oldCities = []) => {
   console.log('checkCity', destinationPoint)
   const newCities = []
   if (!destinationPoint) return newCities
@@ -278,7 +278,7 @@ export const checkCity = async (destinationPoint) => {
   if (!prediction) return newCities
   const place = await getPlaceDetails(prediction.place_id)
 
-  if (!!city && !newCities.find((x) => x.place_id === prediction.place_id)) {
+  if (!!city && !oldCities.find((x) => x.place_id === prediction.place_id)) {
     newCities.push({
       place_id: prediction.place_id,
       name: cityName,

@@ -180,7 +180,7 @@ const Trip = ({ route }) => {
         : route[0]
 
     //  Check if city is new then add city badge
-    const cities = await checkCity(destinationPoint)
+    const cities = await checkCity(destinationPoint, [])
 
     console.log('cities', cities.length)
 
