@@ -20,7 +20,7 @@ const PlaceModal = ({ route }) => {
         borderRadius="16px"
         alt={photos[0].photo_reference}
         source={{
-          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=200&maxwidth=200&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=1250&maxwidth=1000&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
         }}
       />
     </Flex>
