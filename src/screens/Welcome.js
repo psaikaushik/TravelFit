@@ -29,7 +29,7 @@ const Welcome = () => {
     try {
       // Configure Google Sign-In
       await GoogleSignin.configure({
-        webClientId: 'YOUR_WEB_CLIENT_ID', // Replace with your actual web client ID
+        webClientId: '10048863785-mv1ommb6ja9djftbnnkrnh5cskd7850p.apps.googleusercontent.com', // Replace with your actual web client ID
         offlineAccess: true,
       })
 
