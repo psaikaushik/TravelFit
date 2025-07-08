@@ -391,7 +391,7 @@ export const checkFlow = async (user) => {
   const userSettings = (await getUserSettings()) || {}
   const { steps, route, distance, breakPoints, health, completed } =
     userSettings
-  if (!user || !name) return 'Welcome'
+  if (!user || !name) return 'VideoIntro'
 
   try {
     // Get steps from startedTime till now

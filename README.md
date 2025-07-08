@@ -17,10 +17,11 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
 - Native Base UI
 
 ## App Flow
-1. **Welcome Screen** → User signup/login
-2. **Apple Health** → Connect to Apple Health for step tracking
-3. **Trip Setup** → Select source/destination for virtual journey
-4. **Main App** → Primary app with bottom tab navigation:
+1. **Video Intro** → Plays intro video automatically
+2. **Welcome Screen** → User signup/login
+3. **Apple Health** → Connect to Apple Health for step tracking
+4. **Trip Setup** → Select source/destination for virtual journey
+5. **Main App** → Primary app with bottom tab navigation:
    - Map - Shows route progress on Google Maps
    - Progress - Daily stats and overall journey progress
    - Achievements - Badges and milestones
@@ -40,6 +41,7 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
 - **src/routes/RootNavigation.js** - Root navigation reference
 
 ### Main Screens
+- **src/screens/VideoIntro.js** - Video intro screen that plays on app launch
 - **src/screens/Welcome.js** - Welcome screen with app introduction
 - **src/screens/Login.js** - User login screen
 - **src/screens/SignUp.js** - User registration screen
@@ -166,8 +168,57 @@ Before running the app, you'll need to configure:
 7. Trip is marked complete when virtual distance = route distance
 
 ## Key Features
+- **Video Intro**: Customizable intro video on app launch
 - **Automatic Step Tracking**: Background integration with Apple Health
 - **Route Visualization**: Interactive Google Maps with progress indicators
 - **Achievement System**: City badges and progress milestones
 - **Offline Support**: Local data caching with Firebase
 - **Push Notifications**: Achievement alerts and progress updates
+
+## Customizing the Intro Video
+
+The app includes a video intro screen that plays automatically when users first open the app. Currently, it uses a placeholder video from Google's sample videos.
+
+### To Replace the Video:
+
+1. **Create a videos folder** (if it doesn't exist):
+   ```bash
+   mkdir -p src/assets/videos
+   ```
+
+2. **Add your video file** to the `src/assets/videos/` folder:
+   - Supported formats: MP4, MOV, M4V, AVI, FLV, etc.
+   - Recommended: MP4 format for best compatibility
+   - Example: `src/assets/videos/intro.mp4`
+
+3. **Update the video source** in `src/screens/VideoIntro.js`:
+   ```javascript
+   // Replace this line:
+   source={{
+     uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+   }}
+   
+   // With this:
+   source={require('../assets/videos/intro.mp4')}
+   ```
+
+4. **Adjust video settings** (optional):
+   - **Duration**: Video plays once and automatically navigates to Welcome screen
+   - **Resize mode**: Currently set to `"cover"` (fills screen, may crop)
+   - **Other options**: `"contain"` (fits entire video), `"stretch"` (fills screen exactly)
+
+### Video Specifications:
+- **Resolution**: Recommended 1080p or higher for crisp display
+- **Duration**: Keep under 10 seconds for better user experience
+- **File size**: Optimize for mobile (keep under 10MB)
+- **Format**: MP4 with H.264 codec for best compatibility
+
+### Testing the Video:
+After replacing the video, run:
+```bash
+npm install
+cd ios && pod install && cd ..
+npm run ios
+```
+
+The video will play automatically when the app launches, then navigate to the Welcome screen when finished.

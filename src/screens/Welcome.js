@@ -6,8 +6,12 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Alert
 } from 'react-native'
+import { GoogleSignin } from '@react-native-google-signin/google-signin'
+import auth from '@react-native-firebase/auth'
+import GoogleIcon from '../assets/icons/google.svg'
 
 const Welcome = () => {
   const { navigate } = useNavigation()
@@ -19,6 +23,37 @@ const Welcome = () => {
 
   const handleLogin = () => {
     navigate('Login')
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      // Configure Google Sign-In
+      await GoogleSignin.configure({
+        webClientId: 'YOUR_WEB_CLIENT_ID', // Replace with your actual web client ID
+        offlineAccess: true,
+      })
+
+      // Check if your device supports Google Play
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+      
+      // Get the users ID token
+      const { idToken } = await GoogleSignin.signIn()
+
+      // Create a Google credential with the token
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken)
+
+      // Sign-in the user with the credential
+      await auth().signInWithCredential(googleCredential)
+      
+      // Navigation will be handled by the auth state listener in routes/index.js
+    } catch (error) {
+      console.log('Google Sign-In Error:', error)
+      Alert.alert(
+        'Sign In Error',
+        'Failed to sign in with Google. Please try again.',
+        [{ text: 'OK' }]
+      )
+    }
   }
 
   useEffect(() => {
@@ -35,6 +70,10 @@ const Welcome = () => {
       </View>
       <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister}>
         <Text style={styles.welcomeText}>Start Now</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn}>
+        <GoogleIcon width={24} height={24} />
+        <Text style={styles.googleText}>Continue with Google</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
         <Text style={styles.loginText}>Already have an account</Text>
@@ -85,6 +124,30 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 20,
     fontWeight: '700'
+  },
+  googleBtn: {
+    height: 52,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  googleText: {
+    fontSize: 18,
+    color: '#000000',
+    fontWeight: '600',
+    marginLeft: 12
   }
 })
 

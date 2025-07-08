@@ -50,6 +50,7 @@
     "react-native-tab-view": "^3.3.4",
     "react-native-toast-message": "^2.1.5",
     "react-native-uuid": "^2.0.1",
+    "react-native-video": "^5.2.1",
     "styled-components": "^5.3.6",
     "yup": "^0.32.11"
   },
