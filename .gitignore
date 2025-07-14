@@ -62,3 +62,8 @@ buck-out/
 # Ruby / CocoaPods
 /ios/Pods/
 /vendor/bundle/
+
+# Boost library (downloaded workaround for CocoaPods)
+ios/boost/
+ios/boost_*.tar.bz2
+ios/boost_unary_function_fix.patch
