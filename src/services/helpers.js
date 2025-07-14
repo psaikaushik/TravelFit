@@ -7,6 +7,7 @@ import {
   getLocationDetails,
   getPlaceDetails
 } from './maps'
+import { hasCompletedPaymentFlow } from './subscription'
 
 export const calcSteps = (steps = 0) => {
   return (Math.round(steps / 12) / 100).toFixed(2)
@@ -393,6 +394,12 @@ export const checkFlow = async (user) => {
     userSettings
   if (!user || !name) return 'VideoIntro'
 
+  // Check if user has completed payment flow
+  const paymentFlowCompleted = await hasCompletedPaymentFlow()
+  if (!paymentFlowCompleted) {
+    return 'CreditCard'
+  }
+
   try {
     // Get steps from startedTime till now
     const stepsRes = await getStepsNum(
@@ -408,6 +415,32 @@ export const checkFlow = async (user) => {
     console.log(error.code, error.message)
   }
   return 'Main'
+}
+
+import { subscriptionService } from './subscription'
+
+export const checkSubscriptionStatus = async () => {
+  try {
+    return await subscriptionService.isSubscribed()
+  } catch (error) {
+    console.error('Failed to check subscription status:', error)
+    return false
+  }
+}
+
+export const isFeatureAvailable = async (feature) => {
+  const isSubscribed = await checkSubscriptionStatus()
+  
+  // Define which features require subscription
+  const premiumFeatures = [
+    'unlimited_routes',
+    'advanced_analytics',
+    'custom_badges',
+    'route_history',
+    'priority_support'
+  ]
+  
+  return !premiumFeatures.includes(feature) || isSubscribed
 }
 
 export default {

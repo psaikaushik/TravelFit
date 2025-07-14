@@ -34,10 +34,10 @@ const Login = () => {
       const profile = await getProfile()
       console.log('profile', profile)
       await setUserData(profile)
-      const flow = await checkFlow(user)
+      // Navigate to credit card screen after successful login
       reset({
         index: 0,
-        routes: [{ name: flow }]
+        routes: [{ name: 'CreditCard' }]
       })
     } catch (e) {
       console.log('handleLogIn', e)

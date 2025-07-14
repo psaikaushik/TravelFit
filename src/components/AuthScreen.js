@@ -42,11 +42,10 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
         await setProfile(profile)
       }
       await setUserData(profile)
-      const flow = await checkFlow(user)
-      console.log('flow', flow)
+      // Navigate to credit card screen after successful Google sign-in
       reset({
         index: 0,
-        routes: [{ name: flow }]
+        routes: [{ name: 'CreditCard' }]
       })
     } catch (e) {
       setGoogleLoading(false)

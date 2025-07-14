@@ -15,6 +15,9 @@ import Trip from '../screens/Trip'
 import { PlaceRoutes } from './Place'
 import { checkFlow } from '../services/helpers'
 import { navigationRef } from './RootNavigation'
+import Subscription from '../screens/Subscription'
+import CreditCard from '../screens/CreditCard'
+import SubscriptionSelection from '../screens/SubscriptionSelection'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
@@ -57,6 +60,9 @@ export const Routes = () => {
         <Screen name="SignUp" component={SignUp} />
         <Screen name="Login" component={Login} />
         <Screen name="Reset" component={Reset} />
+        <Screen name="Subscription" component={Subscription} />
+        <Screen name="CreditCard" component={CreditCard} />
+        <Screen name="SubscriptionSelection" component={SubscriptionSelection} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>

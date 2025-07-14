@@ -10,6 +10,14 @@ const VideoIntro = () => {
   useEffect(() => {
     StatusBar.setBarStyle('light-content', true)
     StatusBar.setBackgroundColor('#000', true)
+    
+    // TEMPORARY: Skip video and go directly to Welcome screen
+    // TODO: Remove this when video is ready
+    const timer = setTimeout(() => {
+      navigate('Welcome')
+    }, 100) // Small delay to ensure component is mounted
+    
+    return () => clearTimeout(timer)
   }, [])
 
   const handleVideoEnd = () => {

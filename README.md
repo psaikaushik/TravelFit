@@ -19,9 +19,11 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
 ## App Flow
 1. **Video Intro** → Plays intro video automatically
 2. **Welcome Screen** → User signup/login
-3. **Apple Health** → Connect to Apple Health for step tracking
-4. **Trip Setup** → Select source/destination for virtual journey
-5. **Main App** → Primary app with bottom tab navigation:
+3. **Credit Card** → Secure payment information collection
+4. **Subscription Selection** → Choose plan or start free trial
+5. **Apple Health** → Connect to Apple Health for step tracking
+6. **Trip Setup** → Select source/destination for virtual journey
+7. **Main App** → Primary app with bottom tab navigation:
    - Map - Shows route progress on Google Maps
    - Progress - Daily stats and overall journey progress
    - Achievements - Badges and milestones
@@ -45,6 +47,8 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
 - **src/screens/Welcome.js** - Welcome screen with app introduction
 - **src/screens/Login.js** - User login screen
 - **src/screens/SignUp.js** - User registration screen
+- **src/screens/CreditCard.js** - Secure payment information collection
+- **src/screens/SubscriptionSelection.js** - Subscription plan selection and free trial
 - **src/screens/AppleHealth.js** - Health permission setup and connection
 - **src/screens/Trip.js** - Route selection and trip setup
 - **src/screens/Map.js** - Route visualization with Google Maps
@@ -53,6 +57,7 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
 - **src/screens/Profile.js** - User settings and account management
 - **src/screens/PlaceModal.js** - Modal for city/place details
 - **src/screens/Reset.js** - Password reset screen
+- **src/screens/Subscription.js** - Subscription plans and purchase flow
 
 ### Services (Business Logic)
 - **src/services/helpers.js** - Core business logic:
@@ -60,6 +65,7 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
   - Progress calculations
   - Badge/achievement logic
   - Background progress updates
+  - Subscription status checking
 - **src/services/background.js** - Apple Health integration and background tasks:
   - Listens for step count updates
   - Triggers progress updates
@@ -70,6 +76,10 @@ TravelFit is a React Native fitness app that gamifies exercise by letting users 
   - Place details
   - Geocoding
 - **src/services/users.js** - User management and authentication
+- **src/services/subscription.js** - In-app purchase management:
+  - Subscription purchase handling
+  - Product management
+  - Purchase restoration
 
 ### Components
 - **src/components/TabScreen.js** - Base tab screen wrapper
@@ -174,6 +184,7 @@ Before running the app, you'll need to configure:
 - **Achievement System**: City badges and progress milestones
 - **Offline Support**: Local data caching with Firebase
 - **Push Notifications**: Achievement alerts and progress updates
+- **Premium Subscriptions**: Monthly ($4.99) and Annual ($49.99) plans with premium features
 
 ## Customizing the Intro Video
 
@@ -222,6 +233,63 @@ npm run ios
 ```
 
 The video will play automatically when the app launches, then navigate to the Welcome screen when finished.
+
+## Subscription Feature
+
+TravelFit includes a premium subscription system with two pricing tiers:
+
+### Pricing Plans
+- **Monthly Plan**: $4.99/month
+- **Annual Plan**: $49.99/year (17% savings)
+
+### Premium Features
+- Unlimited routes and journeys
+- Advanced progress analytics
+- Custom achievement badges
+- Route history and replays
+- Priority customer support
+
+### Implementation Details
+- **In-App Purchases**: Uses `react-native-iap` library
+- **Product IDs**: 
+  - Monthly: `travelfit_monthly_subscription`
+  - Annual: `travelfit_annual_subscription`
+- **Subscription Management**: Automatic renewal, purchase restoration
+- **Feature Gating**: Premium features are automatically unlocked for subscribers
+
+### Setup Instructions
+See `SUBSCRIPTION_SETUP.md` for detailed App Store Connect configuration steps.
+
+## Payment Flow
+
+TravelFit implements a streamlined payment flow that collects payment information immediately after user registration:
+
+### Flow Overview
+1. **User Registration/Login** → User signs up or logs in
+2. **Credit Card Collection** → Secure payment information collection
+3. **Subscription Selection** → Choose plan or start free trial
+4. **Main App** → Access to TravelFit features
+
+### Credit Card Screen Features
+- **Secure Form**: Validated credit card input with real-time formatting
+- **Card Number Formatting**: Automatic spacing (1234 5678 9012 3456)
+- **Expiry Date**: MM/YY format with automatic slash insertion
+- **CVV Validation**: 3-4 digit security code validation
+- **Cardholder Name**: Required field for payment processing
+- **Skip Option**: Users can skip payment and continue with free plan
+
+### Subscription Selection Screen
+- **Monthly Plan**: $4.99/month with full feature access
+- **Annual Plan**: $49.99/year with 17% savings
+- **Free Trial**: 7-day trial with all premium features
+- **Feature Comparison**: Clear list of included features
+- **Continue with Free Plan**: Option to use limited free version
+
+### Implementation Details
+- **Form Validation**: Real-time validation using react-hook-form
+- **Payment Processing**: Simulated payment processing (integrate with Stripe/PayPal)
+- **User State Management**: Tracks payment flow completion
+- **Navigation Flow**: Automatic redirection based on payment status
 
 ## TestFlight Deployment Guide
 
