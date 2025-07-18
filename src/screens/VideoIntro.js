@@ -10,17 +10,10 @@ const VideoIntro = () => {
   useEffect(() => {
     StatusBar.setBarStyle('light-content', true)
     StatusBar.setBackgroundColor('#000', true)
-    
-    // TEMPORARY: Skip video and go directly to Welcome screen
-    // TODO: Remove this when video is ready
-    const timer = setTimeout(() => {
-      navigate('Welcome')
-    }, 100) // Small delay to ensure component is mounted
-    
-    return () => clearTimeout(timer)
   }, [])
 
   const handleVideoEnd = () => {
+    console.log('Video ended, navigating to Welcome')
     navigate('Welcome')
   }
 
@@ -39,9 +32,7 @@ const VideoIntro = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <Video
         ref={videoRef}
-        source={{
-          uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-        }}
+        source={require('../assets/videos/modern_family.mov')}
         style={styles.video}
         resizeMode="cover"
         onLoad={handleVideoLoad}

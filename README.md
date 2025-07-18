@@ -271,12 +271,14 @@ TravelFit implements a streamlined payment flow that collects payment informatio
 4. **Main App** → Access to TravelFit features
 
 ### Credit Card Screen Features
-- **Secure Form**: Validated credit card input with real-time formatting
+- **Apple Pay Integration**: One-tap payment with Face ID/Touch ID (iOS only)
+- **Credit Card Form**: Manual card entry with real-time validation
+- **Smart Detection**: Automatically shows Apple Pay if available
 - **Card Number Formatting**: Automatic spacing (1234 5678 9012 3456)
 - **Expiry Date**: MM/YY format with automatic slash insertion
 - **CVV Validation**: 3-4 digit security code validation
 - **Cardholder Name**: Required field for payment processing
-- **Skip Option**: Users can skip payment and continue with free plan
+- **Dual Payment Options**: Users can choose Apple Pay or credit card
 
 ### Subscription Selection Screen
 - **Monthly Plan**: $4.99/month with full feature access

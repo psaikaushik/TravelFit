@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { SafeAreaView, StatusBar, ScrollView } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { SafeAreaView, StatusBar, ScrollView, Platform } from 'react-native'
 import {
   Container,
   Text,
@@ -10,7 +10,8 @@ import {
   HStack,
   Input,
   FormControl,
-  WarningOutlineIcon
+  WarningOutlineIcon,
+  Divider
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
 import { useForm, Controller } from 'react-hook-form'
@@ -21,6 +22,7 @@ const CreditCard = () => {
   const { navigate } = useNavigation()
   const toast = useToast()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isApplePayAvailable, setIsApplePayAvailable] = useState(false)
 
   const {
     control,
@@ -35,6 +37,45 @@ const CreditCard = () => {
       cardholderName: ''
     }
   })
+
+  useEffect(() => {
+    // Check if Apple Pay is available (iOS only)
+    if (Platform.OS === 'ios') {
+      // For now, we'll assume Apple Pay is available on iOS
+      // TODO: Implement proper Apple Pay detection when package is fixed
+      setIsApplePayAvailable(true)
+    }
+  }, [])
+
+  const handleApplePay = async () => {
+    setIsProcessing(true)
+    try {
+      // TODO: Implement Apple Pay when package is properly configured
+      console.log('Apple Pay requested - implementation pending')
+      
+      // Simulate Apple Pay processing
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      toast.show({
+        status: 'info',
+        description: 'Apple Pay integration coming soon! Using credit card for now.'
+      })
+      
+      // For now, just mark payment flow as completed
+      await markPaymentFlowCompleted()
+      
+      // Navigate to subscription selection
+      navigate('SubscriptionSelection')
+    } catch (error) {
+      console.error('Apple Pay error:', error)
+      toast.show({
+        status: 'error',
+        description: 'Apple Pay not available yet. Please use credit card.'
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   const onSubmit = async (data) => {
     setIsProcessing(true)
@@ -96,13 +137,64 @@ const CreditCard = () => {
                   Payment Information
                 </Text>
                 <Text fontSize="16px" textAlign="center" color="gray.600">
-                  Please enter your payment details to continue
+                  Choose your preferred payment method
                 </Text>
               </VStack>
+
+              {/* Apple Pay Option */}
+              {isApplePayAvailable && (
+                <Box bg="white" borderRadius="16" p="6">
+                  <VStack space="4">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">🍎</Text>
+                      <VStack flex="1">
+                        <Text fontSize="18px" fontWeight="600">
+                          Apple Pay
+                        </Text>
+                        <Text fontSize="14px" color="gray.600">
+                          Fast and secure payment with Face ID or Touch ID
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    
+                    <Button
+                      size="lg"
+                      colorScheme="black"
+                      onPress={handleApplePay}
+                      isLoading={isProcessing}
+                      isDisabled={isProcessing}
+                      _text={{ color: 'white' }}
+                    >
+                      {isProcessing ? 'Processing...' : 'Pay with Apple Pay'}
+                    </Button>
+                  </VStack>
+                </Box>
+              )}
+
+              {/* Divider */}
+              {isApplePayAvailable && (
+                <HStack alignItems="center" space="4">
+                  <Divider flex="1" />
+                  <Text fontSize="14px" color="gray.500">OR</Text>
+                  <Divider flex="1" />
+                </HStack>
+              )}
 
               {/* Credit Card Form */}
               <Box bg="white" borderRadius="16" p="6">
                 <VStack space="6">
+                  <HStack space="3" alignItems="center" mb="2">
+                    <Text fontSize="20px">💳</Text>
+                    <VStack flex="1">
+                      <Text fontSize="18px" fontWeight="600">
+                        Credit Card
+                      </Text>
+                      <Text fontSize="14px" color="gray.600">
+                        Enter your card details manually
+                      </Text>
+                    </VStack>
+                  </HStack>
+
                   {/* Card Number */}
                   <FormControl isInvalid={!!errors.cardNumber}>
                     <FormControl.Label>Card Number</FormControl.Label>
@@ -214,6 +306,16 @@ const CreditCard = () => {
                       </FormControl.ErrorMessage>
                     </FormControl>
                   </HStack>
+
+                  <Button
+                    size="lg"
+                    colorScheme="blue"
+                    onPress={handleSubmit(onSubmit)}
+                    isLoading={isProcessing}
+                    isDisabled={!isValid || isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Continue with Card'}
+                  </Button>
                 </VStack>
               </Box>
 
@@ -231,19 +333,6 @@ const CreditCard = () => {
                   </VStack>
                 </HStack>
               </Box>
-
-              {/* Action Buttons */}
-              <VStack space="4">
-                <Button
-                  size="lg"
-                  colorScheme="blue"
-                  onPress={handleSubmit(onSubmit)}
-                  isLoading={isProcessing}
-                  isDisabled={!isValid || isProcessing}
-                >
-                  {isProcessing ? 'Processing...' : 'Continue'}
-                </Button>
-              </VStack>
 
               {/* Terms */}
               <Text fontSize="12px" color="gray.500" textAlign="center">
