@@ -354,6 +354,8 @@ PODS:
   - React-jsinspector (0.70.6)
   - React-logger (0.70.6):
     - glog
+  - react-native-apple-pay-button (1.0.8):
+    - React
   - react-native-google-maps (1.3.2):
     - Google-Maps-iOS-Utils (= 4.1.0)
     - GoogleMaps (= 7.0.0)
@@ -533,6 +535,7 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
+  - react-native-apple-pay-button (from `../node_modules/react-native-apple-pay-button`)
   - react-native-google-maps (from `../node_modules/react-native-maps`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-notifications (from `../node_modules/react-native-notifications`)
@@ -632,6 +635,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   React-logger:
     :path: "../node_modules/react-native/ReactCommon/logger"
+  react-native-apple-pay-button:
+    :path: "../node_modules/react-native-apple-pay-button"
   react-native-google-maps:
     :path: "../node_modules/react-native-maps"
   react-native-maps:
@@ -743,6 +748,7 @@ SPEC CHECKSUMS:
   React-jsiexecutor: 2105e907db2343be205b93c74533784d7f386879
   React-jsinspector: 60769e5a0a6d4b32294a2456077f59d0266f9a8b
   React-logger: 28e721a44e671acf52ac6588f8624eb23245cb27
+  react-native-apple-pay-button: d358b43060fef652c1ba02b60fcc9c4697cfa18a
   react-native-google-maps: af20a8437f7735989afff6af4fd8ea42fc1441fe
   react-native-maps: c392dfa80c6d661ca17acc4c09dd2a97b0727aa4
   react-native-notifications: a2b0c4ee378a77a250af238db1b148225ac5ba86

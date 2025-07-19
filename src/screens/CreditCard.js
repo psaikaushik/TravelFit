@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native'
 import { useForm, Controller } from 'react-hook-form'
 import TabScreen from '../components/TabScreen'
 import { markPaymentFlowCompleted } from '../services/subscription'
+import ApplePay from 'react-native-apple-pay'
 
 const CreditCard = () => {
   const { navigate } = useNavigation()
@@ -41,37 +42,74 @@ const CreditCard = () => {
   useEffect(() => {
     // Check if Apple Pay is available (iOS only)
     if (Platform.OS === 'ios') {
-      // For now, we'll assume Apple Pay is available on iOS
-      // TODO: Implement proper Apple Pay detection when package is fixed
-      setIsApplePayAvailable(true)
+      checkApplePayAvailability()
     }
   }, [])
+
+  const checkApplePayAvailability = async () => {
+    try {
+      const isAvailable = await ApplePay.isApplePayAvailable()
+      setIsApplePayAvailable(isAvailable)
+    } catch (error) {
+      console.log('Apple Pay not available:', error)
+      setIsApplePayAvailable(false)
+    }
+  }
 
   const handleApplePay = async () => {
     setIsProcessing(true)
     try {
-      // TODO: Implement Apple Pay when package is properly configured
-      console.log('Apple Pay requested - implementation pending')
+      // Configure Apple Pay payment request
+      const paymentRequest = {
+        merchantIdentifier: 'merchant.com.travelfit.app', // Replace with your actual merchant ID
+        supportedNetworks: ['visa', 'mastercard', 'amex'],
+        merchantCapabilities: ['supports3DS'],
+        countryCode: 'US',
+        currencyCode: 'USD',
+        paymentSummaryItems: [
+          {
+            label: 'TravelFit Premium',
+            amount: '4.99'
+          },
+          {
+            label: 'TravelFit',
+            amount: '4.99'
+          }
+        ]
+      }
+
+      // Request payment
+      const paymentToken = await ApplePay.requestPayment(paymentRequest)
       
-      // Simulate Apple Pay processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.log('Apple Pay payment successful:', paymentToken)
+      
+      // Here you would typically send the payment token to your backend
+      // to process the payment with your payment processor
       
       toast.show({
-        status: 'info',
-        description: 'Apple Pay integration coming soon! Using credit card for now.'
+        status: 'success',
+        description: 'Payment successful!'
       })
       
-      // For now, just mark payment flow as completed
+      // Mark payment flow as completed
       await markPaymentFlowCompleted()
       
       // Navigate to subscription selection
       navigate('SubscriptionSelection')
     } catch (error) {
       console.error('Apple Pay error:', error)
-      toast.show({
-        status: 'error',
-        description: 'Apple Pay not available yet. Please use credit card.'
-      })
+      
+      if (error.code === 'USER_CANCELLATION') {
+        toast.show({
+          status: 'info',
+          description: 'Payment was cancelled'
+        })
+      } else {
+        toast.show({
+          status: 'error',
+          description: 'Apple Pay payment failed. Please try again or use credit card.'
+        })
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -159,11 +197,22 @@ const CreditCard = () => {
                     
                     <Button
                       size="lg"
-                      colorScheme="black"
+                      bg="black"
+                      _pressed={{ bg: 'gray.800' }}
                       onPress={handleApplePay}
                       isLoading={isProcessing}
                       isDisabled={isProcessing}
-                      _text={{ color: 'white' }}
+                      _text={{ 
+                        color: 'white',
+                        fontWeight: '600',
+                        fontSize: '16px'
+                      }}
+                      borderRadius="12"
+                      height="50px"
+                      _icon={{
+                        color: 'white',
+                        size: '20px'
+                      }}
                     >
                       {isProcessing ? 'Processing...' : 'Pay with Apple Pay'}
                     </Button>

@@ -12,9 +12,12 @@ import {
 import { GoogleSignin } from '@react-native-google-signin/google-signin'
 import auth from '@react-native-firebase/auth'
 import GoogleIcon from '../assets/icons/google.svg'
+import { getProfile, setProfile } from '../services/users'
+import { setUserData } from '../services/database'
+import moment from 'moment'
 
 const Welcome = () => {
-  const { navigate } = useNavigation()
+  const { navigate, reset } = useNavigation()
   const isFocused = useIsFocused()
 
   const handleRegister = () => {
@@ -29,7 +32,7 @@ const Welcome = () => {
     try {
       // Configure Google Sign-In
       await GoogleSignin.configure({
-        webClientId: '10048863785-mv1ommb6ja9djftbnnkrnh5cskd7850p.apps.googleusercontent.com', // Replace with your actual web client ID
+        webClientId: '10048863785-mv1ommb6ja9djftbnnkrnh5cskd7850p.apps.googleusercontent.com',
         offlineAccess: true,
       })
 
@@ -43,16 +46,34 @@ const Welcome = () => {
       const googleCredential = auth.GoogleAuthProvider.credential(idToken)
 
       // Sign-in the user with the credential
-      await auth().signInWithCredential(googleCredential)
+      const { user } = await auth().signInWithCredential(googleCredential)
       
-      // Navigation will be handled by the auth state listener in routes/index.js
+      // Create or get user profile
+      let profile = await getProfile()
+      if (!profile) {
+        profile = {
+          name: user.displayName,
+          email: user.email,
+          createdTime: moment().startOf('day').toISOString()
+        }
+        await setProfile(profile)
+      }
+      await setUserData(profile)
+      
+      // Navigate to credit card screen after successful Google sign-in
+      reset({
+        index: 0,
+        routes: [{ name: 'CreditCard' }]
+      })
     } catch (error) {
       console.log('Google Sign-In Error:', error)
-      Alert.alert(
-        'Sign In Error',
-        'Failed to sign in with Google. Please try again.',
-        [{ text: 'OK' }]
-      )
+      if (error.code !== 'SIGN_IN_CANCELLED') {
+        Alert.alert(
+          'Sign In Error',
+          'Failed to sign in with Google. Please try again.',
+          [{ text: 'OK' }]
+        )
+      }
     }
   }
 

@@ -7899,6 +7899,11 @@ react-native-animatable@1.3.3:
   dependencies:
     prop-types "^15.7.2"
 
+react-native-apple-pay-button@^1.0.8:
+  version "1.0.8"
+  resolved "https://registry.npmjs.org/react-native-apple-pay-button/-/react-native-apple-pay-button-1.0.8.tgz"
+  integrity sha512-hfMfrvX9bnET5VzdxvbM36kgrdEdV45o5xScsKs8/DR5NsfoQduOxE4EylVrxM7zA82n39iDb8mnufHL1WEYAQ==
+
 react-native-apple-pay@^0.0.0:
   version "0.0.0"
   resolved "https://registry.npmjs.org/react-native-apple-pay/-/react-native-apple-pay-0.0.0.tgz"
