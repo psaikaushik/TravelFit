@@ -32,7 +32,6 @@
     "react": "18.1.0",
     "react-hook-form": "^7.60.0",
     "react-native": "0.70.6",
-    "react-native-apple-pay-button": "^1.0.8",
     "react-native-device-info": "^10.3.0",
     "react-native-gesture-handler": "^2.8.0",
     "react-native-health": "https://github.com/agencyenterprise/react-native-health.git#3b741e3cd4d69200396ea99e1dc1471b869582a0",
