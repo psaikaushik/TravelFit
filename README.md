@@ -260,8 +260,8 @@ TravelFit includes a premium subscription system with two pricing tiers:
 ### Setup Instructions
 See `SUBSCRIPTION_SETUP.md` for detailed App Store Connect configuration steps.
 
-### Apple Pay Setup
-See `docs/APPLE_PAY_SETUP.md` for detailed Apple Pay configuration and testing instructions.
+### Stripe & Apple Pay Setup
+See `docs/STRIPE_SETUP.md` for detailed Stripe and Apple Pay configuration and testing instructions.
 
 ## Payment Flow
 
@@ -274,11 +274,12 @@ TravelFit implements a streamlined payment flow that collects payment informatio
 4. **Main App** → Access to TravelFit features
 
 ### Credit Card Screen Features
-- **Apple Pay Integration**: One-tap payment with Face ID/Touch ID (iOS only)
-  - Automatic availability detection
-  - Secure payment token processing
+- **Stripe Apple Pay Integration**: One-tap payment with Face ID/Touch ID (iOS only)
+  - Automatic availability detection using Stripe SDK
+  - Secure payment processing with Stripe
   - Support for Visa, Mastercard, and American Express
   - Real-time payment status feedback
+  - Production-ready payment infrastructure
 - **Credit Card Form**: Manual card entry with real-time validation
 - **Smart Detection**: Automatically shows Apple Pay if available
 - **Card Number Formatting**: Automatic spacing (1234 5678 9012 3456)

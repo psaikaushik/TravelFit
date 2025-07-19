@@ -2526,6 +2526,11 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
+"@stripe/stripe-react-native@^0.50.0":
+  version "0.50.0"
+  resolved "https://registry.npmjs.org/@stripe/stripe-react-native/-/stripe-react-native-0.50.0.tgz"
+  integrity sha512-yyiM2solXOMh6hWW/6YQkkoRLGN/OQonq9JSCy4v9kJ7cIcR614z9QpWSMTRMBAiZTWkpuUIsdoxgf7pDrfn4g==
+
 "@svgr/babel-plugin-add-jsx-attribute@^6.5.1":
   version "6.5.1"
   resolved "https://registry.npmjs.org/@svgr/babel-plugin-add-jsx-attribute/-/babel-plugin-add-jsx-attribute-6.5.1.tgz"
@@ -7903,11 +7908,6 @@ react-native-apple-pay-button@^1.0.8:
   version "1.0.8"
   resolved "https://registry.npmjs.org/react-native-apple-pay-button/-/react-native-apple-pay-button-1.0.8.tgz"
   integrity sha512-hfMfrvX9bnET5VzdxvbM36kgrdEdV45o5xScsKs8/DR5NsfoQduOxE4EylVrxM7zA82n39iDb8mnufHL1WEYAQ==
-
-react-native-apple-pay@^0.0.0:
-  version "0.0.0"
-  resolved "https://registry.npmjs.org/react-native-apple-pay/-/react-native-apple-pay-0.0.0.tgz"
-  integrity sha512-+eaXTLbXF2d6TOIm01D7Qq84RcL3u0fhyoiOl3qWgs06OYn5LdpywLSYJINB2kRBHrhd/sTXd0iigMZRULg3Ew==
 
 react-native-codegen@^0.70.6:
   version "0.70.6"

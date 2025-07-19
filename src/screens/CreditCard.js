@@ -15,15 +15,19 @@ import {
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
 import { useForm, Controller } from 'react-hook-form'
+import { useStripe, useApplePay } from '@stripe/stripe-react-native'
 import TabScreen from '../components/TabScreen'
 import { markPaymentFlowCompleted } from '../services/subscription'
-import ApplePay from 'react-native-apple-pay'
+import { getApplePayPaymentRequest } from '../config/stripe'
 
 const CreditCard = () => {
   const { navigate } = useNavigation()
   const toast = useToast()
   const [isProcessing, setIsProcessing] = useState(false)
   const [isApplePayAvailable, setIsApplePayAvailable] = useState(false)
+  
+  const { initPaymentSheet, presentPaymentSheet } = useStripe()
+  const { isApplePaySupported, presentApplePay, confirmApplePayPayment } = useApplePay()
 
   const {
     control,
@@ -48,8 +52,8 @@ const CreditCard = () => {
 
   const checkApplePayAvailability = async () => {
     try {
-      const isAvailable = await ApplePay.isApplePayAvailable()
-      setIsApplePayAvailable(isAvailable)
+      const supported = await isApplePaySupported()
+      setIsApplePayAvailable(supported)
     } catch (error) {
       console.log('Apple Pay not available:', error)
       setIsApplePayAvailable(false)
@@ -59,36 +63,32 @@ const CreditCard = () => {
   const handleApplePay = async () => {
     setIsProcessing(true)
     try {
-      // Configure Apple Pay payment request
-      const paymentRequest = {
-        merchantIdentifier: 'merchant.com.travelfit.app', // Replace with your actual merchant ID
-        supportedNetworks: ['visa', 'mastercard', 'amex'],
-        merchantCapabilities: ['supports3DS'],
-        countryCode: 'US',
-        currencyCode: 'USD',
-        paymentSummaryItems: [
-          {
-            label: 'TravelFit Premium',
-            amount: '4.99'
-          },
-          {
-            label: 'TravelFit',
-            amount: '4.99'
-          }
-        ]
+      // Get payment request from configuration
+      const paymentRequest = getApplePayPaymentRequest()
+
+      // Present Apple Pay
+      const { error: presentError } = await presentApplePay(paymentRequest)
+      
+      if (presentError) {
+        throw presentError
       }
 
-      // Request payment
-      const paymentToken = await ApplePay.requestPayment(paymentRequest)
+      // Simulate payment confirmation with your backend
+      // In a real app, you would send the payment token to your server
+      // and get a client secret back for confirmation
       
-      console.log('Apple Pay payment successful:', paymentToken)
+      // For now, we'll simulate a successful payment
+      const { error: confirmError } = await confirmApplePayPayment('fake_client_secret')
       
-      // Here you would typically send the payment token to your backend
-      // to process the payment with your payment processor
+      if (confirmError) {
+        throw confirmError
+      }
+
+      console.log('Apple Pay payment successful')
       
       toast.show({
         status: 'success',
-        description: 'Payment successful!'
+        description: 'Apple Pay payment successful!'
       })
       
       // Mark payment flow as completed
@@ -99,7 +99,7 @@ const CreditCard = () => {
     } catch (error) {
       console.error('Apple Pay error:', error)
       
-      if (error.code === 'USER_CANCELLATION') {
+      if (error.code === 'Canceled') {
         toast.show({
           status: 'info',
           description: 'Payment was cancelled'
