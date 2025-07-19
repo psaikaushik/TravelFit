@@ -7,6 +7,7 @@ This guide will help you set up Stripe payments including Apple Pay for the Trav
 - Stripe account (free to create)
 - Apple Developer Account (for Apple Pay)
 - iOS App ID configured
+- iOS 13.0+ deployment target (already configured)
 
 ## Step 1: Create Stripe Account
 
@@ -49,7 +50,11 @@ This guide will help you set up Stripe payments including Apple Pay for the Trav
    - Click **+ Capability** → **Apple Pay**
    - Add merchant ID: `merchant.com.travelfit.app`
 
-2. **Update Info.plist (if needed):**
+2. **Deployment Target (Already Configured):**
+   - iOS deployment target is set to 13.0 (required for Stripe)
+   - This enables concurrency features needed by Stripe SDK
+
+3. **Update Info.plist (if needed):**
    - Add `NSApplePayUsageDescription` key
    - Value: "TravelFit uses Apple Pay for secure payments"
 
