@@ -1,127 +1,71 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
   SafeAreaView,
   StatusBar,
   ScrollView,
-  Alert,
   ActivityIndicator
 } from 'react-native'
 import {
   Container,
-  Flex,
   Text,
   Button,
   useToast,
   Box,
   VStack,
-  HStack,
-  Divider
+  HStack
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
-import { useQuery } from '@tanstack/react-query'
-import { subscriptionService, SUBSCRIPTION_PLANS, formatPrice } from '../services/subscription'
-import { getUserSettings } from '../services/database'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  getSubscriptionStatus,
+  cancelSubscription as cancelSubscriptionApi
+} from '../services/api'
+import { STRIPE_PRICES } from '../config/stripe'
 import TabScreen from '../components/TabScreen'
 
 const Subscription = () => {
   const { goBack } = useNavigation()
   const toast = useToast()
-  const [selectedPlan, setSelectedPlan] = useState(null)
-  const [isPurchasing, setIsPurchasing] = useState(false)
+  const queryClient = useQueryClient()
+  const [isCancelling, setIsCancelling] = useState(false)
 
-  // Get current subscription status
-  const { data: userSettings } = useQuery(['settings'], getUserSettings)
-  const currentSubscription = userSettings?.subscription
-
-  // Get available products
-  const { data: products, isLoading: productsLoading } = useQuery(
-    ['subscription-products'],
-    () => subscriptionService.getProducts(),
-    {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 3
-    }
+  const { data: subStatus, isLoading } = useQuery(
+    ['subscription-status'],
+    () => getSubscriptionStatus(),
+    { staleTime: 30 * 1000 }
   )
 
-  useEffect(() => {
-    StatusBar.setBarStyle('dark-content', true)
-  }, [])
+  const subscription = subStatus?.subscription
+  const isSubscribed = subStatus?.isSubscribed
+  const isInTrial = subStatus?.isInTrial
 
-  const handlePurchase = async () => {
-    if (!selectedPlan) {
-      toast.show({
-        status: 'error',
-        description: 'Please select a plan first'
-      })
-      return
-    }
-
-    setIsPurchasing(true)
+  const handleCancel = async () => {
+    setIsCancelling(true)
     try {
-      const result = await subscriptionService.purchaseSubscription(selectedPlan)
-      
-      if (result.success) {
-        toast.show({
-          status: 'success',
-          description: 'Subscription purchased successfully!'
-        })
-        goBack()
-      } else {
-        toast.show({
-          status: 'error',
-          description: result.error || 'Purchase failed'
-        })
-      }
+      await cancelSubscriptionApi()
+      queryClient.invalidateQueries(['subscription-status'])
+      toast.show({
+        status: 'success',
+        description: 'Subscription will cancel at the end of your current period.'
+      })
     } catch (error) {
-      console.error('Purchase error:', error)
+      console.error('Cancel error:', error)
       toast.show({
         status: 'error',
-        description: 'Purchase failed. Please try again.'
+        description: 'Failed to cancel subscription. Please try again.'
       })
     } finally {
-      setIsPurchasing(false)
+      setIsCancelling(false)
     }
   }
 
-  const handleRestorePurchases = async () => {
-    try {
-      const result = await subscriptionService.restorePurchases()
-      
-      if (result.success) {
-        toast.show({
-          status: 'success',
-          description: 'Purchases restored successfully!'
-        })
-        goBack()
-      } else {
-        toast.show({
-          status: 'error',
-          description: result.error || 'No purchases found to restore'
-        })
-      }
-    } catch (error) {
-      console.error('Restore error:', error)
-      toast.show({
-        status: 'error',
-        description: 'Failed to restore purchases'
-      })
-    }
-  }
-
-  const getProductPrice = (productId) => {
-    const product = products?.find(p => p.productId === productId)
-    return product ? formatPrice(product) : SUBSCRIPTION_PLANS[productId]?.price
-  }
-
-  const isSubscribed = currentSubscription?.isSubscribed
-
-  if (productsLoading) {
+  if (isLoading) {
     return (
       <TabScreen>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
           <Container flex="1" justifyContent="center" alignItems="center">
             <ActivityIndicator size="large" color="#007AFF" />
-            <Text mt="4" fontSize="16">Loading subscription plans...</Text>
+            <Text mt="4" fontSize="16">Loading subscription...</Text>
           </Container>
         </SafeAreaView>
       </TabScreen>
@@ -134,171 +78,122 @@ const Subscription = () => {
         <StatusBar barStyle="dark-content" backgroundColor="#F3F3F6" />
         <ScrollView style={{ flex: 1 }}>
           <Container flex="1" px="20px" py="20px" w="100%" minW="100%">
-            {/* Header */}
             <VStack space="4" mb="8">
               <Text fontSize="28px" fontWeight="bold" textAlign="center">
-                Upgrade to Premium
-              </Text>
-              <Text fontSize="16px" textAlign="center" color="gray.600">
-                Unlock all TravelFit features and take your fitness journey to the next level
+                Your Subscription
               </Text>
             </VStack>
 
-            {/* Current Subscription Status */}
-            {isSubscribed && (
+            {/* Current Status */}
+            {isSubscribed ? (
               <Box bg="green.100" p="4" borderRadius="12" mb="6">
-                <Text fontSize="16px" fontWeight="600" color="green.800" textAlign="center">
-                  ✅ You're currently subscribed to Premium!
+                <VStack space="2" alignItems="center">
+                  <Text fontSize="16px" fontWeight="600" color="green.800">
+                    {isInTrial ? 'Free Trial Active' : 'Premium Active'}
+                  </Text>
+                  {isInTrial && subscription?.trialEnd && (
+                    <Text fontSize="14px" color="green.700" textAlign="center">
+                      Trial ends {new Date(subscription.trialEnd).toLocaleDateString()}.
+                      You'll be charged after that.
+                    </Text>
+                  )}
+                  {subscription?.cancelAtPeriodEnd && (
+                    <Text fontSize="14px" color="orange.700" textAlign="center">
+                      Cancels on {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                    </Text>
+                  )}
+                </VStack>
+              </Box>
+            ) : (
+              <Box bg="gray.100" p="4" borderRadius="12" mb="6">
+                <Text fontSize="16px" fontWeight="600" color="gray.800" textAlign="center">
+                  No active subscription
                 </Text>
-                <Text fontSize="14px" color="green.700" textAlign="center" mt="2">
-                  Enjoy all premium features
-                </Text>
+                {subscription?.paymentFailed && (
+                  <Text fontSize="14px" color="red.600" textAlign="center" mt="2">
+                    Your last payment failed. Please update your payment method.
+                  </Text>
+                )}
               </Box>
             )}
 
-            {/* Subscription Plans */}
-            <VStack space="4" mb="8">
-              {/* Annual Plan */}
-              <Box
-                bg={selectedPlan === 'travelfit_annual_subscription' ? 'blue.50' : 'white'}
-                borderWidth={selectedPlan === 'travelfit_annual_subscription' ? 2 : 1}
-                borderColor={selectedPlan === 'travelfit_annual_subscription' ? 'blue.500' : 'gray.200'}
-                borderRadius="16"
-                p="6"
-                position="relative"
-              >
-                {SUBSCRIPTION_PLANS['travelfit_annual_subscription'].savings && (
-                  <Box
-                    position="absolute"
-                    top="-8"
-                    right="4"
-                    bg="green.500"
-                    px="3"
-                    py="1"
-                    borderRadius="full"
-                  >
-                    <Text fontSize="12px" fontWeight="600" color="white">
-                      {SUBSCRIPTION_PLANS['travelfit_annual_subscription'].savings}
+            {/* Plan Details */}
+            {subscription?.priceId && (
+              <Box bg="white" borderRadius="16" p="6" mb="6">
+                <Text fontSize="18px" fontWeight="600" mb="2">
+                  Plan Details
+                </Text>
+                <VStack space="2">
+                  <HStack justifyContent="space-between">
+                    <Text color="gray.600">Plan</Text>
+                    <Text fontWeight="500">
+                      {subscription.priceId === STRIPE_PRICES.annual.id
+                        ? STRIPE_PRICES.annual.label
+                        : STRIPE_PRICES.monthly.label}
                     </Text>
-                  </Box>
-                )}
-                
-                <HStack justifyContent="space-between" alignItems="center" mb="4">
-                  <VStack flex="1">
-                    <Text fontSize="20px" fontWeight="600">
-                      {SUBSCRIPTION_PLANS['travelfit_annual_subscription'].title}
+                  </HStack>
+                  <HStack justifyContent="space-between">
+                    <Text color="gray.600">Price</Text>
+                    <Text fontWeight="500">
+                      {subscription.priceId === STRIPE_PRICES.annual.id
+                        ? `${STRIPE_PRICES.annual.display}/year`
+                        : `${STRIPE_PRICES.monthly.display}/month`}
                     </Text>
-                    <Text fontSize="14px" color="gray.600">
-                      {SUBSCRIPTION_PLANS['travelfit_annual_subscription'].description}
+                  </HStack>
+                  <HStack justifyContent="space-between">
+                    <Text color="gray.600">Status</Text>
+                    <Text fontWeight="500" color={isSubscribed ? 'green.600' : 'red.600'}>
+                      {subscription.status?.charAt(0).toUpperCase() + subscription.status?.slice(1)}
                     </Text>
-                  </VStack>
-                  <VStack alignItems="flex-end">
-                    <Text fontSize="24px" fontWeight="bold" color="blue.600">
-                      {getProductPrice('travelfit_annual_subscription')}
-                    </Text>
-                    <Text fontSize="14px" color="gray.500">
-                      per year
-                    </Text>
-                  </VStack>
-                </HStack>
-
-                <Button
-                  variant={selectedPlan === 'travelfit_annual_subscription' ? 'solid' : 'outline'}
-                  colorScheme="blue"
-                  onPress={() => setSelectedPlan('travelfit_annual_subscription')}
-                >
-                  {selectedPlan === 'travelfit_annual_subscription' ? 'Selected' : 'Select Annual'}
-                </Button>
+                  </HStack>
+                  {subscription?.currentPeriodEnd && (
+                    <HStack justifyContent="space-between">
+                      <Text color="gray.600">
+                        {subscription.cancelAtPeriodEnd ? 'Access until' : 'Renews on'}
+                      </Text>
+                      <Text fontWeight="500">
+                        {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                      </Text>
+                    </HStack>
+                  )}
+                </VStack>
               </Box>
+            )}
 
-              {/* Monthly Plan */}
-              <Box
-                bg={selectedPlan === 'travelfit_monthly_subscription' ? 'blue.50' : 'white'}
-                borderWidth={selectedPlan === 'travelfit_monthly_subscription' ? 2 : 1}
-                borderColor={selectedPlan === 'travelfit_monthly_subscription' ? 'blue.500' : 'gray.200'}
-                borderRadius="16"
-                p="6"
-              >
-                <HStack justifyContent="space-between" alignItems="center" mb="4">
-                  <VStack flex="1">
-                    <Text fontSize="20px" fontWeight="600">
-                      {SUBSCRIPTION_PLANS['travelfit_monthly_subscription'].title}
-                    </Text>
-                    <Text fontSize="14px" color="gray.600">
-                      {SUBSCRIPTION_PLANS['travelfit_monthly_subscription'].description}
-                    </Text>
-                  </VStack>
-                  <VStack alignItems="flex-end">
-                    <Text fontSize="24px" fontWeight="bold" color="blue.600">
-                      {getProductPrice('travelfit_monthly_subscription')}
-                    </Text>
-                    <Text fontSize="14px" color="gray.500">
-                      per month
-                    </Text>
-                  </VStack>
-                </HStack>
-
-                <Button
-                  variant={selectedPlan === 'travelfit_monthly_subscription' ? 'solid' : 'outline'}
-                  colorScheme="blue"
-                  onPress={() => setSelectedPlan('travelfit_monthly_subscription')}
-                >
-                  {selectedPlan === 'travelfit_monthly_subscription' ? 'Selected' : 'Select Monthly'}
-                </Button>
-              </Box>
-            </VStack>
-
-            {/* Features List */}
+            {/* Features */}
             <Box bg="white" borderRadius="16" p="6" mb="6">
               <Text fontSize="18px" fontWeight="600" mb="4">
                 Premium Features
               </Text>
               <VStack space="3">
-                <HStack space="3" alignItems="center">
-                  <Text fontSize="16px" color="green.600">✓</Text>
-                  <Text fontSize="16px">Unlimited routes and journeys</Text>
-                </HStack>
-                <HStack space="3" alignItems="center">
-                  <Text fontSize="16px" color="green.600">✓</Text>
-                  <Text fontSize="16px">Advanced progress analytics</Text>
-                </HStack>
-                <HStack space="3" alignItems="center">
-                  <Text fontSize="16px" color="green.600">✓</Text>
-                  <Text fontSize="16px">Custom achievement badges</Text>
-                </HStack>
-                <HStack space="3" alignItems="center">
-                  <Text fontSize="16px" color="green.600">✓</Text>
-                  <Text fontSize="16px">Route history and replays</Text>
-                </HStack>
-                <HStack space="3" alignItems="center">
-                  <Text fontSize="16px" color="green.600">✓</Text>
-                  <Text fontSize="16px">Priority customer support</Text>
-                </HStack>
+                {[
+                  'Unlimited routes and journeys',
+                  'Advanced progress analytics',
+                  'Custom achievement badges',
+                  'Route history and replays',
+                  'Priority customer support'
+                ].map((feature) => (
+                  <HStack key={feature} space="3" alignItems="center">
+                    <Text fontSize="16px" color="green.600">✓</Text>
+                    <Text fontSize="16px">{feature}</Text>
+                  </HStack>
+                ))}
               </VStack>
             </Box>
 
             {/* Action Buttons */}
             <VStack space="4">
-              {!isSubscribed && (
+              {isSubscribed && !subscription?.cancelAtPeriodEnd && (
                 <Button
                   size="lg"
-                  colorScheme="blue"
-                  onPress={handlePurchase}
-                  isLoading={isPurchasing}
-                  isDisabled={!selectedPlan || isPurchasing}
+                  variant="outline"
+                  colorScheme="red"
+                  onPress={handleCancel}
+                  isLoading={isCancelling}
                 >
-                  {isPurchasing ? 'Processing...' : 'Subscribe Now'}
+                  Cancel Subscription
                 </Button>
               )}
-
-              <Button
-                size="lg"
-                variant="outline"
-                colorScheme="gray"
-                onPress={handleRestorePurchases}
-              >
-                Restore Purchases
-              </Button>
 
               <Button
                 size="lg"
@@ -306,13 +201,13 @@ const Subscription = () => {
                 colorScheme="gray"
                 onPress={goBack}
               >
-                Cancel
+                Done
               </Button>
             </VStack>
 
-            {/* Terms */}
             <Text fontSize="12px" color="gray.500" textAlign="center" mt="6">
-              Subscription will automatically renew unless cancelled at least 24 hours before the end of the current period.
+              Subscription management is handled through Stripe.
+              For billing questions, contact support.
             </Text>
           </Container>
         </ScrollView>
@@ -321,4 +216,4 @@ const Subscription = () => {
   )
 }
 
-export default Subscription 
+export default Subscription

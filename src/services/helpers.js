@@ -417,11 +417,11 @@ export const checkFlow = async (user) => {
   return 'Main'
 }
 
-import { subscriptionService } from './subscription'
+import { hasActiveSubscription } from './subscription'
 
 export const checkSubscriptionStatus = async () => {
   try {
-    return await subscriptionService.isSubscribed()
+    return await hasActiveSubscription()
   } catch (error) {
     console.error('Failed to check subscription status:', error)
     return false
@@ -430,7 +430,7 @@ export const checkSubscriptionStatus = async () => {
 
 export const isFeatureAvailable = async (feature) => {
   const isSubscribed = await checkSubscriptionStatus()
-  
+
   // Define which features require subscription
   const premiumFeatures = [
     'unlimited_routes',
@@ -439,7 +439,7 @@ export const isFeatureAvailable = async (feature) => {
     'route_history',
     'priority_support'
   ]
-  
+
   return !premiumFeatures.includes(feature) || isSubscribed
 }
 

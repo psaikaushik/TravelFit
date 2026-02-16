@@ -13,7 +13,7 @@ import auth from '@react-native-firebase/auth'
 import { getProfile, setProfile } from '../services/users'
 import { setUserData } from '../services/database'
 import moment from 'moment'
-import { checkFlow } from '../services/helpers'
+import { createStripeCustomer } from '../services/api'
 
 const AuthScreen = ({ title, googleEnabled, footer, children }) => {
   const { reset, goBack } = useNavigation()
@@ -42,6 +42,10 @@ const AuthScreen = ({ title, googleEnabled, footer, children }) => {
         await setProfile(profile)
       }
       await setUserData(profile)
+      // Ensure Stripe customer exists
+      await createStripeCustomer(profile.email, profile.name).catch((err) =>
+        console.log('Stripe customer will be created on CreditCard screen:', err)
+      )
       // Navigate to credit card screen after successful Google sign-in
       reset({
         index: 0,

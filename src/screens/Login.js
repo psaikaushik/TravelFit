@@ -7,7 +7,7 @@ import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 import { getProfile } from '../services/users'
 import { setUserData } from '../services/database'
-import { checkFlow } from '../services/helpers'
+import { createStripeCustomer } from '../services/api'
 
 const Login = () => {
   const { reset, navigate } = useNavigation()
@@ -34,6 +34,10 @@ const Login = () => {
       const profile = await getProfile()
       console.log('profile', profile)
       await setUserData(profile)
+      // Ensure Stripe customer exists for this user
+      await createStripeCustomer(profile?.email || email, profile?.name).catch((err) =>
+        console.log('Stripe customer will be created on CreditCard screen:', err)
+      )
       // Navigate to credit card screen after successful login
       reset({
         index: 0,
