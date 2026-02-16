@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NativeAppEventEmitter } from 'react-native'
 import { Notifications } from 'react-native-notifications'
 import { updateProgress } from './helpers'
+import { checkDailyGoal } from './streak'
 import { useQueryClient } from '@tanstack/react-query'
 
 const useBackgroundTasks = () => {
@@ -20,18 +21,45 @@ const useBackgroundTasks = () => {
 
     NativeAppEventEmitter.addListener('healthKit:StepCount:new', (...args) => {
       console.log('healthKit:StepCount:new')
+
+      // Update trip progress
       updateProgress(queryClient).then(({ success, alerts, error }) => {
         console.log('progress updated', success, alerts, error)
         if (!!success && !!alerts) {
           alerts.forEach(({ name }) => {
             Notifications.postLocalNotification({
               title: `${name} Badge`,
-              body: `Congratulations! You’ve received a new badge. Keep up the hard work!!`,
+              body: `Congratulations! You've received a new badge. Keep up the hard work!!`,
               category: 'BADGE',
               silent: false
             })
           })
         }
+      })
+
+      // Check daily step goal and streak
+      checkDailyGoal().then((result) => {
+        console.log('daily goal check', result)
+
+        if (result.isFirstTimeToday) {
+          // Goal reached for the first time today — celebrate!
+          const streakText = result.currentStreak > 1
+            ? `${result.currentStreak}-day streak!`
+            : 'Keep it up tomorrow to start a streak!'
+
+          Notifications.postLocalNotification({
+            title: 'Daily Goal Reached!',
+            body: `You hit ${result.dailyGoal.toLocaleString()} steps today! ${streakText}`,
+            category: 'GOAL',
+            silent: false
+          })
+        }
+
+        // Refresh streak data in UI
+        queryClient.invalidateQueries(['streak'])
+        queryClient.invalidateQueries(['streak-profile'])
+      }).catch((err) => {
+        console.log('daily goal check error:', err)
       })
     })
 
