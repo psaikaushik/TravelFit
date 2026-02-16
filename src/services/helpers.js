@@ -8,6 +8,7 @@ import {
   getPlaceDetails
 } from './maps'
 import { hasCompletedPaymentFlow } from './subscription'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export const calcSteps = (steps = 0) => {
   return (Math.round(steps / 12) / 100).toFixed(2)
@@ -392,7 +393,10 @@ export const checkFlow = async (user) => {
   const userSettings = (await getUserSettings()) || {}
   const { steps, route, distance, breakPoints, health, completed } =
     userSettings
-  if (!user || !name) return 'VideoIntro'
+  if (!user || !name) {
+    const onboardingDone = await AsyncStorage.getItem('onboarding_completed')
+    return onboardingDone ? 'Welcome' : 'Onboarding'
+  }
 
   // Check if user has completed payment flow
   const paymentFlowCompleted = await hasCompletedPaymentFlow()

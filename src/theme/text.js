@@ -77,6 +77,28 @@ const Text = {
     vicinity: {
       fontSize: '14px',
       color: 'primary.400'
+    },
+    sectionHeader: {
+      fontSize: '18px',
+      fontWeight: '700',
+      color: 'primary.400',
+      mb: '8px'
+    },
+    caption: {
+      fontSize: '12px',
+      fontWeight: '500',
+      color: 'gray.500'
+    },
+    stat: {
+      fontSize: '24px',
+      fontWeight: '800',
+      color: 'primary.400'
+    },
+    statLabel: {
+      fontSize: '11px',
+      fontWeight: '500',
+      color: 'gray.400',
+      textAlign: 'center'
     }
   }
 }
