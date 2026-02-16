@@ -20,6 +20,7 @@ import CreditCard from '../screens/CreditCard'
 import SubscriptionSelection from '../screens/SubscriptionSelection'
 import PrivacyPolicy from '../screens/PrivacyPolicy'
 import TripHistory from '../screens/TripHistory'
+import WeeklyStats from '../screens/WeeklyStats'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
@@ -67,6 +68,7 @@ export const Routes = () => {
         <Screen name="SubscriptionSelection" component={SubscriptionSelection} />
         <Screen name="PrivacyPolicy" component={PrivacyPolicy} />
         <Screen name="TripHistory" component={TripHistory} />
+        <Screen name="WeeklyStats" component={WeeklyStats} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>

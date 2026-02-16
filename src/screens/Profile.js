@@ -218,6 +218,26 @@ const Profile = () => {
                 </VStack>
               </Box>
 
+              {/* Weekly/Monthly Stats */}
+              <Pressable
+                onPress={() => navigate('WeeklyStats')}
+                accessibilityLabel="View weekly and monthly statistics"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83D\uDCCA'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Statistics</Text>
+                        <Text fontSize="13px" color="gray.500">Weekly & monthly breakdown</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
               {/* Trip History */}
               <Pressable
                 onPress={() => navigate('TripHistory')}
