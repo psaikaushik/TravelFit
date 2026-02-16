@@ -26,6 +26,11 @@ import ShareProgress from '../screens/ShareProgress'
 import Onboarding from '../screens/Onboarding'
 import NotificationSettings from '../screens/NotificationSettings'
 import Challenges from '../screens/Challenges'
+import Races from '../screens/Races'
+import RaceDetail from '../screens/RaceDetail'
+import Leaderboards from '../screens/Leaderboards'
+import ShareMoment from '../screens/ShareMoment'
+import GroupDetail from '../screens/GroupDetail'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
@@ -79,6 +84,11 @@ export const Routes = () => {
         <Screen name="Onboarding" component={Onboarding} />
         <Screen name="NotificationSettings" component={NotificationSettings} />
         <Screen name="Challenges" component={Challenges} />
+        <Screen name="Races" component={Races} />
+        <Screen name="RaceDetail" component={RaceDetail} />
+        <Screen name="Leaderboards" component={Leaderboards} />
+        <Screen name="ShareMoment" component={ShareMoment} />
+        <Screen name="GroupDetail" component={GroupDetail} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>

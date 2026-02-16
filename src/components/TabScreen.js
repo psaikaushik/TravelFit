@@ -4,10 +4,12 @@ import { useNavigation } from '@react-navigation/native'
 import { hasNotch } from 'react-native-device-info'
 import RouteSVG from '../assets/icons/route.svg'
 import ProgressSVG from '../assets/icons/progress.svg'
+import SocialSVG from '../assets/icons/social.svg'
 import StarSVG from '../assets/icons/star.svg'
 import ProfileSVG from '../assets/icons/profile.svg'
 import RouteActiveSVG from '../assets/icons/routeActive.svg'
 import ProgressActiveSVG from '../assets/icons/progressActive.svg'
+import SocialActiveSVG from '../assets/icons/socialActive.svg'
 import StarActiveSVG from '../assets/icons/starActive.svg'
 import ProfileActiveSVG from '../assets/icons/profileActive.svg'
 
@@ -50,9 +52,18 @@ const TabScreen = ({ children }) => {
             )}
           </Flex>
         </Pressable>
-        <Pressable flex="1" onPress={() => navigate('Achievements')}>
+        <Pressable flex="1" onPress={() => navigate('Social')}>
           <Flex flex="1" align="center" justify="center">
             {index === 2 ? (
+              <SocialActiveSVG width={24} />
+            ) : (
+              <SocialSVG width={24} />
+            )}
+          </Flex>
+        </Pressable>
+        <Pressable flex="1" onPress={() => navigate('Achievements')}>
+          <Flex flex="1" align="center" justify="center">
+            {index === 3 ? (
               <StarActiveSVG width={26} />
             ) : (
               <StarSVG width={26} />
@@ -61,7 +72,7 @@ const TabScreen = ({ children }) => {
         </Pressable>
         <Pressable flex="1" onPress={() => navigate('Profile')}>
           <Flex flex="1" align="center" justify="center">
-            {index === 3 ? (
+            {index === 4 ? (
               <ProfileActiveSVG width={22} />
             ) : (
               <ProfileSVG width={22} />

@@ -278,6 +278,46 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
+              {/* Route Races */}
+              <Pressable
+                onPress={() => navigate('Races')}
+                accessibilityLabel="View route races"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83C\uDFC1'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Route Races</Text>
+                        <Text fontSize="13px" color="gray.500">Race friends on the same route</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Leaderboards */}
+              <Pressable
+                onPress={() => navigate('Leaderboards')}
+                accessibilityLabel="View leaderboards"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83E\uDD47'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Leaderboards</Text>
+                        <Text fontSize="13px" color="gray.500">Global, friends & route rankings</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
               {/* Walking Challenges */}
               <Pressable
                 onPress={() => navigate('Challenges')}
@@ -298,10 +338,10 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
-              {/* Share Progress */}
+              {/* Share Moment (Enhanced) */}
               <Pressable
-                onPress={() => navigate('ShareProgress')}
-                accessibilityLabel="Share your progress"
+                onPress={() => navigate('ShareMoment')}
+                accessibilityLabel="Share your journey"
                 accessibilityRole="button"
               >
                 <Box bg="white" borderRadius="16px" p="20px">
@@ -309,8 +349,8 @@ const Profile = () => {
                     <HStack space="3" alignItems="center">
                       <Text fontSize="20px">{'\uD83D\uDCE4'}</Text>
                       <VStack>
-                        <Text fontSize="16px" fontWeight="600">Share Progress</Text>
-                        <Text fontSize="13px" color="gray.500">Share your journey card</Text>
+                        <Text fontSize="16px" fontWeight="600">Share Journey</Text>
+                        <Text fontSize="13px" color="gray.500">Beautiful cards for social media</Text>
                       </VStack>
                     </HStack>
                     <Text fontSize="16px" color="gray.400">{'>'}</Text>

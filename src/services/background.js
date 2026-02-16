@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { NativeAppEventEmitter } from 'react-native'
 import { Notifications } from 'react-native-notifications'
-import { updateProgress } from './helpers'
+import { updateProgress, calcSteps } from './helpers'
 import { checkDailyGoal } from './streak'
 import { useQueryClient } from '@tanstack/react-query'
+import { updateLeaderboardEntry } from './leaderboards'
+import { updateMyProgress } from './friends'
+import { getUserSettings } from './database'
 
 const useBackgroundTasks = () => {
   const queryClient = useQueryClient()
@@ -34,6 +37,28 @@ const useBackgroundTasks = () => {
               silent: false
             })
           })
+        }
+      })
+
+      // Update leaderboard and social progress
+      getUserSettings().then((settings) => {
+        if (settings) {
+          const steps = settings.steps || 0
+          const distance = parseFloat(calcSteps(steps)) || 0
+          const landmarks = (settings.badges || []).filter((b) => b?.progress >= 100).length
+          const cities = (settings.cities || []).length
+
+          updateLeaderboardEntry({ steps, distance, landmarks, cities }).catch((e) =>
+            console.log('leaderboard update error:', e)
+          )
+          updateMyProgress({
+            steps,
+            distance,
+            routeName: settings.starting?.title && settings.destination?.title
+              ? `${settings.starting.title} → ${settings.destination.title}`
+              : null,
+            progress: settings.distance ? Math.min((distance / settings.distance) * 100, 100) : 0
+          }).catch((e) => console.log('social progress update error:', e))
         }
       })
 

@@ -433,3 +433,138 @@ exports.placePhoto = functions.https.onRequest(async (req, res) => {
     res.status(500).send('Failed to fetch photo')
   }
 })
+
+// ============================================================
+// 9. SOCIAL FEATURES — DATABASE SECURITY RULES HELPER
+// Cloud functions for social operations that need server-side
+// validation or multi-path atomic updates
+// ============================================================
+
+// Clean up stale races (completed > 30 days ago)
+exports.cleanupStaleRaces = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async (context) => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+    const snapshot = await admin
+      .database()
+      .ref('races')
+      .orderByChild('status')
+      .equalTo('completed')
+      .once('value')
+
+    const data = snapshot.val() || {}
+    const updates = {}
+
+    for (const [raceId, race] of Object.entries(data)) {
+      if (race.createdAt && race.createdAt < thirtyDaysAgo) {
+        updates[`races/${raceId}`] = null
+        // Clean up user_races references
+        for (const participantId of Object.keys(race.participants || {})) {
+          updates[`user_races/${participantId}/${raceId}`] = null
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await admin.database().ref().update(updates)
+      console.log(`Cleaned up ${Object.keys(updates).length} stale race entries`)
+    }
+
+    return null
+  })
+
+// Weekly leaderboard reset notification
+exports.weeklyLeaderboardNotify = functions.pubsub
+  .schedule('every monday 09:00')
+  .timeZone('America/New_York')
+  .onRun(async (context) => {
+    // Get last week's top 3 from weekly leaderboard
+    const now = new Date()
+    const lastWeek = new Date(now)
+    lastWeek.setDate(lastWeek.getDate() - 7)
+    const weekNum = Math.ceil(
+      ((lastWeek - new Date(lastWeek.getFullYear(), 0, 1)) / 86400000 + 1) / 7
+    )
+    const weekKey = `${lastWeek.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+
+    const snapshot = await admin
+      .database()
+      .ref(`leaderboards/weekly/${weekKey}`)
+      .orderByChild('steps')
+      .limitToLast(3)
+      .once('value')
+
+    const winners = snapshot.val() || {}
+    console.log(`Weekly leaderboard winners for ${weekKey}:`, Object.keys(winners))
+
+    return null
+  })
+
+// Validate and process race completion
+exports.processRaceCompletion = functions.database
+  .ref('races/{raceId}/status')
+  .onUpdate(async (change, context) => {
+    const newStatus = change.after.val()
+    const raceId = context.params.raceId
+
+    if (newStatus !== 'completed') return null
+
+    const raceSnapshot = await admin
+      .database()
+      .ref(`races/${raceId}`)
+      .once('value')
+    const race = raceSnapshot.val()
+    if (!race) return null
+
+    // Determine winner (first to finish or highest progress)
+    const participants = Object.entries(race.participants || {})
+      .map(([id, p]) => ({ id, ...p }))
+      .sort((a, b) => {
+        if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt
+        return (b.progress || 0) - (a.progress || 0)
+      })
+
+    if (participants.length > 0) {
+      const winner = participants[0]
+      await admin.database().ref(`races/${raceId}/winner`).set({
+        userId: winner.id,
+        name: winner.name,
+        steps: winner.steps || 0,
+        finishedAt: winner.finishedAt || null
+      })
+    }
+
+    return null
+  })
+
+// Auto-expire waiting races after 7 days
+exports.expireWaitingRaces = functions.pubsub
+  .schedule('every 6 hours')
+  .onRun(async (context) => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const snapshot = await admin
+      .database()
+      .ref('races')
+      .orderByChild('status')
+      .equalTo('waiting')
+      .once('value')
+
+    const data = snapshot.val() || {}
+    const updates = {}
+
+    for (const [raceId, race] of Object.entries(data)) {
+      if (race.createdAt && race.createdAt < sevenDaysAgo) {
+        updates[`races/${raceId}/status`] = 'completed'
+        for (const participantId of Object.keys(race.participants || {})) {
+          updates[`user_races/${participantId}/${raceId}/status`] = 'completed'
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await admin.database().ref().update(updates)
+      console.log(`Expired ${Object.keys(updates).length / 2} waiting races`)
+    }
+
+    return null
+  })
