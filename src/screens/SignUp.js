@@ -7,8 +7,8 @@ import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
 import { setProfile } from '../services/users'
 import moment from 'moment'
-import { checkFlow } from '../services/helpers'
 import { setUserData } from '../services/database'
+import { createStripeCustomer } from '../services/api'
 
 const SignUp = () => {
   const { reset, navigate } = useNavigation()
@@ -37,6 +37,10 @@ const SignUp = () => {
       }
       await setProfile(profile)
       await setUserData(profile)
+      // Create Stripe customer for this new user
+      await createStripeCustomer(email, name).catch((err) =>
+        console.log('Stripe customer will be created on CreditCard screen:', err)
+      )
       // Navigate to credit card screen after successful signup
       reset({
         index: 0,
@@ -113,6 +117,7 @@ const SignUp = () => {
         mt="40px"
         isLoading={isSubmitting}
         onPress={handleSubmit(handleRegister)}
+        accessibilityLabel="Create your account"
       >
         Register
       </Button>

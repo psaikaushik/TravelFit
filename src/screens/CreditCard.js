@@ -8,47 +8,50 @@ import {
   Box,
   VStack,
   HStack,
-  Input,
-  FormControl,
-  WarningOutlineIcon,
   Divider
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
-import { useForm, Controller } from 'react-hook-form'
-import { useStripe, useApplePay } from '@stripe/stripe-react-native'
+import {
+  CardField,
+  useStripe,
+  useApplePay,
+  ApplePayButton
+} from '@stripe/stripe-react-native'
 import TabScreen from '../components/TabScreen'
+import { createStripeCustomer, createSetupIntent } from '../services/api'
 import { markPaymentFlowCompleted } from '../services/subscription'
-import { getApplePayPaymentRequest } from '../config/stripe'
+import auth from '@react-native-firebase/auth'
+import { getProfile } from '../services/users'
 
 const CreditCard = () => {
   const { navigate } = useNavigation()
   const toast = useToast()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [cardComplete, setCardComplete] = useState(false)
   const [isApplePayAvailable, setIsApplePayAvailable] = useState(false)
-  
-  const { initPaymentSheet, presentPaymentSheet } = useStripe()
+
+  const { confirmSetupIntent } = useStripe()
   const { isApplePaySupported, presentApplePay, confirmApplePayPayment } = useApplePay()
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isValid }
-  } = useForm({
-    mode: 'onChange',
-    defaultValues: {
-      cardNumber: '',
-      expiryDate: '',
-      cvv: '',
-      cardholderName: ''
-    }
-  })
-
   useEffect(() => {
-    // Check if Apple Pay is available (iOS only)
+    ensureStripeCustomer()
     if (Platform.OS === 'ios') {
       checkApplePayAvailability()
     }
   }, [])
+
+  const ensureStripeCustomer = async () => {
+    try {
+      const user = auth().currentUser
+      const profile = await getProfile()
+      await createStripeCustomer(
+        user?.email || profile?.email,
+        profile?.name || user?.displayName
+      )
+    } catch (error) {
+      console.log('Customer may already exist:', error)
+    }
+  }
 
   const checkApplePayAvailability = async () => {
     try {
@@ -63,51 +66,40 @@ const CreditCard = () => {
   const handleApplePay = async () => {
     setIsProcessing(true)
     try {
-      // Get payment request from configuration
-      const paymentRequest = getApplePayPaymentRequest()
+      // Get a real SetupIntent from our backend
+      const { clientSecret } = await createSetupIntent()
 
-      // Present Apple Pay
-      const { error: presentError } = await presentApplePay(paymentRequest)
-      
+      // Present Apple Pay sheet
+      const { error: presentError } = await presentApplePay({
+        cartItems: [{ label: 'TravelFit', amount: '0.00', paymentType: 'Immediate' }],
+        country: 'US',
+        currency: 'USD'
+      })
+
       if (presentError) {
         throw presentError
       }
 
-      // Simulate payment confirmation with your backend
-      // In a real app, you would send the payment token to your server
-      // and get a client secret back for confirmation
-      
-      // For now, we'll simulate a successful payment
-      const { error: confirmError } = await confirmApplePayPayment('fake_client_secret')
-      
+      // Confirm the SetupIntent with Apple Pay
+      const { error: confirmError } = await confirmApplePayPayment(clientSecret)
+
       if (confirmError) {
         throw confirmError
       }
 
-      console.log('Apple Pay payment successful')
-      
       toast.show({
         status: 'success',
-        description: 'Apple Pay payment successful!'
+        description: 'Card saved via Apple Pay!'
       })
-      
-      // Mark payment flow as completed
+
       await markPaymentFlowCompleted()
-      
-      // Navigate to subscription selection
       navigate('SubscriptionSelection')
     } catch (error) {
       console.error('Apple Pay error:', error)
-      
-      if (error.code === 'Canceled') {
-        toast.show({
-          status: 'info',
-          description: 'Payment was cancelled'
-        })
-      } else {
+      if (error.code !== 'Canceled') {
         toast.show({
           status: 'error',
-          description: 'Apple Pay payment failed. Please try again or use credit card.'
+          description: 'Apple Pay failed. Please try entering your card manually.'
         })
       }
     } finally {
@@ -115,51 +107,41 @@ const CreditCard = () => {
     }
   }
 
-  const onSubmit = async (data) => {
+  const handleCardSubmit = async () => {
+    if (!cardComplete) return
+
     setIsProcessing(true)
     try {
-      // Here you would typically integrate with a payment processor
-      // For now, we'll simulate a successful payment
-      console.log('Credit card data:', data)
-      
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Mark payment flow as completed
-      await markPaymentFlowCompleted()
-      
-      // Navigate to subscription selection
-      navigate('SubscriptionSelection')
+      // Get a real SetupIntent from our backend
+      const { clientSecret } = await createSetupIntent()
+
+      // Confirm with the card details collected by CardField
+      const { error, setupIntent } = await confirmSetupIntent(clientSecret, {
+        paymentMethodType: 'Card'
+      })
+
+      if (error) {
+        throw error
+      }
+
+      if (setupIntent.status === 'Succeeded') {
+        toast.show({
+          status: 'success',
+          description: 'Card saved successfully!'
+        })
+
+        await markPaymentFlowCompleted()
+        navigate('SubscriptionSelection')
+      }
     } catch (error) {
-      console.error('Payment error:', error)
+      console.error('Card setup error:', error)
       toast.show({
         status: 'error',
-        description: 'Payment processing failed. Please try again.'
+        description: error.localizedMessage || error.message || 'Failed to save card. Please try again.'
       })
     } finally {
       setIsProcessing(false)
     }
-  }
-
-  const formatCardNumber = (text) => {
-    // Remove all non-digits
-    const cleaned = text.replace(/\D/g, '')
-    // Add spaces every 4 digits
-    const formatted = cleaned.replace(/(\d{4})(?=\d)/g, '$1 ')
-    return formatted.substring(0, 19) // Limit to 16 digits + 3 spaces
-  }
-
-  const formatExpiryDate = (text) => {
-    // Remove all non-digits
-    const cleaned = text.replace(/\D/g, '')
-    // Add slash after 2 digits
-    const formatted = cleaned.replace(/(\d{2})(?=\d)/g, '$1/')
-    return formatted.substring(0, 5) // Limit to MM/YY format
-  }
-
-  const formatCVV = (text) => {
-    // Remove all non-digits and limit to 4 characters
-    return text.replace(/\D/g, '').substring(0, 4)
   }
 
   return (
@@ -171,51 +153,40 @@ const CreditCard = () => {
             <VStack space="6" flex="1">
               {/* Header */}
               <VStack space="4" alignItems="center">
-                <Text fontSize="28px" fontWeight="bold" textAlign="center">
+                <Text fontSize="28px" fontWeight="bold" textAlign="center" accessibilityRole="header">
                   Payment Information
                 </Text>
-                <Text fontSize="16px" textAlign="center" color="gray.600">
-                  Choose your preferred payment method
+                <Text fontSize="16px" textAlign="center" color="gray.600" accessibilityLabel="Add a payment method to start your 3 day free trial">
+                  Add a payment method to start your 3-day free trial
                 </Text>
+                <Box bg="green.50" borderRadius="12" p="3" w="100%">
+                  <Text fontSize="14px" textAlign="center" color="green.700" fontWeight="500">
+                    You won't be charged during your 3-day trial
+                  </Text>
+                </Box>
               </VStack>
 
               {/* Apple Pay Option */}
               {isApplePayAvailable && (
                 <Box bg="white" borderRadius="16" p="6">
                   <VStack space="4">
-                    <HStack space="3" alignItems="center">
-                      <Text fontSize="20px">🍎</Text>
-                      <VStack flex="1">
-                        <Text fontSize="18px" fontWeight="600">
-                          Apple Pay
-                        </Text>
-                        <Text fontSize="14px" color="gray.600">
-                          Fast and secure payment with Face ID or Touch ID
-                        </Text>
-                      </VStack>
-                    </HStack>
-                    
-                    <Button
-                      size="lg"
-                      bg="black"
-                      _pressed={{ bg: 'gray.800' }}
+                    <VStack>
+                      <Text fontSize="18px" fontWeight="600">
+                        Apple Pay
+                      </Text>
+                      <Text fontSize="14px" color="gray.600">
+                        Fast and secure with Face ID or Touch ID
+                      </Text>
+                    </VStack>
+
+                    <ApplePayButton
                       onPress={handleApplePay}
-                      isLoading={isProcessing}
-                      isDisabled={isProcessing}
-                      _text={{ 
-                        color: 'white',
-                        fontWeight: '600',
-                        fontSize: '16px'
-                      }}
-                      borderRadius="12"
-                      height="50px"
-                      _icon={{
-                        color: 'white',
-                        size: '20px'
-                      }}
-                    >
-                      {isProcessing ? 'Processing...' : 'Pay with Apple Pay'}
-                    </Button>
+                      type="setUp"
+                      buttonStyle="black"
+                      borderRadius={12}
+                      style={{ width: '100%', height: 50 }}
+                      disabled={isProcessing}
+                    />
                   </VStack>
                 </Box>
               )}
@@ -229,141 +200,47 @@ const CreditCard = () => {
                 </HStack>
               )}
 
-              {/* Credit Card Form */}
+              {/* Credit Card Form — Stripe CardField (PCI compliant) */}
               <Box bg="white" borderRadius="16" p="6">
                 <VStack space="6">
-                  <HStack space="3" alignItems="center" mb="2">
-                    <Text fontSize="20px">💳</Text>
-                    <VStack flex="1">
-                      <Text fontSize="18px" fontWeight="600">
-                        Credit Card
-                      </Text>
-                      <Text fontSize="14px" color="gray.600">
-                        Enter your card details manually
-                      </Text>
-                    </VStack>
-                  </HStack>
+                  <VStack>
+                    <Text fontSize="18px" fontWeight="600">
+                      Credit or Debit Card
+                    </Text>
+                    <Text fontSize="14px" color="gray.600">
+                      Your card will be charged after the trial ends
+                    </Text>
+                  </VStack>
 
-                  {/* Card Number */}
-                  <FormControl isInvalid={!!errors.cardNumber}>
-                    <FormControl.Label>Card Number</FormControl.Label>
-                    <Controller
-                      control={control}
-                      name="cardNumber"
-                      rules={{
-                        required: 'Card number is required',
-                        pattern: {
-                          value: /^\d{4}\s\d{4}\s\d{4}\s\d{4}$/,
-                          message: 'Please enter a valid 16-digit card number'
-                        }
-                      }}
-                      render={({ field: { onChange, value } }) => (
-                        <Input
-                          placeholder="1234 5678 9012 3456"
-                          value={value}
-                          onChangeText={(text) => onChange(formatCardNumber(text))}
-                          keyboardType="numeric"
-                          maxLength={19}
-                        />
-                      )}
-                    />
-                    <FormControl.ErrorMessage leftIcon={<WarningOutlineIcon size="xs" />}>
-                      {errors.cardNumber?.message}
-                    </FormControl.ErrorMessage>
-                  </FormControl>
-
-                  {/* Cardholder Name */}
-                  <FormControl isInvalid={!!errors.cardholderName}>
-                    <FormControl.Label>Cardholder Name</FormControl.Label>
-                    <Controller
-                      control={control}
-                      name="cardholderName"
-                      rules={{
-                        required: 'Cardholder name is required',
-                        minLength: {
-                          value: 2,
-                          message: 'Name must be at least 2 characters'
-                        }
-                      }}
-                      render={({ field: { onChange, value } }) => (
-                        <Input
-                          placeholder="John Doe"
-                          value={value}
-                          onChangeText={onChange}
-                          autoCapitalize="words"
-                        />
-                      )}
-                    />
-                    <FormControl.ErrorMessage leftIcon={<WarningOutlineIcon size="xs" />}>
-                      {errors.cardholderName?.message}
-                    </FormControl.ErrorMessage>
-                  </FormControl>
-
-                  {/* Expiry Date and CVV */}
-                  <HStack space="4">
-                    <FormControl flex="1" isInvalid={!!errors.expiryDate}>
-                      <FormControl.Label>Expiry Date</FormControl.Label>
-                      <Controller
-                        control={control}
-                        name="expiryDate"
-                        rules={{
-                          required: 'Expiry date is required',
-                          pattern: {
-                            value: /^\d{2}\/\d{2}$/,
-                            message: 'Please enter MM/YY format'
-                          }
-                        }}
-                        render={({ field: { onChange, value } }) => (
-                          <Input
-                            placeholder="MM/YY"
-                            value={value}
-                            onChangeText={(text) => onChange(formatExpiryDate(text))}
-                            keyboardType="numeric"
-                            maxLength={5}
-                          />
-                        )}
-                      />
-                      <FormControl.ErrorMessage leftIcon={<WarningOutlineIcon size="xs" />}>
-                        {errors.expiryDate?.message}
-                      </FormControl.ErrorMessage>
-                    </FormControl>
-
-                    <FormControl flex="1" isInvalid={!!errors.cvv}>
-                      <FormControl.Label>CVV</FormControl.Label>
-                      <Controller
-                        control={control}
-                        name="cvv"
-                        rules={{
-                          required: 'CVV is required',
-                          pattern: {
-                            value: /^\d{3,4}$/,
-                            message: 'Please enter a valid CVV'
-                          }
-                        }}
-                        render={({ field: { onChange, value } }) => (
-                          <Input
-                            placeholder="123"
-                            value={value}
-                            onChangeText={(text) => onChange(formatCVV(text))}
-                            keyboardType="numeric"
-                            maxLength={4}
-                          />
-                        )}
-                      />
-                      <FormControl.ErrorMessage leftIcon={<WarningOutlineIcon size="xs" />}>
-                        {errors.cvv?.message}
-                      </FormControl.ErrorMessage>
-                    </FormControl>
-                  </HStack>
+                  <CardField
+                    postalCodeEnabled={false}
+                    placeholders={{ number: '4242 4242 4242 4242' }}
+                    cardStyle={{
+                      backgroundColor: '#F7F7F7',
+                      textColor: '#1a1a1a',
+                      borderWidth: 1,
+                      borderColor: '#E2E8F0',
+                      borderRadius: 8,
+                      fontSize: 16,
+                      placeholderColor: '#A0AEC0'
+                    }}
+                    style={{ width: '100%', height: 50, marginVertical: 8 }}
+                    onCardChange={(details) => {
+                      setCardComplete(details.complete)
+                    }}
+                  />
 
                   <Button
                     size="lg"
                     colorScheme="blue"
-                    onPress={handleSubmit(onSubmit)}
+                    onPress={handleCardSubmit}
                     isLoading={isProcessing}
-                    isDisabled={!isValid || isProcessing}
+                    isDisabled={!cardComplete || isProcessing}
+                    borderRadius="12"
+                    height="50px"
+                    accessibilityLabel={isProcessing ? 'Saving card' : 'Continue with card'}
                   >
-                    {isProcessing ? 'Processing...' : 'Continue with Card'}
+                    {isProcessing ? 'Saving...' : 'Continue with Card'}
                   </Button>
                 </VStack>
               </Box>
@@ -377,7 +254,7 @@ const CreditCard = () => {
                       Secure Payment
                     </Text>
                     <Text fontSize="12px" color="blue.700">
-                      Your payment information is encrypted and secure
+                      Card details are handled securely by Stripe. We never see or store your full card number.
                     </Text>
                   </VStack>
                 </HStack>
@@ -385,7 +262,8 @@ const CreditCard = () => {
 
               {/* Terms */}
               <Text fontSize="12px" color="gray.500" textAlign="center">
-                By continuing, you agree to our Terms of Service and Privacy Policy
+                By continuing, you agree to our Terms of Service and Privacy Policy.
+                Your 3-day free trial starts when you choose a plan. You can cancel anytime before the trial ends.
               </Text>
             </VStack>
           </Container>
@@ -395,4 +273,4 @@ const CreditCard = () => {
   )
 }
 
-export default CreditCard 
+export default CreditCard

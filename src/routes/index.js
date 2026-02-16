@@ -18,6 +18,7 @@ import { navigationRef } from './RootNavigation'
 import Subscription from '../screens/Subscription'
 import CreditCard from '../screens/CreditCard'
 import SubscriptionSelection from '../screens/SubscriptionSelection'
+import PrivacyPolicy from '../screens/PrivacyPolicy'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
@@ -63,6 +64,7 @@ export const Routes = () => {
         <Screen name="Subscription" component={Subscription} />
         <Screen name="CreditCard" component={CreditCard} />
         <Screen name="SubscriptionSelection" component={SubscriptionSelection} />
+        <Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>

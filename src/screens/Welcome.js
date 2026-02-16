@@ -7,13 +7,16 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert
+  Alert,
+  Platform
 } from 'react-native'
 import { GoogleSignin } from '@react-native-google-signin/google-signin'
+import { appleAuth, AppleButton } from '@invertase/react-native-apple-authentication'
 import auth from '@react-native-firebase/auth'
 import GoogleIcon from '../assets/icons/google.svg'
 import { getProfile, setProfile } from '../services/users'
 import { setUserData } from '../services/database'
+import { createStripeCustomer } from '../services/api'
 import moment from 'moment'
 
 const Welcome = () => {
@@ -77,6 +80,48 @@ const Welcome = () => {
     }
   }
 
+  const handleAppleSignIn = async () => {
+    try {
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME]
+      })
+
+      if (!appleAuthRequestResponse.identityToken) {
+        throw new Error('Apple Sign-In failed')
+      }
+
+      const { identityToken, nonce } = appleAuthRequestResponse
+      const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce)
+      const { user } = await auth().signInWithCredential(appleCredential)
+
+      let profile = await getProfile()
+      if (!profile) {
+        const fullName = appleAuthRequestResponse.fullName
+        const displayName = fullName
+          ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim()
+          : user.displayName || ''
+        profile = {
+          name: displayName,
+          email: user.email || appleAuthRequestResponse.email || '',
+          createdTime: moment().startOf('day').toISOString()
+        }
+        await setProfile(profile)
+      }
+      await setUserData(profile)
+      await createStripeCustomer(profile.email, profile.name).catch(() => {})
+      reset({
+        index: 0,
+        routes: [{ name: 'CreditCard' }]
+      })
+    } catch (error) {
+      console.log('Apple Sign-In Error:', error)
+      if (error.code !== appleAuth.Error.CANCELED) {
+        Alert.alert('Sign In Error', 'Failed to sign in with Apple. Please try again.')
+      }
+    }
+  }
+
   useEffect(() => {
     if (isFocused) {
       StatusBar.setBarStyle('light-content', true)
@@ -87,16 +132,30 @@ const Welcome = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1A2225' }}>
       <Text style={styles.appName}>TravelFit</Text>
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text style={styles.title}>Unleash Your Health</Text>
+        <Text style={styles.title} accessibilityRole="header">Unleash Your Health</Text>
       </View>
-      <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister}>
+      <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Start now, create an account">
         <Text style={styles.welcomeText}>Start Now</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn}>
+      <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} accessibilityRole="button" accessibilityLabel="Continue with Google">
         <GoogleIcon width={24} height={24} />
         <Text style={styles.googleText}>Continue with Google</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
+      {Platform.OS === 'ios' && appleAuth.isSupported && (
+        <AppleButton
+          buttonStyle={AppleButton.Style.WHITE}
+          buttonType={AppleButton.Type.SIGN_IN}
+          style={{
+            width: '90%',
+            height: 52,
+            alignSelf: 'center',
+            marginBottom: 10,
+            borderRadius: 20
+          }}
+          onPress={handleAppleSignIn}
+        />
+      )}
+      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} accessibilityRole="button" accessibilityLabel="Already have an account, log in">
         <Text style={styles.loginText}>Already have an account</Text>
       </TouchableOpacity>
     </SafeAreaView>

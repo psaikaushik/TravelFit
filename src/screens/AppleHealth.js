@@ -81,7 +81,7 @@ const AppleHealth = () => {
               }}
             />
           </Flex>
-          <Text variant="title" mt="20px">
+          <Text variant="title" mt="20px" accessibilityRole="header">
             Connect to Health
           </Text>
           <Text variant="subtitle" mt="10px">
@@ -89,7 +89,7 @@ const AppleHealth = () => {
             date automatically with latest activity data.
           </Text>
         </Flex>
-        <Button size="lg" variant="primary" mt="30px" onPress={handleConnect}>
+        <Button size="lg" variant="primary" mt="30px" onPress={handleConnect} accessibilityLabel="Connect to Apple Health">
           Connect
         </Button>
       </Container>

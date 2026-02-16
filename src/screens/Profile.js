@@ -1,21 +1,20 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
-import { SafeAreaView, StatusBar } from 'react-native'
-import { Button, Container, Flex, Text, useToast, Box, VStack, HStack } from 'native-base'
+import { SafeAreaView, StatusBar, Platform } from 'react-native'
+import { Button, Container, Text, useToast, Box, VStack, HStack } from 'native-base'
 import auth from '@react-native-firebase/auth'
 import { useQuery } from '@tanstack/react-query'
 import { getUserData, getUserSettings } from '../services/database'
-import { subscriptionService } from '../services/subscription'
+import { iapService } from '../services/iap'
+import { markPaymentFlowCompleted } from '../services/subscription'
 import TabScreen from '../components/TabScreen'
-import { hasNotch } from 'react-native-device-info'
 
 const Profile = () => {
   const { reset, navigate } = useNavigation()
   const isFocused = useIsFocused()
   const toast = useToast()
   const user = auth().currentUser
-  const isIphoneX = hasNotch()
+  const [isRestoring, setIsRestoring] = useState(false)
 
   const { data: profile, isLoading: profileLoading } = useQuery(
     ['profile'],
@@ -24,8 +23,6 @@ const Profile = () => {
 
   const { data: userSettings } = useQuery(['settings'], getUserSettings)
   const currentSubscription = userSettings?.subscription
-
-  console.log('profile', profile)
 
   const handleLogOut = async () => {
     try {
@@ -40,6 +37,35 @@ const Profile = () => {
         status: 'error',
         description: e.message
       })
+    }
+  }
+
+  const handleRestorePurchases = async () => {
+    if (Platform.OS !== 'ios') return
+
+    setIsRestoring(true)
+    try {
+      const purchases = await iapService.restorePurchases()
+      if (purchases && purchases.length > 0) {
+        await markPaymentFlowCompleted()
+        toast.show({
+          status: 'success',
+          description: 'Purchases restored successfully!'
+        })
+      } else {
+        toast.show({
+          status: 'info',
+          description: 'No previous purchases found.'
+        })
+      }
+    } catch (error) {
+      console.log('Restore error:', error)
+      toast.show({
+        status: 'error',
+        description: 'Failed to restore purchases. Please try again.'
+      })
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -61,7 +87,14 @@ const Profile = () => {
         <Container flex="1" px="20px" mt="16px" mb="80px" w="100%" minW="100%">
           <VStack space="6" flex="1">
             {/* User Profile */}
-            <Box bg="secondary.400" borderRadius="16px" py="30px" px="20px">
+            <Box
+              bg="secondary.400"
+              borderRadius="16px"
+              py="30px"
+              px="20px"
+              accessibilityRole="summary"
+              accessibilityLabel={`Profile: ${profile?.name || ''}, ${user?.email || ''}`}
+            >
               <Text fontSize="20px" fontWeight="600">
                 {profile?.name || ''}
               </Text>
@@ -89,15 +122,21 @@ const Profile = () => {
                     </Box>
                   )}
                 </HStack>
-                
+
                 {currentSubscription?.isSubscribed ? (
                   <VStack space="2">
                     <Text fontSize="14px" color="gray.600">
                       You're subscribed to Premium
                     </Text>
-                    <Text fontSize="12px" color="gray.500">
-                      Enjoy all premium features
-                    </Text>
+                    <Button
+                      size="sm"
+                      colorScheme="blue"
+                      variant="outline"
+                      onPress={handleSubscriptionPress}
+                      accessibilityLabel="Manage subscription"
+                    >
+                      Manage Subscription
+                    </Button>
                   </VStack>
                 ) : (
                   <VStack space="2">
@@ -109,6 +148,7 @@ const Profile = () => {
                       colorScheme="blue"
                       variant="outline"
                       onPress={handleSubscriptionPress}
+                      accessibilityLabel="Upgrade to premium"
                     >
                       Upgrade Now
                     </Button>
@@ -117,8 +157,38 @@ const Profile = () => {
               </VStack>
             </Box>
 
+            {/* Restore Purchases */}
+            {Platform.OS === 'ios' && (
+              <Button
+                size="md"
+                variant="ghost"
+                colorScheme="blue"
+                onPress={handleRestorePurchases}
+                isLoading={isRestoring}
+                accessibilityLabel="Restore previous purchases"
+              >
+                Restore Purchases
+              </Button>
+            )}
+
+            {/* Privacy Policy */}
+            <Button
+              size="md"
+              variant="ghost"
+              colorScheme="gray"
+              onPress={() => navigate('PrivacyPolicy')}
+              accessibilityLabel="View privacy policy"
+            >
+              Privacy Policy
+            </Button>
+
             {/* Sign Out Button */}
-            <Button size="lg" variant="primary" onPress={handleLogOut}>
+            <Button
+              size="lg"
+              variant="primary"
+              onPress={handleLogOut}
+              accessibilityLabel="Sign out of your account"
+            >
               Sign Out
             </Button>
           </VStack>
