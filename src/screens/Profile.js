@@ -258,6 +258,86 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
+              {/* Curated Routes */}
+              <Pressable
+                onPress={() => navigate('CuratedRoutes')}
+                accessibilityLabel="Browse curated routes"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\u2728'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Curated Routes</Text>
+                        <Text fontSize="13px" color="gray.500">Popular walking journeys</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Walking Challenges */}
+              <Pressable
+                onPress={() => navigate('Challenges')}
+                accessibilityLabel="View walking challenges"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83C\uDFC6'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Challenges</Text>
+                        <Text fontSize="13px" color="gray.500">Daily, weekly & monthly goals</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Share Progress */}
+              <Pressable
+                onPress={() => navigate('ShareProgress')}
+                accessibilityLabel="Share your progress"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83D\uDCE4'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Share Progress</Text>
+                        <Text fontSize="13px" color="gray.500">Share your journey card</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Notification Settings */}
+              <Pressable
+                onPress={() => navigate('NotificationSettings')}
+                accessibilityLabel="Notification settings"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83D\uDD14'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Notifications</Text>
+                        <Text fontSize="13px" color="gray.500">Reminders & alerts</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
               {/* Subscription Status */}
               <Box bg="white" borderRadius="16px" p="20px">
                 <VStack space="4">

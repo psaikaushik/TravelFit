@@ -21,6 +21,11 @@ import SubscriptionSelection from '../screens/SubscriptionSelection'
 import PrivacyPolicy from '../screens/PrivacyPolicy'
 import TripHistory from '../screens/TripHistory'
 import WeeklyStats from '../screens/WeeklyStats'
+import CuratedRoutes from '../screens/CuratedRoutes'
+import ShareProgress from '../screens/ShareProgress'
+import Onboarding from '../screens/Onboarding'
+import NotificationSettings from '../screens/NotificationSettings'
+import Challenges from '../screens/Challenges'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
@@ -69,6 +74,11 @@ export const Routes = () => {
         <Screen name="PrivacyPolicy" component={PrivacyPolicy} />
         <Screen name="TripHistory" component={TripHistory} />
         <Screen name="WeeklyStats" component={WeeklyStats} />
+        <Screen name="CuratedRoutes" component={CuratedRoutes} />
+        <Screen name="ShareProgress" component={ShareProgress} />
+        <Screen name="Onboarding" component={Onboarding} />
+        <Screen name="NotificationSettings" component={NotificationSettings} />
+        <Screen name="Challenges" component={Challenges} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>
