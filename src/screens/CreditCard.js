@@ -153,10 +153,10 @@ const CreditCard = () => {
             <VStack space="6" flex="1">
               {/* Header */}
               <VStack space="4" alignItems="center">
-                <Text fontSize="28px" fontWeight="bold" textAlign="center">
+                <Text fontSize="28px" fontWeight="bold" textAlign="center" accessibilityRole="header">
                   Payment Information
                 </Text>
-                <Text fontSize="16px" textAlign="center" color="gray.600">
+                <Text fontSize="16px" textAlign="center" color="gray.600" accessibilityLabel="Add a payment method to start your 3 day free trial">
                   Add a payment method to start your 3-day free trial
                 </Text>
                 <Box bg="green.50" borderRadius="12" p="3" w="100%">
@@ -238,6 +238,7 @@ const CreditCard = () => {
                     isDisabled={!cardComplete || isProcessing}
                     borderRadius="12"
                     height="50px"
+                    accessibilityLabel={isProcessing ? 'Saving card' : 'Continue with card'}
                   >
                     {isProcessing ? 'Saving...' : 'Continue with Card'}
                   </Button>

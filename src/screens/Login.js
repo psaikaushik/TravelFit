@@ -122,6 +122,7 @@ const Login = () => {
         mt="30px"
         isLoading={isSubmitting}
         onPress={handleSubmit(handleLogIn)}
+        accessibilityLabel="Log in to your account"
       >
         Log in
       </Button>

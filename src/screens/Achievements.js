@@ -16,6 +16,7 @@ import {
   printK,
   stepsToDistance
 } from '../services/helpers'
+import { getPlacePhotoUrl } from '../config/stripe'
 import { SceneMap, TabView } from 'react-native-tab-view'
 
 const LandmarksRoute = ({ route: { data } }) => {
@@ -39,7 +40,7 @@ const LandmarksRoute = ({ route: { data } }) => {
           borderRadius="12px"
           alt={photos[0].photo_reference}
           source={{
-            uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=1250&maxwidth=1000&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+            uri: getPlacePhotoUrl(photos[0].photo_reference, 1000, 1250)
           }}
         />
       )}
@@ -114,7 +115,7 @@ const CitiesRoute = ({ route: { data } }) => {
           borderTopRadius="12px"
           alt={photos[0].photo_reference}
           source={{
-            uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=1250&maxwidth=1000&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+            uri: getPlacePhotoUrl(photos[0].photo_reference, 1000, 1250)
           }}
         />
       )}

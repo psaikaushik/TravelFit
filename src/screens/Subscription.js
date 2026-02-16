@@ -79,7 +79,7 @@ const Subscription = () => {
         <ScrollView style={{ flex: 1 }}>
           <Container flex="1" px="20px" py="20px" w="100%" minW="100%">
             <VStack space="4" mb="8">
-              <Text fontSize="28px" fontWeight="bold" textAlign="center">
+              <Text fontSize="28px" fontWeight="bold" textAlign="center" accessibilityRole="header">
                 Your Subscription
               </Text>
             </VStack>
@@ -162,7 +162,7 @@ const Subscription = () => {
 
             {/* Features */}
             <Box bg="white" borderRadius="16" p="6" mb="6">
-              <Text fontSize="18px" fontWeight="600" mb="4">
+              <Text fontSize="18px" fontWeight="600" mb="4" accessibilityRole="header">
                 Premium Features
               </Text>
               <VStack space="3">
@@ -190,6 +190,7 @@ const Subscription = () => {
                   colorScheme="red"
                   onPress={handleCancel}
                   isLoading={isCancelling}
+                  accessibilityLabel="Cancel your subscription"
                 >
                   Cancel Subscription
                 </Button>
@@ -200,6 +201,7 @@ const Subscription = () => {
                 variant="ghost"
                 colorScheme="gray"
                 onPress={goBack}
+                accessibilityLabel="Go back"
               >
                 Done
               </Button>

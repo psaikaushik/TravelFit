@@ -1,5 +1,6 @@
 import React from 'react'
 import { Flex, Image, Text } from 'native-base'
+import { getPlacePhotoUrl } from '../config/stripe'
 
 const PlaceModal = ({ route }) => {
   const { badge } = route?.params || {}
@@ -20,7 +21,7 @@ const PlaceModal = ({ route }) => {
         borderRadius="16px"
         alt={photos[0].photo_reference}
         source={{
-          uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photos[0].photo_reference}&sensor=false&maxheight=1250&maxwidth=1000&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+          uri: getPlacePhotoUrl(photos[0].photo_reference, 1000, 1250)
         }}
       />
     </Flex>

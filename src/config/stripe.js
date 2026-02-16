@@ -39,3 +39,11 @@ export const STRIPE_PRICES = {
 export const isTestMode = () => {
   return STRIPE_CONFIG.publishableKey.startsWith('pk_test_')
 }
+
+// Cloud Functions base URL for photo proxy
+// Replace PROJECT_ID with your Firebase project ID
+export const CLOUD_FUNCTIONS_URL = 'https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net'
+
+export const getPlacePhotoUrl = (photoReference, maxwidth = 400, maxheight = 400) => {
+  return `${CLOUD_FUNCTIONS_URL}/placePhoto?ref=${photoReference}&maxwidth=${maxwidth}&maxheight=${maxheight}`
+}

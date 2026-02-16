@@ -117,6 +117,7 @@ const SignUp = () => {
         mt="40px"
         isLoading={isSubmitting}
         onPress={handleSubmit(handleRegister)}
+        accessibilityLabel="Create your account"
       >
         Register
       </Button>

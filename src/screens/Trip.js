@@ -268,6 +268,8 @@ const Trip = ({ route }) => {
           mt="6px"
           p="4px"
           onPress={() => (fromMap ? goBack() : {})}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <BackSVG />
         </Pressable>
@@ -285,7 +287,7 @@ const Trip = ({ route }) => {
             <Flex align="center" width="100%">
               <TripSVG />
             </Flex>
-            <Text variant="title" mt="30px">
+            <Text variant="title" mt="30px" accessibilityRole="header">
               Setup your trip
             </Text>
             <Text variant="subtitle" mt="10px">
@@ -411,6 +413,7 @@ const Trip = ({ route }) => {
             mt="30px"
             isLoading={isSubmitting}
             onPress={handleSubmit(handleSave)}
+            accessibilityLabel="Save trip and start"
           >
             Save
           </Button>

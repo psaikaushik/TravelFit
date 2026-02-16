@@ -26,6 +26,7 @@ import {
   prettifyNum
 } from '../services/helpers'
 import useBackgroundTasks from '../services/background'
+import { getPlacePhotoUrl } from '../config/stripe'
 
 const Map = () => {
   const { navigate } = useNavigation()
@@ -67,6 +68,7 @@ const Map = () => {
         customMapStyle={mapStyle}
         mapPadding={{ bottom: isIphoneX ? 70 : 50, left: 16, right: 16 }}
         provider={PROVIDER_GOOGLE}
+        accessibilityLabel="Map showing your virtual trip route"
         initialRegion={{
           latitude: destinationPoint.latitude,
           longitude: destinationPoint.longitude,
@@ -143,7 +145,7 @@ const Map = () => {
                   w="40px"
                   h="40px"
                   source={{
-                    uri: `https://maps.googleapis.com/maps/api/place/photo?photoreference=${badge.photos[0].photo_reference}&sensor=false&maxheight=40&maxwidth=40&key=AIzaSyCe80iwSU9qzr-p5Zj8jQVfcjZFa9k_zHs`
+                    uri: getPlacePhotoUrl(badge.photos[0].photo_reference, 40, 40)
                   }}
                   mb="6px"
                   bg="#CCC"
@@ -199,6 +201,8 @@ const Map = () => {
         position="absolute"
         top={isIphoneX ? '44px' : '20px'}
         onPress={handleTrip}
+        accessibilityRole="button"
+        accessibilityLabel={`Trip from ${starting?.title || 'origin'} to ${destination?.title || 'destination'}. Tap to change trip.`}
       >
         <Flex flex="1" direction="row" align="center">
           <DistanceIcon />

@@ -1,6 +1,10 @@
 const functions = require('firebase-functions')
 const admin = require('firebase-admin')
+const axios = require('axios')
 const stripe = require('stripe')(functions.config().stripe.secret_key)
+
+// Google Maps API key — set via: firebase functions:config:set google.maps_key="YOUR_KEY"
+const GOOGLE_MAPS_KEY = functions.config().google?.maps_key || ''
 
 admin.initializeApp()
 
@@ -325,4 +329,107 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   }
 
   res.json({ received: true })
+})
+
+// ============================================================
+// 7. GOOGLE MAPS API PROXIES
+// All Maps API calls go through the backend so the API key
+// is never exposed in the client app.
+// ============================================================
+
+const mapsGet = async (url, params) => {
+  const response = await axios.get(url, {
+    params: { ...params, key: GOOGLE_MAPS_KEY },
+    timeout: 30000
+  })
+  return response.data
+}
+
+exports.mapsGetRoute = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+  return mapsGet('https://maps.googleapis.com/maps/api/directions/json', {
+    origin: data.origin,
+    destination: data.destination,
+    mode: 'walking',
+    units: 'metric'
+  })
+})
+
+exports.mapsGetNearbyPlaces = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+  return mapsGet('https://maps.googleapis.com/maps/api/place/nearbysearch/json', {
+    location: data.location,
+    radius: data.radius,
+    type: 'tourist_attraction'
+  })
+})
+
+exports.mapsGetLocationDetails = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+  return mapsGet('https://maps.googleapis.com/maps/api/geocode/json', {
+    latlng: data.latlng
+  })
+})
+
+exports.mapsGetCityDetails = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+  return mapsGet('https://maps.googleapis.com/maps/api/place/autocomplete/json', {
+    input: data.input,
+    types: '(cities)'
+  })
+})
+
+exports.mapsGetPlaceDetails = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+  return mapsGet('https://maps.googleapis.com/maps/api/place/details/json', {
+    place_id: data.placeId,
+    fields: data.fields || 'photo'
+  })
+})
+
+// ============================================================
+// 8. PLACE PHOTO PROXY
+// HTTP endpoint that proxies Google Places Photos so the API
+// key is never exposed in image URLs on the client.
+// Usage: https://<region>-<project>.cloudfunctions.net/placePhoto?ref=XXX&maxwidth=400
+// ============================================================
+exports.placePhoto = functions.https.onRequest(async (req, res) => {
+  const { ref, maxwidth, maxheight } = req.query
+
+  if (!ref) {
+    return res.status(400).send('Missing ref parameter')
+  }
+
+  try {
+    const response = await axios.get(
+      'https://maps.googleapis.com/maps/api/place/photo',
+      {
+        params: {
+          photoreference: ref,
+          maxwidth: maxwidth || '400',
+          maxheight: maxheight || '400',
+          key: GOOGLE_MAPS_KEY
+        },
+        responseType: 'stream',
+        maxRedirects: 5
+      }
+    )
+
+    res.set('Content-Type', response.headers['content-type'] || 'image/jpeg')
+    res.set('Cache-Control', 'public, max-age=86400')
+    response.data.pipe(res)
+  } catch (error) {
+    console.error('placePhoto error:', error.message)
+    res.status(500).send('Failed to fetch photo')
+  }
 })
