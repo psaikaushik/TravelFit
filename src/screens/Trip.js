@@ -33,6 +33,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import moment from 'moment'
 import BackSVG from '../assets/icons/back.svg'
+import { archiveCurrentTrip } from '../services/tripHistory'
 
 const Trip = ({ route }) => {
   let SEARCHING = false
@@ -111,6 +112,11 @@ const Trip = ({ route }) => {
     const { steps, startedTime } = userSettings || {}
 
     console.log('resetSteps', resetSteps)
+
+    // Archive current trip before starting a new one
+    if (userSettings?.starting && userSettings?.destination) {
+      await archiveCurrentTrip(userSettings)
+    }
 
     // Get Location details of origin and destination
     const promises = []

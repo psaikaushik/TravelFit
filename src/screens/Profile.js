@@ -218,6 +218,26 @@ const Profile = () => {
                 </VStack>
               </Box>
 
+              {/* Trip History */}
+              <Pressable
+                onPress={() => navigate('TripHistory')}
+                accessibilityLabel="View trip history"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83D\uDDFA\uFE0F'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Trip History</Text>
+                        <Text fontSize="13px" color="gray.500">View your past journeys</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
               {/* Subscription Status */}
               <Box bg="white" borderRadius="16px" p="20px">
                 <VStack space="4">
