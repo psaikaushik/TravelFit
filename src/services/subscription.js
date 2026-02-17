@@ -1,16 +1,32 @@
 import { getUserSettings, setUserSettings } from './database'
 import { getSubscriptionStatus as fetchSubscriptionStatus } from './api'
+import { hasReferralPremium } from './referrals'
 
 // Helper function to check if user has active subscription (server-authoritative)
+// Also checks for active referral premium rewards
 export const hasActiveSubscription = async () => {
   try {
+    // Check Stripe subscription first
     const result = await fetchSubscriptionStatus()
-    return result.isSubscribed
+    if (result.isSubscribed) return true
+
+    // Check referral premium reward
+    const hasReferral = await hasReferralPremium()
+    if (hasReferral) return true
+
+    return false
   } catch (error) {
     console.error('Error checking subscription status:', error)
     // Fall back to local cache
     const userSettings = await getUserSettings()
-    return userSettings?.subscription?.isActive || false
+    if (userSettings?.subscription?.isActive) return true
+
+    // Still check referral premium on fallback
+    try {
+      return await hasReferralPremium()
+    } catch (e) {
+      return false
+    }
   }
 }
 

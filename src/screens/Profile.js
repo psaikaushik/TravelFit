@@ -278,6 +278,70 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
+              {/* Invite Friends — Referral Rewards */}
+              <Pressable
+                onPress={() => navigate('Referrals')}
+                accessibilityLabel="Invite friends for rewards"
+                accessibilityRole="button"
+              >
+                <Box bg="secondary.400" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83C\uDF81'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600" color="primary.400">
+                          Invite Friends
+                        </Text>
+                        <Text fontSize="13px" color="primary.300">
+                          Both get a free week of Premium!
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="primary.300">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Route Races */}
+              <Pressable
+                onPress={() => navigate('Races')}
+                accessibilityLabel="View route races"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83C\uDFC1'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Route Races</Text>
+                        <Text fontSize="13px" color="gray.500">Race friends on the same route</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Leaderboards */}
+              <Pressable
+                onPress={() => navigate('Leaderboards')}
+                accessibilityLabel="View leaderboards"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83E\uDD47'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Leaderboards</Text>
+                        <Text fontSize="13px" color="gray.500">Global, friends & route rankings</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
               {/* Walking Challenges */}
               <Pressable
                 onPress={() => navigate('Challenges')}
@@ -298,10 +362,10 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
-              {/* Share Progress */}
+              {/* Share Moment (Enhanced) */}
               <Pressable
-                onPress={() => navigate('ShareProgress')}
-                accessibilityLabel="Share your progress"
+                onPress={() => navigate('ShareMoment')}
+                accessibilityLabel="Share your journey"
                 accessibilityRole="button"
               >
                 <Box bg="white" borderRadius="16px" p="20px">
@@ -309,8 +373,8 @@ const Profile = () => {
                     <HStack space="3" alignItems="center">
                       <Text fontSize="20px">{'\uD83D\uDCE4'}</Text>
                       <VStack>
-                        <Text fontSize="16px" fontWeight="600">Share Progress</Text>
-                        <Text fontSize="13px" color="gray.500">Share your journey card</Text>
+                        <Text fontSize="16px" fontWeight="600">Share Journey</Text>
+                        <Text fontSize="13px" color="gray.500">Beautiful cards for social media</Text>
                       </VStack>
                     </HStack>
                     <Text fontSize="16px" color="gray.400">{'>'}</Text>
