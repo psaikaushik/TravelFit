@@ -8,7 +8,6 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { calculateTerritoryBonus } from '../utils/userUtils';
 
 const { width } = Dimensions.get('window');
@@ -23,8 +22,6 @@ const Canvas = ({ data, onBoxClaim, user }) => {
     const box = data[rowIndex][colIndex];
     if (box.checked) return;
 
-    // Haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     // Create animation for the box
     const animationId = `${rowIndex}-${colIndex}`;
