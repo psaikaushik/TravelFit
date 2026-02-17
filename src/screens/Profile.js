@@ -278,6 +278,30 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
+              {/* Invite Friends — Referral Rewards */}
+              <Pressable
+                onPress={() => navigate('Referrals')}
+                accessibilityLabel="Invite friends for rewards"
+                accessibilityRole="button"
+              >
+                <Box bg="secondary.400" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{'\uD83C\uDF81'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600" color="primary.400">
+                          Invite Friends
+                        </Text>
+                        <Text fontSize="13px" color="primary.300">
+                          Both get a free week of Premium!
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="primary.300">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
               {/* Route Races */}
               <Pressable
                 onPress={() => navigate('Races')}

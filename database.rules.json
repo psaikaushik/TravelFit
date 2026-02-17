@@ -108,6 +108,44 @@
           }
         }
       }
+    },
+    "referrals": {
+      "codes_by_user": {
+        "$uid": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
+        }
+      },
+      "users_by_code": {
+        ".read": "auth != null",
+        "$code": {
+          ".write": "auth != null"
+        }
+      },
+      "referred_by": {
+        "$uid": {
+          ".read": "$uid === auth.uid",
+          ".write": "auth != null"
+        }
+      },
+      "successful": {
+        "$uid": {
+          ".read": "$uid === auth.uid",
+          ".write": "auth != null"
+        }
+      },
+      "rewards": {
+        "$uid": {
+          ".read": "$uid === auth.uid",
+          ".write": "auth != null"
+        }
+      },
+      "stats": {
+        "$uid": {
+          ".read": "$uid === auth.uid",
+          ".write": "auth != null"
+        }
+      }
     }
   }
 }

@@ -415,9 +415,25 @@ const Social = () => {
         <StatusBar barStyle="dark-content" />
 
         <VStack px="20px" pt="8px" pb="4px">
-          <Text fontSize="28px" fontWeight="800" color="primary.400">
-            Social
-          </Text>
+          <HStack alignItems="center" justifyContent="space-between">
+            <Text fontSize="28px" fontWeight="800" color="primary.400">
+              Social
+            </Text>
+            <Pressable
+              onPress={() => navigate('Referrals')}
+              bg="secondary.400"
+              borderRadius="10px"
+              px="12px"
+              py="6px"
+            >
+              <HStack alignItems="center" space="1">
+                <Text fontSize="14px">{'\uD83C\uDF81'}</Text>
+                <Text fontSize="12px" fontWeight="700" color="primary.400">
+                  Invite
+                </Text>
+              </HStack>
+            </Pressable>
+          </HStack>
 
           {/* Tab Switcher */}
           <HStack mt="12px" bg="white" borderRadius="12px" p="4px" borderWidth="1px" borderColor="border">

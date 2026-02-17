@@ -31,6 +31,7 @@ import RaceDetail from '../screens/RaceDetail'
 import Leaderboards from '../screens/Leaderboards'
 import ShareMoment from '../screens/ShareMoment'
 import GroupDetail from '../screens/GroupDetail'
+import Referrals from '../screens/Referrals'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
@@ -89,6 +90,7 @@ export const Routes = () => {
         <Screen name="Leaderboards" component={Leaderboards} />
         <Screen name="ShareMoment" component={ShareMoment} />
         <Screen name="GroupDetail" component={GroupDetail} />
+        <Screen name="Referrals" component={Referrals} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>

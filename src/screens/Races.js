@@ -24,6 +24,7 @@ import {
   inviteToRace
 } from '../services/races'
 import { CURATED_ROUTES } from '../data/curatedRoutes'
+import { shareRaceReferral } from '../services/referrals'
 import BackSVG from '../assets/icons/back.svg'
 
 const STATUS_COLORS = {
@@ -71,11 +72,23 @@ const Races = () => {
       distance: routeData.distance || settings?.distance
     })
 
+    const raceName = routeData.title || routeData.routeName || 'TravelFit Race'
+
     if (raceId && inviteFriendId) {
       await inviteToRace(raceId, inviteFriendId)
       Alert.alert('Race Created', `Race created and invite sent to ${inviteFriendName}!`)
     } else if (raceId) {
-      Alert.alert('Race Created', 'Share the race with friends to compete!')
+      Alert.alert(
+        'Race Created!',
+        'Invite friends to compete. Share your referral code and both get free Premium!',
+        [
+          { text: 'Later', style: 'cancel' },
+          {
+            text: 'Share Invite',
+            onPress: () => shareRaceReferral(raceName)
+          }
+        ]
+      )
     }
 
     setShowCreateRace(false)

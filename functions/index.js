@@ -568,3 +568,160 @@ exports.expireWaitingRaces = functions.pubsub
 
     return null
   })
+
+// ============================================================
+// 10. REFERRAL SYSTEM
+// Server-side validation for referral code redemption
+// Prevents abuse (double-redemption, self-referral, etc.)
+// ============================================================
+
+const REFERRAL_REWARD_DAYS = 7
+
+exports.redeemReferral = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+
+  const uid = context.auth.uid
+  const { code } = data
+
+  if (!code || typeof code !== 'string' || code.length < 4) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid referral code')
+  }
+
+  const normalizedCode = code.toUpperCase().trim()
+
+  // Look up the code owner
+  const codeSnapshot = await admin
+    .database()
+    .ref(`referrals/users_by_code/${normalizedCode}`)
+    .once('value')
+
+  if (!codeSnapshot.exists()) {
+    throw new functions.https.HttpsError('not-found', 'Referral code not found')
+  }
+
+  const referrerUid = codeSnapshot.val()
+
+  // Prevent self-referral
+  if (referrerUid === uid) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'You cannot use your own referral code'
+    )
+  }
+
+  // Check if user already redeemed a code
+  const existingRef = await admin
+    .database()
+    .ref(`referrals/referred_by/${uid}`)
+    .once('value')
+
+  if (existingRef.exists()) {
+    throw new functions.https.HttpsError(
+      'already-exists',
+      'You have already used a referral code'
+    )
+  }
+
+  // Get user names
+  const [inviteeSnap, referrerSnap] = await Promise.all([
+    admin.database().ref(`users/${uid}`).once('value'),
+    admin.database().ref(`users/${referrerUid}`).once('value')
+  ])
+
+  const inviteeName = inviteeSnap.val()?.name || 'Someone'
+  const referrerName = referrerSnap.val()?.name || 'Friend'
+
+  const now = Date.now()
+  const rewardExpiry = now + REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000
+
+  // Check if referrer has existing reward to stack
+  const referrerRewardSnap = await admin
+    .database()
+    .ref(`referrals/rewards/${referrerUid}/premium`)
+    .once('value')
+  const existingExpiry = referrerRewardSnap.val()?.expiresAt || 0
+  const referrerNewExpiry =
+    existingExpiry > now
+      ? existingExpiry + REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000
+      : rewardExpiry
+
+  // Get referrer stats
+  const statsSnap = await admin
+    .database()
+    .ref(`referrals/stats/${referrerUid}`)
+    .once('value')
+  const currentStats = statsSnap.val() || {}
+
+  // Atomic update — all or nothing
+  const updates = {}
+
+  // Record referral
+  updates[`referrals/referred_by/${uid}`] = {
+    referrerUid,
+    code: normalizedCode,
+    redeemedAt: admin.database.ServerValue.TIMESTAMP
+  }
+  updates[`referrals/successful/${referrerUid}/${uid}`] = {
+    inviteeName,
+    redeemedAt: admin.database.ServerValue.TIMESTAMP
+  }
+
+  // Grant rewards
+  updates[`referrals/rewards/${uid}/premium`] = {
+    grantedAt: now,
+    expiresAt: rewardExpiry,
+    reason: `Referred by ${referrerName}`,
+    referrerUid
+  }
+  updates[`referrals/rewards/${referrerUid}/premium`] = {
+    grantedAt: now,
+    expiresAt: referrerNewExpiry,
+    reason: `${inviteeName} joined using your code`,
+    lastReferral: uid
+  }
+
+  // Update stats
+  updates[`referrals/stats/${referrerUid}/totalReferrals`] =
+    (currentStats.totalReferrals || 0) + 1
+  updates[`referrals/stats/${referrerUid}/totalRewardDays`] =
+    (currentStats.totalRewardDays || 0) + REFERRAL_REWARD_DAYS
+
+  await admin.database().ref().update(updates)
+
+  return {
+    success: true,
+    rewardDays: REFERRAL_REWARD_DAYS,
+    referrerName
+  }
+})
+
+// Clean up expired referral rewards (daily)
+exports.cleanupExpiredReferralRewards = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async (context) => {
+    const now = Date.now()
+    const snapshot = await admin
+      .database()
+      .ref('referrals/rewards')
+      .once('value')
+
+    const data = snapshot.val() || {}
+    const updates = {}
+    let cleaned = 0
+
+    for (const [userId, rewards] of Object.entries(data)) {
+      if (rewards.premium && rewards.premium.expiresAt < now) {
+        updates[`referrals/rewards/${userId}/premium`] = null
+        cleaned++
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await admin.database().ref().update(updates)
+      console.log(`Cleaned up ${cleaned} expired referral rewards`)
+    }
+
+    return null
+  })

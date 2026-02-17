@@ -46,3 +46,8 @@ export const mapsGetCityDetails = (input) => {
 export const mapsGetPlaceDetails = (placeId, fields) => {
   return callFunction('mapsGetPlaceDetails', { placeId, fields })
 }
+
+// Referrals (server-side validation)
+export const redeemReferralServer = (code) => {
+  return callFunction('redeemReferral', { code })
+}
