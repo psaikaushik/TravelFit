@@ -9,15 +9,25 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StripeProvider } from '@stripe/stripe-react-native'
 import { STRIPE_CONFIG } from './src/config/stripe'
+import ErrorBoundary from './src/components/ErrorBoundary'
+import { ThemeProvider } from './src/context/ThemeContext'
 import 'react-native-gesture-handler'
 
-LogBox.ignoreAllLogs()
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    'Non-serializable values were found in the navigation state',
+    'ViewPropTypes will be removed'
+  ])
+} else {
+  LogBox.ignoreAllLogs()
+}
 
 export default function Main() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1 // TODO fix cached queries
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        cacheTime: 10 * 60 * 1000 // 10 minutes
       }
     }
   })
@@ -29,7 +39,11 @@ export default function Main() {
     >
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <App />
+          <ThemeProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </ThemeProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
     </StripeProvider>

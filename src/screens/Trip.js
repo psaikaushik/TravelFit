@@ -34,6 +34,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import moment from 'moment'
 import BackSVG from '../assets/icons/back.svg'
 import { archiveCurrentTrip } from '../services/tripHistory'
+import logger from '../utils/logger'
 
 const Trip = ({ route }) => {
   let SEARCHING = false
@@ -88,7 +89,7 @@ const Trip = ({ route }) => {
     if (!!searchText && searchText.length > 0) {
       const results = await getCityDetails(text)
       const { predictions } = results || {}
-      console.log('results', text, predictions.length)
+      logger.log('results', text, predictions.length)
       const options = predictions.slice(0, 3).map((x) => ({
         id: x.place_id,
         name: x.description
@@ -111,7 +112,7 @@ const Trip = ({ route }) => {
     const userSettings = await getUserSettings()
     const { steps, startedTime } = userSettings || {}
 
-    console.log('resetSteps', resetSteps)
+    logger.log('resetSteps', resetSteps)
 
     // Archive current trip before starting a new one
     if (userSettings?.starting && userSettings?.destination) {
@@ -164,7 +165,7 @@ const Trip = ({ route }) => {
     const totalSteps = resetSteps ? 0 : steps || 0
     const progress = calcSteps(totalSteps)
 
-    console.log('route', route.length)
+    logger.log('route', route.length)
 
     // Create Break points and Nearby Places in each break point
     const { breakPoints, places } = await getPlaces(
@@ -174,7 +175,7 @@ const Trip = ({ route }) => {
       distance
     )
 
-    console.log('getPlaces', places.length)
+    logger.log('getPlaces', places.length)
 
     const progressIdx = Math.round(
       (calcProgress(totalSteps, distance) / 100) * route?.length
@@ -188,7 +189,7 @@ const Trip = ({ route }) => {
     //  Check if city is new then add city badge
     const cities = await checkCity(destinationPoint, [])
 
-    console.log('cities', cities.length)
+    logger.log('cities', cities.length)
 
     await setUserSettings({
       ...userSettings,
@@ -249,7 +250,7 @@ const Trip = ({ route }) => {
 
   // useEffect(() => {
   //   if (addExtra !== -1) {
-  //     console.log('addExtra', addExtra)
+  //     logger.log('addExtra', addExtra)
   //     if (addExtra === 1) {
   //       setTimeout(() => {
   //         this.flatListRef.scrollTo({ y: 30 })

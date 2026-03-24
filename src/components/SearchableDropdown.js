@@ -1,365 +1,256 @@
-import React, { Component } from 'react'
-import { Text, TextInput, View, TouchableOpacity, Keyboard } from 'react-native'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  Text,
+  TextInput,
+  View,
+  TouchableOpacity,
+  Keyboard,
+  StyleSheet
+} from 'react-native'
 
-const defaultItemValue = {
-  name: '',
-  id: 0
-}
+const SearchableDropDown = ({
+  items = [],
+  onItemSelect,
+  onTextChange,
+  onChangeText,
+  onFocus,
+  onBlur,
+  onRemoveItem,
+  selectedItems = [],
+  placeholder = 'Search...',
+  placeholderTextColor = '#999',
+  defaultIndex,
+  resetValue,
+  multi = false,
+  chip = false,
+  setSort,
+  containerStyle,
+  textInputStyle,
+  itemStyle,
+  itemTextStyle,
+  itemsContainerStyle,
+  textInputProps = {}
+}) => {
+  const [searchText, setSearchText] = useState('')
+  const [listItems, setListItems] = useState(items)
+  const [focus, setFocusState] = useState(false)
+  const [item, setItem] = useState(
+    defaultIndex && items.length > defaultIndex ? items[defaultIndex] : {}
+  )
+  const inputRef = useRef(null)
 
-export default class SearchableDropDown extends Component {
-  constructor(props) {
-    super(props)
-    this.renderTextInput = this.renderTextInput.bind(this)
-    this.renderFlatList = this.renderFlatList.bind(this)
-    this.searchedItems = this.searchedItems.bind(this)
-    this.renderItems = this.renderItems.bind(this)
-    this.state = {
-      item: {},
-      searchText: '',
-      listItems: [],
-      focus: false
-    }
-  }
+  useEffect(() => {
+    setListItems(items)
+  }, [items])
 
-  renderFlatList = () => {
-    if (this.state.focus) {
-      return (
-        <View style={this.props.itemsContainerStyle}>
-          {this.state.listItems.map(this.renderItems)}
-        </View>
-      )
-      // const flatListPorps = { nestedScrollEnabled: false }
-      // const oldSupport = [
-      //   { key: 'keyboardShouldPersistTaps', val: 'handled' },
-      //   { key: 'nestedScrollEnabled', val: false },
-      //   { key: 'style', val: { ...this.props.itemsContainerStyle } },
-      //   { key: 'data', val: this.state.listItems },
-      //   { key: 'keyExtractor', val: (item, index) => index.toString() },
-      //   {
-      //     key: 'renderItem',
-      //     val: ({ item, index }) => this.renderItems(item, index)
-      //   }
-      // ]
-      // oldSupport.forEach((kv) => {
-      //   if (!Object.keys(flatListPorps).includes(kv.key)) {
-      //     flatListPorps[kv.key] = kv.val
-      //   } else {
-      //     if (kv.key === 'style') {
-      //       flatListPorps['style'] = kv.val
-      //     }
-      //   }
-      // })
-      // return <FlatList {...flatListPorps} scrollEnabled={false} />
-    }
-  }
+  useEffect(() => {
+    if (!searchText || items === listItems) return
+    const filtered = filterItems(items, searchText)
+    setListItems(filtered)
+    setItem({ id: -1, name: searchText })
+  }, [items])
 
-  componentDidMount = () => {
-    const listItems = this.props.items
-    const defaultIndex = this.props.defaultIndex
-    if (defaultIndex && listItems.length > defaultIndex) {
-      this.setState({
-        listItems,
-        item: listItems[defaultIndex]
-      })
-    } else {
-      this.setState({ listItems })
-    }
-  }
+  const filterItems = useCallback(
+    (list, text) => {
+      const sortFn =
+        setSort && typeof setSort === 'function'
+          ? setSort
+          : (i, t) => i.name.toLowerCase().indexOf(t.toLowerCase()) > -1
+      return list.filter((i) => sortFn(i, text))
+    },
+    [setSort]
+  )
 
-  componentDidUpdate = (prevProps) => {
-    const itemsChanged = prevProps.items !== this.props.items
-    const searchText = this.state.searchText
-    if (!searchText || !itemsChanged) return
-    let setSort = this.props.setSort
-    if (!setSort && typeof setSort !== 'function') {
-      setSort = (item, searchedText) => {
-        return item.name.toLowerCase().indexOf(searchedText.toLowerCase()) > -1
+  const handleTextChange = useCallback(
+    (text) => {
+      setSearchText(text)
+      const filtered = filterItems(items, text)
+      setItem({ id: -1, name: text })
+      setListItems(filtered)
+
+      const callback = onTextChange || onChangeText || textInputProps.onTextChange || textInputProps.onChangeText
+      if (callback && typeof callback === 'function') {
+        setTimeout(() => callback(text), 0)
       }
-    }
-    var ac = this.props.items.filter((item) => {
-      return setSort(item, searchText)
-    })
-    let item = {
-      id: -1,
-      name: searchText
-    }
-    this.setState({ listItems: ac, item: item })
-  }
+    },
+    [items, filterItems, onTextChange, onChangeText, textInputProps]
+  )
 
-  searchedItems = (searchedText) => {
-    let setSort = this.props.setSort
-    if (!setSort && typeof setSort !== 'function') {
-      setSort = (item, searchedText) => {
-        return item.name.toLowerCase().indexOf(searchedText.toLowerCase()) > -1
-      }
-    }
-    var ac = this.props.items.filter((item) => {
-      return setSort(item, searchedText)
-    })
-    let item = {
-      id: -1,
-      name: searchedText
-    }
-    this.setState({ listItems: ac, item: item })
-    const onTextChange =
-      this.props.onTextChange ||
-      this.props.textInputProps.onTextChange ||
-      this.props.onChangeText ||
-      this.props.textInputProps.onChangeText
-    if (onTextChange && typeof onTextChange === 'function') {
+  const handleItemSelect = useCallback(
+    (selectedItem) => {
+      setItem(selectedItem)
+      setFocusState(false)
+      Keyboard.dismiss()
       setTimeout(() => {
-        onTextChange(searchedText)
+        onItemSelect?.(selectedItem)
+        if (resetValue) {
+          setFocusState(true)
+          setItem({})
+          inputRef.current?.focus()
+        }
       }, 0)
-    }
-  }
+    },
+    [onItemSelect, resetValue]
+  )
 
-  renderItems = (item, index) => {
-    if (
-      this.props.multi &&
-      this.props.selectedItems &&
-      this.props.selectedItems.length > 0
-    ) {
-      return this.props.selectedItems.find((sitem) => sitem.id === item.id) ? (
-        <TouchableOpacity
-          key={item.id}
-          style={{ ...this.props.itemStyle, flex: 1, flexDirection: 'row' }}
-        >
-          <View
-            style={{
-              flex: 0.9,
-              flexDirection: 'row',
-              alignItems: 'flex-start'
-            }}
-          >
-            <Text>{item.name}</Text>
-          </View>
-          <View
-            style={{ flex: 0.1, flexDirection: 'row', alignItems: 'flex-end' }}
-          >
+  const handleFocus = useCallback(
+    (e) => {
+      onFocus?.(e)
+      textInputProps.onFocus?.(e)
+      setFocusState(true)
+      setListItems(items)
+    },
+    [onFocus, items, textInputProps]
+  )
+
+  const handleBlur = useCallback(
+    (e) => {
+      onBlur?.(e)
+      textInputProps.onBlur?.(e)
+      setFocusState(false)
+    },
+    [onBlur, textInputProps]
+  )
+
+  const renderSelectedChips = () => {
+    if (!selectedItems?.length || !chip || !multi) return null
+
+    return (
+      <View style={styles.chipContainer}>
+        {selectedItems.map((chipItem, index) => (
+          <View key={chipItem.id || index} style={styles.chip}>
+            <Text style={styles.chipText}>{chipItem.name}</Text>
             <TouchableOpacity
-              onPress={() =>
-                setTimeout(() => {
-                  this.props.onRemoveItem(item, index)
-                }, 0)
-              }
-              style={{
-                backgroundColor: '#f16d6b',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 25,
-                height: 25,
-                borderRadius: 100,
-                marginLeft: 10
-              }}
+              onPress={() => setTimeout(() => onRemoveItem?.(chipItem, index), 0)}
+              style={styles.chipRemove}
+              accessibilityLabel={`Remove ${chipItem.name}`}
+              accessibilityRole="button"
             >
-              <Text>X</Text>
+              <Text style={styles.chipRemoveText}>{'\u00D7'}</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          key={item.id}
-          onPress={() => {
-            this.setState({ item: item })
-            setTimeout(() => {
-              this.props.onItemSelect(item)
-            }, 0)
-          }}
-          style={{ ...this.props.itemStyle, flex: 1, flexDirection: 'row' }}
-        >
-          <View
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}
-          >
-            <Text>{item.name}</Text>
-          </View>
-        </TouchableOpacity>
-      )
-    } else {
-      return (
-        <TouchableOpacity
-          key={item.id}
-          style={{ ...this.props.itemStyle }}
-          onPress={() => {
-            this.setState({ item: item, focus: false })
-            Keyboard.dismiss()
-            setTimeout(() => {
-              this.props.onItemSelect(item)
-              if (this.props.resetValue) {
-                this.setState({ focus: true, item: defaultItemValue })
-                this.input.focus()
-              }
-            }, 0)
-          }}
-        >
-          {this.props.selectedItems &&
-          this.props.selectedItems.length > 0 &&
-          this.props.selectedItems.find((x) => x.id === item.id) ? (
-            <Text style={{ ...this.props.itemTextStyle }}>{item.name}</Text>
-          ) : (
-            <Text style={{ ...this.props.itemTextStyle }}>{item.name}</Text>
-          )}
-        </TouchableOpacity>
-      )
-    }
-  }
-
-  renderListType = () => {
-    return this.renderFlatList()
-  }
-
-  renderTextInput = () => {
-    const textInputProps = { ...this.props.textInputProps }
-    const oldSupport = [
-      { key: 'ref', val: (e) => (this.input = e) },
-      {
-        key: 'onTextChange',
-        val: (text) => {
-          this.setState({ searchText: text })
-          this.searchedItems(text)
-        }
-      },
-      { key: 'underlineColorAndroid', val: this.props.underlineColorAndroid },
-      {
-        key: 'onFocus',
-        val: () => {
-          this.props.onFocus && this.props.onFocus()
-          this.setState({
-            focus: true,
-            listItems: this.props.items
-          })
-        }
-      },
-      {
-        key: 'onBlur',
-        val: () => {
-          this.props.onBlur && this.props.onBlur(this)
-          this.setState({ focus: false })
-        }
-      },
-      {
-        key: 'value',
-        val: this.state.item ? this.state.item.name : ''
-      },
-      {
-        key: 'style',
-        val: { ...this.props.textInputStyle }
-      },
-      {
-        key: 'placeholderTextColor',
-        val: this.props.placeholderTextColor
-      },
-      {
-        key: 'placeholder',
-        val: this.props.placeholder
-      }
-    ]
-    oldSupport.forEach((kv) => {
-      if (!Object.keys(textInputProps).includes(kv.key)) {
-        if (kv.key === 'onTextChange' || kv.key === 'onChangeText') {
-          textInputProps['onChangeText'] = kv.val
-        } else {
-          textInputProps[kv.key] = kv.val
-        }
-      } else {
-        if (kv.key === 'onTextChange' || kv.key === 'onChangeText') {
-          textInputProps['onChangeText'] = kv.val
-        }
-      }
-    })
-    return (
-      <TextInput
-        {...textInputProps}
-        onBlur={(e) => {
-          if (this.props.onBlur) {
-            this.props.onBlur(e)
-          }
-          if (this.props.textInputProps && this.props.textInputProps.onBlur) {
-            this.props.textInputProps.onBlur(e)
-          }
-          this.setState({ focus: false })
-        }}
-        onFocus={(e) => {
-          if (this.props.onFocus) {
-            this.props.onFocus(e)
-          }
-          if (this.props.textInputProps && this.props.textInputProps.onFocus) {
-            this.props.textInputProps.onFocus(e)
-          }
-          this.setState({ focus: true, listItems: this.props.items })
-        }}
-      />
-    )
-  }
-
-  render = () => {
-    return (
-      <View
-        keyboardShouldPersist="always"
-        style={{ ...this.props.containerStyle }}
-      >
-        {this.renderSelectedItems()}
-        {this.renderTextInput()}
-        {this.renderListType()}
+        ))}
       </View>
     )
   }
-  renderSelectedItems() {
-    let items = this.props.selectedItems || []
-    if (
-      items !== undefined &&
-      items.length > 0 &&
-      this.props.chip &&
-      this.props.multi
-    ) {
+
+  const renderItem = (listItem, index) => {
+    const isSelected = selectedItems?.find?.((s) => s.id === listItem.id)
+
+    if (multi && isSelected) {
       return (
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            paddingBottom: 10,
-            marginTop: 5
-          }}
+        <TouchableOpacity
+          key={listItem.id || index}
+          style={[itemStyle, styles.itemRow]}
         >
-          {items.map((item, index) => {
-            return (
-              <View
-                key={index}
-                style={{
-                  width: item.name.length * 8 + 60,
-                  justifyContent: 'center',
-                  flex: 0,
-                  backgroundColor: '#eee',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  margin: 5,
-                  padding: 8,
-                  borderRadius: 15
-                }}
-              >
-                <Text style={{ color: '#555' }}>{item.name}</Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    setTimeout(() => {
-                      this.props.onRemoveItem(item, index)
-                    }, 0)
-                  }
-                  style={{
-                    backgroundColor: '#f16d6b',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 25,
-                    height: 25,
-                    borderRadius: 100,
-                    marginLeft: 10
-                  }}
-                >
-                  <Text>X</Text>
-                </TouchableOpacity>
-              </View>
-            )
-          })}
-        </View>
+          <View style={styles.itemContent}>
+            <Text style={itemTextStyle}>{listItem.name}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setTimeout(() => onRemoveItem?.(listItem, index), 0)}
+            style={styles.removeButton}
+            accessibilityLabel={`Remove ${listItem.name}`}
+          >
+            <Text style={styles.removeButtonText}>{'\u00D7'}</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
       )
     }
+
+    return (
+      <TouchableOpacity
+        key={listItem.id || index}
+        style={itemStyle}
+        onPress={() => handleItemSelect(listItem)}
+        accessibilityRole="button"
+      >
+        <Text style={itemTextStyle}>{listItem.name}</Text>
+      </TouchableOpacity>
+    )
   }
+
+  return (
+    <View style={containerStyle}>
+      {renderSelectedChips()}
+      <TextInput
+        ref={inputRef}
+        value={item?.name || ''}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        style={textInputStyle}
+        onChangeText={handleTextChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        accessibilityLabel={placeholder}
+        {...textInputProps}
+      />
+      {focus && listItems.length > 0 && (
+        <View style={itemsContainerStyle}>
+          {listItems.map(renderItem)}
+        </View>
+      )}
+    </View>
+  )
 }
+
+const styles = StyleSheet.create({
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingBottom: 10,
+    marginTop: 5
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F2F8',
+    margin: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20
+  },
+  chipText: {
+    color: '#1A2225',
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  chipRemove: {
+    backgroundColor: '#FF6B6B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginLeft: 8
+  },
+  chipRemoveText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  itemRow: {
+    flex: 1,
+    flexDirection: 'row'
+  },
+  itemContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start'
+  },
+  removeButton: {
+    backgroundColor: '#FF6B6B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginLeft: 10
+  },
+  removeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  }
+})
+
+export default SearchableDropDown

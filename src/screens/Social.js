@@ -16,6 +16,8 @@ import {
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import TabScreen from '../components/TabScreen'
+import EmptyState from '../components/EmptyState'
+import haptics from '../utils/haptics'
 import {
   getFriendsList,
   getFriendRequests,
@@ -86,13 +88,16 @@ const Social = () => {
   }, [])
 
   const handleSendRequest = async (user) => {
+    haptics.light()
     await sendFriendRequest(user.id, user.name)
     Alert.alert('Request Sent', `Friend request sent to ${user.name}`)
+    haptics.success()
     setSearchQuery('')
     setSearchResults([])
   }
 
   const handleAcceptRequest = async (request) => {
+    haptics.light()
     await acceptFriendRequest(request.fromUid)
     refetchFriends()
     refetchRequests()
@@ -122,6 +127,7 @@ const Social = () => {
   }
 
   const handleCreateGroup = async () => {
+    haptics.light()
     if (!groupName.trim()) return
     await createGroup({ name: groupName.trim(), description: groupDesc.trim() })
     setShowCreateGroup(false)
@@ -540,13 +546,18 @@ const Social = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           ListEmptyComponent={
-            <Flex align="center" justify="center" py="60px">
-              <Text fontSize="16px" fontWeight="600" color="primary.100">
-                {activeTab === 'friends'
-                  ? 'Search for friends to get started!'
-                  : 'Create a group to walk together!'}
-              </Text>
-            </Flex>
+            <EmptyState
+              type={activeTab === 'friends' ? 'friends' : 'groups'}
+              title={activeTab === 'friends' ? 'No Friends Yet' : 'No Groups Yet'}
+              message={activeTab === 'friends'
+                ? 'Search for friends above to start walking together and competing on leaderboards!'
+                : 'Create a walking group to stay motivated and track progress with your crew!'}
+              actionLabel={activeTab === 'friends' ? 'Find Friends' : 'Create Group'}
+              onAction={() => {
+                haptics.light()
+                if (activeTab === 'groups') setShowCreateGroup(true)
+              }}
+            />
           }
         />
 

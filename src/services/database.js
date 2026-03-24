@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import logger from '../utils/logger'
 
 const getData = async (type) => {
   try {
@@ -12,15 +13,15 @@ const storeData = async (type, value) => {
   try {
     await AsyncStorage.setItem(type, value)
   } catch (e) {
-    console.log('storeData', e)
+    logger.error('storeData', e)
   }
 }
 
 const removeData = async (type) => {
   try {
-    await AsyncStorage.removeItem(type, value)
+    await AsyncStorage.removeItem(type)
   } catch (e) {
-    console.log('removeData', e)
+    logger.error('removeData', e)
   }
 }
 

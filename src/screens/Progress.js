@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getUserSettings } from '../services/database'
 import { getStreakSummary, calculateStreak } from '../services/streak'
 import TabScreen from '../components/TabScreen'
+import Confetti from '../components/Confetti'
+import haptics from '../utils/haptics'
 import WalkingIcon from '../assets/icons/walking.svg'
 import moment from 'moment'
 import {
@@ -20,6 +22,7 @@ const RING_STROKE = 12
 
 const Progress = () => {
   const queryClient = useQueryClient()
+  const [showConfetti, setShowConfetti] = useState(false)
   const [activeColor] = useState(new Animated.Value(0))
   const [goalPulse] = useState(new Animated.Value(1))
   const { data: settings } = useQuery(['settings'], getUserSettings)
@@ -42,6 +45,9 @@ const Progress = () => {
   useEffect(() => {
     if (streakData?.goalReachedToday && !prevGoalReached.current) {
       prevGoalReached.current = true
+      haptics.success()
+      setShowConfetti(true)
+      setTimeout(() => setShowConfetti(false), 3000)
       Animated.sequence([
         Animated.timing(goalPulse, { toValue: 1.15, duration: 300, useNativeDriver: true }),
         Animated.timing(goalPulse, { toValue: 0.95, duration: 200, useNativeDriver: true }),
@@ -143,6 +149,7 @@ const Progress = () => {
 
   return (
     <TabScreen>
+      <Confetti trigger={showConfetti} />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
         {/* Trip Progress Header */}
         <Flex

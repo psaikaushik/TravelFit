@@ -9,6 +9,7 @@ import {
   purchaseErrorListener,
   endConnection
 } from 'react-native-iap'
+import logger from '../utils/logger'
 
 // App Store product IDs — must match what's configured in App Store Connect
 export const IAP_PRODUCT_IDS = {
@@ -33,7 +34,7 @@ class IAPService {
       this.connected = true
       return true
     } catch (error) {
-      console.log('IAP init error:', error)
+      logger.log('IAP init error:', error)
       this.connected = false
       return false
     }
@@ -46,7 +47,7 @@ class IAPService {
       const subscriptions = await getSubscriptions({ skus: productIds })
       return subscriptions
     } catch (error) {
-      console.log('IAP getProducts error:', error)
+      logger.log('IAP getProducts error:', error)
       return []
     }
   }
@@ -72,7 +73,7 @@ class IAPService {
     try {
       await finishTransaction({ purchase, isConsumable: false })
     } catch (error) {
-      console.log('finishTransaction error:', error)
+      logger.log('finishTransaction error:', error)
     }
   }
 
@@ -83,7 +84,7 @@ class IAPService {
       const purchases = await getAvailablePurchases()
       return purchases
     } catch (error) {
-      console.log('IAP restore error:', error)
+      logger.log('IAP restore error:', error)
       throw error
     }
   }

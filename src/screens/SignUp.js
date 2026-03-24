@@ -1,4 +1,5 @@
 import React from 'react'
+import logger from '../utils/logger'
 import { useNavigation } from '@react-navigation/native'
 import { Text, Button, Flex, useToast } from 'native-base'
 import { useForm } from 'react-hook-form'
@@ -39,7 +40,7 @@ const SignUp = () => {
       await setUserData(profile)
       // Create Stripe customer for this new user
       await createStripeCustomer(email, name).catch((err) =>
-        console.log('Stripe customer will be created on CreditCard screen:', err)
+        logger.log('Stripe customer will be created on CreditCard screen:', err)
       )
       // Navigate to credit card screen after successful signup
       reset({
@@ -47,7 +48,7 @@ const SignUp = () => {
         routes: [{ name: 'CreditCard' }]
       })
     } catch (e) {
-      console.log('handleLogIn', e)
+      logger.log('handleLogIn', e)
       toast.show({
         status: 'error',
         description: e.message

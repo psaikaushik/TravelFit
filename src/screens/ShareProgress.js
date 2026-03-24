@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getUserSettings } from '../services/database'
 import { calcProgress, prettifyNum, stepsToDistance } from '../services/helpers'
 import BackSVG from '../assets/icons/back.svg'
+import logger from '../utils/logger'
 
 const ShareProgress = () => {
   const { goBack } = useNavigation()
@@ -49,7 +50,7 @@ const ShareProgress = () => {
     try {
       await Share.share({ message })
     } catch (error) {
-      console.log('Share error:', error)
+      logger.log('Share error:', error)
     }
   }
 

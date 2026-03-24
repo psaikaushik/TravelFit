@@ -7,27 +7,28 @@ import { useQueryClient } from '@tanstack/react-query'
 import { updateLeaderboardEntry } from './leaderboards'
 import { updateMyProgress } from './friends'
 import { getUserSettings } from './database'
+import logger from '../utils/logger'
 
 const useBackgroundTasks = () => {
   const queryClient = useQueryClient()
   const [tasks, setTasks] = useState([])
 
   const initBackgroundTasks = () => {
-    console.log('healthKit:background')
+    logger.log('healthKit:background')
 
     NativeAppEventEmitter.addListener(
       'healthKit:StepCount:setup:success',
       (...args) => {
-        console.log('healthKit:StepCount:setup:success', args)
+        logger.log('healthKit:StepCount:setup:success', args)
       }
     )
 
     NativeAppEventEmitter.addListener('healthKit:StepCount:new', (...args) => {
-      console.log('healthKit:StepCount:new')
+      logger.log('healthKit:StepCount:new')
 
       // Update trip progress
       updateProgress(queryClient).then(({ success, alerts, error }) => {
-        console.log('progress updated', success, alerts, error)
+        logger.log('progress updated', success, alerts, error)
         if (!!success && !!alerts) {
           alerts.forEach(({ name }) => {
             Notifications.postLocalNotification({
@@ -49,25 +50,24 @@ const useBackgroundTasks = () => {
           const cities = (settings.cities || []).length
 
           updateLeaderboardEntry({ steps, distance, landmarks, cities }).catch((e) =>
-            console.log('leaderboard update error:', e)
+            logger.log('leaderboard update error:', e)
           )
           updateMyProgress({
             steps,
             distance,
             routeName: settings.starting?.title && settings.destination?.title
-              ? `${settings.starting.title} → ${settings.destination.title}`
+              ? `${settings.starting.title} \u2192 ${settings.destination.title}`
               : null,
             progress: settings.distance ? Math.min((distance / settings.distance) * 100, 100) : 0
-          }).catch((e) => console.log('social progress update error:', e))
+          }).catch((e) => logger.log('social progress update error:', e))
         }
       })
 
       // Check daily step goal and streak
       checkDailyGoal().then((result) => {
-        console.log('daily goal check', result)
+        logger.log('daily goal check', result)
 
         if (result.isFirstTimeToday) {
-          // Goal reached for the first time today — celebrate!
           const streakText = result.currentStreak > 1
             ? `${result.currentStreak}-day streak!`
             : 'Keep it up tomorrow to start a streak!'
@@ -80,35 +80,34 @@ const useBackgroundTasks = () => {
           })
         }
 
-        // Refresh streak data in UI
         queryClient.invalidateQueries(['streak'])
         queryClient.invalidateQueries(['streak-profile'])
       }).catch((err) => {
-        console.log('daily goal check error:', err)
+        logger.log('daily goal check error:', err)
       })
     })
 
     Notifications.registerRemoteNotifications()
 
     Notifications.events().registerRemoteNotificationsRegistered((event) => {
-      console.log('Device Token Received', event.deviceToken)
+      logger.log('Device Token Received', event.deviceToken)
     })
     Notifications.events().registerRemoteNotificationsRegistrationFailed(
       (event) => {
-        console.log('event', event)
+        logger.log('Remote notification registration failed', event)
       }
     )
     Notifications.events().registerNotificationReceivedForeground(
-      (notification: Notification, completion) => {
-        console.log(
+      (notification, completion) => {
+        logger.log(
           `Notification received in foreground: ${notification.title} : ${notification.body}`
         )
         completion({ alert: true, sound: true, badge: false })
       }
     )
     Notifications.events().registerNotificationOpened(
-      (notification: Notification, completion) => {
-        console.log(`Notification opened: ${notification.payload}`)
+      (notification, completion) => {
+        logger.log(`Notification opened: ${notification.payload}`)
         completion()
       }
     )

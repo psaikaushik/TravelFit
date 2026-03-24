@@ -9,6 +9,7 @@ import {
 } from './maps'
 import { hasCompletedPaymentFlow } from './subscription'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import logger from '../utils/logger'
 
 export const calcSteps = (steps = 0) => {
   return (Math.round(steps / 12) / 100).toFixed(2)
@@ -50,7 +51,7 @@ export const getStepsNumAtDate = async (date = null) =>
       },
       (callbackError, results) => {
         if (callbackError) {
-          console.log('getStepsNum Error', callbackError)
+          logger.log('getStepsNum Error', callbackError)
           resolve(callbackError)
         } else {
           resolve(results)
@@ -69,7 +70,7 @@ export const getStepsNum = async (date = null) =>
         }
       },
       async (error, result) => {
-        console.log('getAuthStatus', error, result)
+        logger.log('getAuthStatus', error, result)
         if (
           !!error ||
           !result ||
@@ -85,10 +86,10 @@ export const getStepsNum = async (date = null) =>
             },
             (callbackError, results) => {
               if (callbackError) {
-                console.log('getStepsNum Error', callbackError)
+                logger.log('getStepsNum Error', callbackError)
                 resolve(callbackError)
               } else {
-                console.log('getDailyStepCountSamples results', results.length)
+                logger.log('getDailyStepCountSamples results', results.length)
                 resolve(results)
               }
             }
@@ -107,7 +108,6 @@ export const getStats = async () => {
     { id: 'ThreeDaysBefore', date: moment().subtract(4, 'days').toISOString() }
   ]
   const results = await getStepsNumAtDate(stats[4].date)
-  console.log('results', results)
   if (!results) return stats
 
   for (let i = 0; i < stats.length; i++) {
@@ -123,14 +123,12 @@ export const getStats = async () => {
 const getPolygonArray = (latitude) => {
   const R = 6378137
   const pi = 3.14
-  //distance in meters
   const upper_offset = 300
   const lower_offset = -300
 
   const lat_up = upper_offset / R
   const lat_down = lower_offset / R
 
-  //OffsetPosition, decimal degrees
   const lat_upper = latitude + (lat_up * 180) / pi
   const lat_lower = latitude + (lat_down * 180) / pi
 
@@ -159,7 +157,6 @@ export const printGrid = (places) => {
 }
 
 export const getTopPlace = (places) => {
-  // console.log('places', places.map((x) => x.name).join(', '))
   places.forEach((place) => {
     place.score =
       (place.types || []).length * 10 +
@@ -219,7 +216,6 @@ export const calcBreakpointsProgress = (
         progress = 50
       }
     } else if (distance < radius) {
-      // Inside break point
       if (pointIdx > progressIdx) {
         progress = ((radius - distance) / radius) * 100
       } else {
@@ -227,10 +223,8 @@ export const calcBreakpointsProgress = (
       }
     } else {
       if (pointIdx < progressIdx) {
-        // Already Passed
         progress = 100
       } else {
-        // Not Passed
         progress = 0
       }
     }
@@ -242,7 +236,7 @@ export const calcBreakpointsProgress = (
 }
 
 export const checkCity = async (destinationPoint, oldCities = []) => {
-  console.log('checkCity', destinationPoint)
+  logger.log('checkCity', destinationPoint)
   const newCities = []
   if (!destinationPoint) return newCities
   const data = await getLocationDetails(destinationPoint)
@@ -291,7 +285,6 @@ export const checkCity = async (destinationPoint, oldCities = []) => {
 }
 
 export const updateProgress = async (queryClient) => {
-  // Everytime Progress Changes
   const { name, startedTime, createdTime } = (await getUserData()) || {}
   const userSettings = (await getUserSettings()) || {}
   const {
@@ -307,7 +300,6 @@ export const updateProgress = async (queryClient) => {
   if (!name) return { success: false }
 
   try {
-    // Get steps from startedTime till now
     const stepsRes = await getStepsNum(
       startedTime || createdTime || moment().startOf('day').toISOString()
     )
@@ -319,33 +311,27 @@ export const updateProgress = async (queryClient) => {
     if (!route || !distance || !breakPoints)
       return { success: false, error: 'No trip is configured' }
 
-    const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
+    const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0)
     const progress = calcSteps(totalSteps)
     const radius = getRadius(distance)
 
-    console.log('progress', totalSteps, steps, progress, distance, completed)
+    logger.log('progress', totalSteps, steps, progress, distance, completed)
 
-    // Check if total steps has changed
     if ((totalSteps === steps && progress < distance) || !!completed)
       return {
         success: false,
         error: 'Total steps did not change or trip is completed'
       }
 
-    console.log('new progress')
-
     const progressIdx = Math.round(
       (calcProgress(totalSteps, distance) / 100) * route?.length
-    ) // 222280
+    )
     const progressRoute = getDestinationStep(progressIdx, route)
     const destinationPoint =
       !!progressRoute && progressRoute.length > 0
         ? progressRoute[progressRoute.length - 1]
         : route[0]
 
-    console.log('new progress 1', destinationPoint)
-
-    // Calculate distance from progress to each break point
     const newBadges = calcBreakpointsProgress(
       progressIdx,
       destinationPoint,
@@ -355,12 +341,7 @@ export const updateProgress = async (queryClient) => {
       radius
     )
 
-    console.log('new progress 2', newBadges.length)
-
-    //  Check if city is new then add city badge
     const newCities = await checkCity(destinationPoint, cities)
-
-    console.log('new progress 3', newCities.length)
 
     await setUserSettings({
       ...userSettings,
@@ -378,17 +359,14 @@ export const updateProgress = async (queryClient) => {
       alerts.push({ type: 'cities', name: city.name })
     })
 
-    console.log('new progress 4', alerts.length)
-
     return { success: true, alerts }
   } catch (error) {
-    console.log(error.code, error.message)
+    logger.error(error.code, error.message)
   }
   return { success: true }
 }
 
 export const checkFlow = async (user) => {
-  // Everytime Progress Changes
   const { name, startedTime, createdTime } = (await getUserData()) || {}
   const userSettings = (await getUserSettings()) || {}
   const { steps, route, distance, breakPoints, health, completed } =
@@ -398,14 +376,12 @@ export const checkFlow = async (user) => {
     return onboardingDone ? 'Welcome' : 'Onboarding'
   }
 
-  // Check if user has completed payment flow
   const paymentFlowCompleted = await hasCompletedPaymentFlow()
   if (!paymentFlowCompleted) {
     return 'CreditCard'
   }
 
   try {
-    // Get steps from startedTime till now
     const stepsRes = await getStepsNum(
       startedTime || createdTime || moment().startOf('day').toISOString()
     )
@@ -416,7 +392,7 @@ export const checkFlow = async (user) => {
       return 'Trip'
     }
   } catch (error) {
-    console.log(error.code, error.message)
+    logger.error(error.code, error.message)
   }
   return 'Main'
 }
@@ -427,7 +403,7 @@ export const checkSubscriptionStatus = async () => {
   try {
     return await hasActiveSubscription()
   } catch (error) {
-    console.error('Failed to check subscription status:', error)
+    logger.error('Failed to check subscription status:', error)
     return false
   }
 }
@@ -435,7 +411,6 @@ export const checkSubscriptionStatus = async () => {
 export const isFeatureAvailable = async (feature) => {
   const isSubscribed = await checkSubscriptionStatus()
 
-  // Define which features require subscription
   const premiumFeatures = [
     'unlimited_routes',
     'advanced_analytics',

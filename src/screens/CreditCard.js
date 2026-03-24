@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import logger from '../utils/logger'
 import { SafeAreaView, StatusBar, ScrollView, Platform } from 'react-native'
 import {
   Container,
@@ -49,7 +50,7 @@ const CreditCard = () => {
         profile?.name || user?.displayName
       )
     } catch (error) {
-      console.log('Customer may already exist:', error)
+      logger.log('Customer may already exist:', error)
     }
   }
 
@@ -58,7 +59,7 @@ const CreditCard = () => {
       const supported = await isApplePaySupported()
       setIsApplePayAvailable(supported)
     } catch (error) {
-      console.log('Apple Pay not available:', error)
+      logger.log('Apple Pay not available:', error)
       setIsApplePayAvailable(false)
     }
   }
@@ -95,7 +96,7 @@ const CreditCard = () => {
       await markPaymentFlowCompleted()
       navigate('SubscriptionSelection')
     } catch (error) {
-      console.error('Apple Pay error:', error)
+      logger.error('Apple Pay error:', error)
       if (error.code !== 'Canceled') {
         toast.show({
           status: 'error',
@@ -134,7 +135,7 @@ const CreditCard = () => {
         navigate('SubscriptionSelection')
       }
     } catch (error) {
-      console.error('Card setup error:', error)
+      logger.error('Card setup error:', error)
       toast.show({
         status: 'error',
         description: error.localizedMessage || error.message || 'Failed to save card. Please try again.'

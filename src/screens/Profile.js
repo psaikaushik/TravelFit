@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react'
+import logger from '../utils/logger'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
 import { SafeAreaView, StatusBar, Platform } from 'react-native'
-import { Button, Container, Text, useToast, Box, VStack, HStack, Pressable, ScrollView } from 'native-base'
+import { Button, Container, Text, useToast, Box, VStack, HStack, Pressable, ScrollView, Flex, Image } from 'native-base'
 import auth from '@react-native-firebase/auth'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getUserData, getUserSettings } from '../services/database'
 import { iapService } from '../services/iap'
 import { markPaymentFlowCompleted } from '../services/subscription'
 import { getStreakData, setDailyGoal } from '../services/streak'
+import { getProfilePhoto } from '../services/profilePhoto'
 import TabScreen from '../components/TabScreen'
+import { ProfileSkeleton } from '../components/SkeletonLoader'
+import haptics from '../utils/haptics'
+import { useTheme } from '../context/ThemeContext'
 
 const GOAL_OPTIONS = [5000, 8000, 10000, 12000, 15000, 20000]
 
@@ -20,6 +25,7 @@ const Profile = () => {
   const user = auth().currentUser
   const [isRestoring, setIsRestoring] = useState(false)
   const [showGoalPicker, setShowGoalPicker] = useState(false)
+  const { isDark, toggle, mode } = useTheme()
 
   const { data: profile, isLoading: profileLoading } = useQuery(
     ['profile'],
@@ -35,6 +41,8 @@ const Profile = () => {
     { staleTime: 10 * 1000 }
   )
 
+  const { data: profilePhoto } = useQuery(['profile-photo'], getProfilePhoto)
+
   const currentGoal = streakData?.dailyGoal || 10000
   const currentStreak = streakData?.currentStreak || 0
   const longestStreak = streakData?.longestStreak || 0
@@ -47,7 +55,7 @@ const Profile = () => {
         routes: [{ name: 'Welcome' }]
       })
     } catch (e) {
-      console.log('handleLogOut', e)
+      logger.log('handleLogOut', e)
       toast.show({
         status: 'error',
         description: e.message
@@ -74,7 +82,7 @@ const Profile = () => {
         })
       }
     } catch (error) {
-      console.log('Restore error:', error)
+      logger.log('Restore error:', error)
       toast.show({
         status: 'error',
         description: 'Failed to restore purchases. Please try again.'
@@ -85,6 +93,7 @@ const Profile = () => {
   }
 
   const handleSetGoal = async (goal) => {
+    haptics.selection()
     await setDailyGoal(goal)
     setShowGoalPicker(false)
     await refetchStreak()
@@ -101,7 +110,13 @@ const Profile = () => {
     }
   }, [isFocused])
 
-  if (profileLoading) return <></>
+  if (profileLoading) return (
+    <TabScreen>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
+        <ProfileSkeleton />
+      </SafeAreaView>
+    </TabScreen>
+  )
 
   const handleSubscriptionPress = () => {
     navigate('Subscription')
@@ -124,6 +139,37 @@ const Profile = () => {
                 accessibilityRole="summary"
                 accessibilityLabel={`Profile: ${profile?.name || ''}, ${user?.email || ''}`}
               >
+                <Flex alignItems="center" mb="12px">
+                  <Flex
+                    w="80px"
+                    h="80px"
+                    borderRadius="40px"
+                    bg="primary.400"
+                    align="center"
+                    justify="center"
+                    style={{
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 8,
+                      elevation: 6
+                    }}
+                  >
+                    {profilePhoto ? (
+                      <Image
+                        source={{ uri: profilePhoto }}
+                        w="80px"
+                        h="80px"
+                        borderRadius="40px"
+                        alt="Profile photo"
+                      />
+                    ) : (
+                      <Text fontSize="32px" fontWeight="800" color="white">
+                        {(profile?.name || 'U')[0].toUpperCase()}
+                      </Text>
+                    )}
+                  </Flex>
+                </Flex>
                 <Text fontSize="20px" fontWeight="600">
                   {profile?.name || ''}
                 </Text>
@@ -395,6 +441,28 @@ const Profile = () => {
                       <VStack>
                         <Text fontSize="16px" fontWeight="600">Notifications</Text>
                         <Text fontSize="13px" color="gray.500">Reminders & alerts</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
+                  </HStack>
+                </Box>
+              </Pressable>
+
+              {/* Appearance / Dark Mode */}
+              <Pressable
+                onPress={() => { haptics.selection(); toggle() }}
+                accessibilityLabel="Toggle dark mode"
+                accessibilityRole="button"
+              >
+                <Box bg="white" borderRadius="16px" p="20px">
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <HStack space="3" alignItems="center">
+                      <Text fontSize="20px">{isDark ? '\u{1F319}' : '\u{2600}\u{FE0F}'}</Text>
+                      <VStack>
+                        <Text fontSize="16px" fontWeight="600">Appearance</Text>
+                        <Text fontSize="13px" color="gray.500">
+                          {mode === 'system' ? 'System' : isDark ? 'Dark' : 'Light'}
+                        </Text>
                       </VStack>
                     </HStack>
                     <Text fontSize="16px" color="gray.400">{'>'}</Text>

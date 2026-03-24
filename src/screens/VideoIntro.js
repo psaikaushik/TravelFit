@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { View, StyleSheet, StatusBar } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import Video from 'react-native-video'
+import logger from '../utils/logger'
 
 const VideoIntro = () => {
   const { navigate } = useNavigation()
@@ -13,16 +14,16 @@ const VideoIntro = () => {
   }, [])
 
   const handleVideoEnd = () => {
-    console.log('Video ended, navigating to Welcome')
+    logger.log('Video ended, navigating to Welcome')
     navigate('Welcome')
   }
 
   const handleVideoLoad = () => {
-    console.log('Video loaded successfully')
+    logger.log('Video loaded successfully')
   }
 
   const handleVideoError = (error) => {
-    console.log('Video error:', error)
+    logger.log('Video error:', error)
     // If video fails to load, navigate to Welcome screen immediately
     navigate('Welcome')
   }

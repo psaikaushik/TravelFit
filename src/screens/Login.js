@@ -1,4 +1,5 @@
 import React from 'react'
+import logger from '../utils/logger'
 import { useNavigation } from '@react-navigation/native'
 import auth from '@react-native-firebase/auth'
 import { Text, Button, Flex, useToast } from 'native-base'
@@ -30,13 +31,13 @@ const Login = () => {
     try {
       const { email, password } = data
       const { user } = await auth().signInWithEmailAndPassword(email, password)
-      console.log('user', user)
+      logger.log('user', user)
       const profile = await getProfile()
-      console.log('profile', profile)
+      logger.log('profile', profile)
       await setUserData(profile)
       // Ensure Stripe customer exists for this user
       await createStripeCustomer(profile?.email || email, profile?.name).catch((err) =>
-        console.log('Stripe customer will be created on CreditCard screen:', err)
+        logger.log('Stripe customer will be created on CreditCard screen:', err)
       )
       // Navigate to credit card screen after successful login
       reset({
@@ -44,7 +45,7 @@ const Login = () => {
         routes: [{ name: 'CreditCard' }]
       })
     } catch (e) {
-      console.log('handleLogIn', e)
+      logger.log('handleLogIn', e)
       toast.show({
         status: 'error',
         description: e.message

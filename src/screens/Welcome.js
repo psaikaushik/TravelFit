@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import logger from '../utils/logger'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
 import {
   SafeAreaView,
@@ -69,7 +70,7 @@ const Welcome = () => {
         routes: [{ name: 'CreditCard' }]
       })
     } catch (error) {
-      console.log('Google Sign-In Error:', error)
+      logger.log('Google Sign-In Error:', error)
       if (error.code !== 'SIGN_IN_CANCELLED') {
         Alert.alert(
           'Sign In Error',
@@ -115,7 +116,7 @@ const Welcome = () => {
         routes: [{ name: 'CreditCard' }]
       })
     } catch (error) {
-      console.log('Apple Sign-In Error:', error)
+      logger.log('Apple Sign-In Error:', error)
       if (error.code !== appleAuth.Error.CANCELED) {
         Alert.alert('Sign In Error', 'Failed to sign in with Apple. Please try again.')
       }

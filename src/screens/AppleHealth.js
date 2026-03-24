@@ -5,6 +5,7 @@ import { Alert, Image, SafeAreaView, StatusBar } from 'react-native'
 import HealthIMG from '../assets/images/health.png'
 import AppleHealthKit from 'react-native-health'
 import { getUserSettings, setUserSettings } from '../services/database'
+import logger from '../utils/logger'
 
 const AppleHealth = () => {
   const { reset } = useNavigation()
@@ -29,7 +30,7 @@ const AppleHealth = () => {
         }
       },
       async (error, result) => {
-        console.log('initHealthKit', result, error)
+        logger.log('initHealthKit', result, error)
         if (!!error) {
           toast.show({
             status: 'error',

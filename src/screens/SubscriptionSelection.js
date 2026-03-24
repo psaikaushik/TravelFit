@@ -15,6 +15,7 @@ import { markPaymentFlowCompleted } from '../services/subscription'
 import { STRIPE_PRICES, isTestMode } from '../config/stripe'
 import { iapService, IAP_PRODUCT_IDS } from '../services/iap'
 import TabScreen from '../components/TabScreen'
+import logger from '../utils/logger'
 
 const SubscriptionSelection = () => {
   const { reset } = useNavigation()
@@ -41,7 +42,7 @@ const SubscriptionSelection = () => {
       const products = await iapService.getProducts()
       setIapProducts(products)
     } catch (error) {
-      console.log('Failed to load IAP products:', error)
+      logger.log('Failed to load IAP products:', error)
     }
   }
 
@@ -92,7 +93,7 @@ const SubscriptionSelection = () => {
         await handleStripePurchase(plan)
       }
     } catch (error) {
-      console.error('Subscription error:', error)
+      logger.error('Subscription error:', error)
       toast.show({
         status: 'error',
         description: error.message || 'Failed to start subscription. Please try again.'
