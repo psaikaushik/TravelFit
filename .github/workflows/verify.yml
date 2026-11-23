@@ -34,6 +34,15 @@ jobs:
         run: |
           npm ci --prefix functions --engine-strict
           node --check functions/index.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify account flows against local Firebase emulators
+        run: |
+          npx --yes firebase-tools@15.37.0 emulators:exec \
+            --project demo-travelfit-audit --only auth,database,functions \
+            'node scripts/verify-firebase.cjs'
   ios-simulator:
     if: github.ref == 'refs/heads/release/fitness-recovery'
     # The legacy Podfile excludes arm64 for simulator builds.

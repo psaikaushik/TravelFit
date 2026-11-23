@@ -13,6 +13,15 @@ npm test -- --runInBand
 npm run bundle:ios -- --bundle-output /tmp/travelfit.jsbundle --assets-dest /tmp/travelfit-assets
 ```
 
+The GitHub Actions run on `release/fitness-recovery` also builds the unsigned Release app on an iOS 26 simulator and checks that the onboarding controls appear. It uses a demo Firebase configuration.
+
+To run the backend customer-flow check with Node 22 and Java 21, use the Firebase Local Emulator Suite. This test creates demo users, verifies profile isolation, resets an account password, calls account deletion, and checks that the deleted account no longer works.
+
+```sh
+npm ci --prefix functions --engine-strict
+npx --yes firebase-tools@15.37.0 emulators:exec --project demo-travelfit-audit --only auth,database,functions 'node scripts/verify-firebase.cjs'
+```
+
 ## Set up the internal iOS beta
 
 1. Create a separate Firebase project for beta testing with Firebase Authentication, Realtime Database, and Cloud Functions. Enable email/password authentication and configure Sign in with Apple if it will be used. Register the iOS app as `com.travelfit.app`. Use test accounts and avoid importing existing data.
@@ -52,7 +61,7 @@ Run this on the same signed candidate testers will receive, against Firebase sta
 | History and notifications | Delete a prior trip. Enable milestone alerts, verify delivery and quiet hours, then disable alerts. Check offline empty states and errors. |
 | Sign-out and deletion | Sign out and sign into a second account without seeing the first account's trips or notifications. Delete staged email and Apple accounts, including a stale session retry, and verify profile and authentication removal. |
 
-The JavaScript suite covers the registered fitness entry point and selected walking-loop cases. The native checks above require a physical device and staging.
+The JavaScript suite covers the registered fitness entry point, auth screen actions, route changes, and selected walking cases. Run the full checklist on a physical iPhone with staging.
 
 ## Payments
 

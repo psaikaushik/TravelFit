@@ -74,7 +74,10 @@
     "react-test-renderer": "18.1.0"
   },
   "overrides": {
-    "shell-quote": "^1.8.5"
+    "shell-quote": "^1.8.5",
+    "react-native": {
+      "react-devtools-core": "4.28.5"
+    }
   },
   "jest": {
     "preset": "react-native"
