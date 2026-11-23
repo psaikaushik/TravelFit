@@ -12,32 +12,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const steps = [
   {
-    title: 'Walk Your Way Around the World',
-    subtitle: 'Step by step, mile by mile',
-    description:
-      'Track your daily steps and watch them transform into a virtual journey across the globe.',
-    icon: '\u{1F6B6}'
+    title: 'Take your steps somewhere new',
+    description: 'Pick a virtual route and use your Apple Health steps to explore it from wherever you walk.',
+    icon: '↗'
   },
   {
-    title: 'Discover Amazing Places',
-    subtitle: 'Explore without limits',
-    description:
-      'Unlock landmarks, cities, and hidden gems as you walk. Every step brings a new discovery.',
-    icon: '\u{1F30D}'
-  },
-  {
-    title: 'Track Your Progress',
-    subtitle: 'See how far you have come',
-    description:
-      'See detailed stats, earn badges, and hit milestones. Your journey is always moving forward.',
-    icon: '\u{1F4CA}'
-  },
-  {
-    title: 'Challenge Yourself',
-    subtitle: 'Push your boundaries',
-    description:
-      'Set goals, join challenges, and share your achievements with friends and the community.',
-    icon: '\u{1F3C6}'
+    title: 'Discover a landmark as you walk',
+    description: 'Watch your position move along the map, reach landmarks, and see how far you’ve come.',
+    icon: '●'
   }
 ]
 
@@ -88,7 +70,6 @@ const Onboarding = () => {
       >
         <Text style={styles.icon}>{item.icon}</Text>
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
         <Text style={styles.description}>{item.description}</Text>
       </Flex>
     ),
@@ -102,7 +83,7 @@ const Onboarding = () => {
       <StatusBar barStyle="light-content" backgroundColor="#1A2225" />
 
       <Flex direction="row" justifyContent="flex-end" px={5} pt={3}>
-        <Pressable onPress={completeOnboarding} hitSlop={8}>
+        <Pressable onPress={completeOnboarding} hitSlop={8} accessibilityRole="button">
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       </Flex>
@@ -139,7 +120,7 @@ const Onboarding = () => {
           ))}
         </Flex>
 
-        <Pressable style={styles.nextButton} onPress={handleNext}>
+        <Pressable style={styles.nextButton} onPress={handleNext} accessibilityRole="button">
           <Text style={styles.nextButtonText}>
             {currentIndex === steps.length - 1 ? 'Get Started' : 'Next'}
           </Text>
@@ -163,7 +144,8 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   icon: {
-    fontSize: 80,
+    color: '#C4EB64',
+    fontSize: 64,
     textAlign: 'center',
     marginBottom: 32
   },
@@ -173,13 +155,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#C4EB64',
-    textAlign: 'center',
-    marginBottom: 16
   },
   description: {
     fontSize: 16,

@@ -14,7 +14,7 @@ import {
   prettifyNum,
   printGrid,
   printK,
-  stepsToDistance
+  calcSteps
 } from '../services/helpers'
 import { SceneMap, TabView } from 'react-native-tab-view'
 
@@ -35,7 +35,7 @@ const LandmarksRoute = ({ route: { data } }) => {
       <Flex minH="120px" w="100%" p="4" justify="center">
         <Text fontWeight="600" numberOfLines={2}>{name}</Text>
         <Text color="gray.600" mt="2">
-          {progress >= 100 ? 'Completed' : `${Math.round(progress)}% complete`}
+          {progress >= 100 ? 'Completed' : `${Math.floor(progress)}% complete`}
         </Text>
         <Progress colorScheme="green" value={progress} mt="2" />
       </Flex>
@@ -48,42 +48,6 @@ const LandmarksRoute = ({ route: { data } }) => {
         {badgesGroup.map((group, index) => (
           <Flex key={index} direction="row" m="10px">
             {group.map((badge, index) => !!badge && renderItem(badge, index))}
-          </Flex>
-        ))}
-      </Flex>
-    </ScrollView>
-  )
-}
-
-const CitiesRoute = ({ route: { data } }) => {
-  const citiesGroup = printGrid((data || []).filter((x) => !!x))
-
-  const renderItem = ({ place_id, name }, index) => (
-    <Flex
-      key={`${index}${place_id}`}
-      flex="1"
-      bg="white"
-      mx="10px"
-      borderRadius="16px"
-      borderWidth="2px"
-      borderColor="border"
-      align="center"
-    >
-      <Flex py="12px" px="5px" borderBottomRadius="10px" justify="center">
-        <Text variant="cityName" numberOfLines={2}>
-          {name}
-        </Text>
-      </Flex>
-    </Flex>
-  )
-
-  return (
-    <ScrollView key="Cities" flex="1" mb="40px" mx="0">
-      <Flex pb="30px" pt="10px">
-        {citiesGroup.map((group, index) => (
-          <Flex key={index} direction="row" m="10px">
-            {group.map((city, index) => !!city && renderItem(city, index))}
-            {group.length === 1 && <Flex flex="1" />}
           </Flex>
         ))}
       </Flex>
@@ -150,18 +114,17 @@ const Achievements = () => {
   const { width } = useWindowDimensions()
   const [index, setIndex] = useState(0)
   const { data: settings } = useQuery(['settings'], getUserSettings)
-  const { badges, cities, steps } = settings || {}
+  const { badges = [], steps } = settings || {}
   const milestones = [
     1, 5, 10, 50, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 100000
   ]
-  const progress = stepsToDistance(steps)
+  const progress = calcSteps(steps)
   const achieved = milestones.filter((x) => x <= progress)
 
   if (typeof settings === 'undefined') return <TabScreen />
 
   const routes = [
     { key: 'Landmarks', title: 'Landmarks', data: badges },
-    { key: 'Cities', title: 'Cities', data: cities },
     { key: 'Milestones', title: 'Milestones', data: achieved }
   ]
 
@@ -194,7 +157,6 @@ const Achievements = () => {
 
   const renderScene = SceneMap({
     Landmarks: LandmarksRoute,
-    Cities: CitiesRoute,
     Milestones: MilestonesRoute
   })
 
@@ -211,8 +173,7 @@ const Achievements = () => {
           textAlign="center"
           position="absolute"
         >
-          {badges.filter((x) => x?.progress > 0).length +
-            cities.length +
+          {badges.filter((x) => x?.progress >= 100).length +
             achieved.length}{' '}
           Badges
         </Text>

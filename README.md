@@ -36,6 +36,24 @@ npm run bundle:ios -- --bundle-output /tmp/travelfit.jsbundle --assets-dest /tmp
 
 Android is a separate release track. Its debug build uses the debug keystore. A signed Release build requires `TRAVELFIT_ANDROID_KEYSTORE`, `TRAVELFIT_ANDROID_STORE_PASSWORD`, `TRAVELFIT_ANDROID_KEY_ALIAS`, and `TRAVELFIT_ANDROID_KEY_PASSWORD`. The native toolchain, Play target SDK, Firebase configuration, and Android step integration still need release verification.
 
+## Release sign-off on iPhone
+
+Run this on the same signed candidate testers will receive, against Firebase staging. Use a fresh install and a returning install, and record the build number and device/OS for each run.
+
+| Customer flow | Expected behavior |
+|---|---|
+| Cold start, onboarding, welcome and privacy | Splash clears. Next and Skip reach Welcome. Privacy opens before sign-in and returns correctly. Check large text and VoiceOver on the smallest supported iPhone. |
+| Email signup and login | Create an account, sign out, sign back in, and resume the same route. Try incorrect credentials, a duplicate email, and offline recovery. |
+| Apple sign-in | Verify first sign-in, returning sign-in, and cancellation on a physical device. |
+| Password reset | Request a link, complete the email reset, and sign in with the new password. Verify offline errors and neutral confirmation. |
+| Apple Health | Test grant, skip, and revoke. Skipping still lets the user preview a route. Restore access and refresh without returning to onboarding. |
+| Routes and landmarks | Start each route, open a landmark, refresh after walking, background and resume, and finish a route. Start another route and verify the previous one remains in history and the new one starts at zero. Cancel a route switch and confirm progress is retained. |
+| Progress, achievements and stats | Check badges against actual unlocked landmarks, daily goals before and after completion, and 7- and 30-day totals against known samples. |
+| History and notifications | Delete a prior trip. Enable milestone alerts, verify delivery and quiet hours, then disable alerts. Check offline empty states and errors. |
+| Sign-out and deletion | Sign out and sign into a second account without seeing the first account's trips or notifications. Delete staged email and Apple accounts, including a stale session retry, and verify profile and authentication removal. |
+
+The JavaScript suite covers the registered fitness entry point and selected walking-loop cases. The native checks above require a physical device and staging.
+
 ## Payments
 
 The beta is free. The beta Functions codebase deploys account deletion only. The payment screens and checkout endpoints from earlier revisions are outside the beta flow.

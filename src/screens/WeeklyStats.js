@@ -44,9 +44,9 @@ const fetchMonthlyData = async () => {
   const results = await getStepsNumAtDate(startDate)
 
   // Group into 4 weeks + remaining days
-  for (let w = 0; w < 4; w++) {
+  for (let w = 0; w < 5; w++) {
     const weekStart = moment().subtract(29 - w * 7, 'days')
-    const weekEnd = moment(weekStart).add(6, 'days')
+    const weekEnd = moment.min(moment(weekStart).add(6, 'days'), moment())
     let totalSteps = 0
     let dayCount = 0
 

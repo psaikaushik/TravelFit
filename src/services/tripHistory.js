@@ -33,7 +33,7 @@ const archiveCurrentTrip = async (settings, uid = getCurrentAccountId()) => {
     startedTime: settings.startedTime,
     completed: settings.completed || null,
     completedDate: settings.completed || moment().toISOString(),
-    badges: (settings.badges || []).filter((b) => b && b.progress > 0).length,
+    badges: (settings.badges || []).filter((b) => b && b.progress >= 100).length,
     totalBadges: (settings.badges || []).length,
     cities: (settings.cities || []).length,
     duration: settings.duration || 0

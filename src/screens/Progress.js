@@ -20,7 +20,6 @@ const RING_STROKE = 12
 
 const Progress = () => {
   const queryClient = useQueryClient()
-  const [activeColor] = useState(new Animated.Value(0))
   const [goalPulse] = useState(new Animated.Value(1))
   const { data: settings } = useQuery(['settings'], getUserSettings)
   const { data: stats } = useQuery(['stats'], getStats)
@@ -51,26 +50,7 @@ const Progress = () => {
     }
   }, [streakData?.goalReachedToday])
 
-  const color = activeColor.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgb(37,176,37)', 'rgb(184,250,184)']
-  })
-
-  Animated.loop(
-    Animated.sequence([
-      Animated.timing(activeColor, {
-        toValue: 1,
-        duration: 1000,
-        delay: 1000,
-        useNativeDriver: false
-      }),
-      Animated.timing(activeColor, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: false
-      })
-    ])
-  ).start()
+  const color = '#617921'
 
   const goalProgress = streakData?.progress || 0
   const todaySteps = streakData?.todaySteps || 0

@@ -112,7 +112,7 @@ const Map = () => {
             accessibilityLabel="Change virtual route"
             onPress={() => navigate('Trip')}
           >
-            Routes
+            {status === 'complete' ? 'Next route' : 'Routes'}
           </Button>
         </HStack>
         <HStack justifyContent="space-between" space="3" alignItems="center" mt="2">

@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { SafeAreaView, StatusBar } from 'react-native'
+import { Alert, SafeAreaView, StatusBar } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Flex, Pressable, ScrollView, Text, VStack, useToast } from 'native-base'
 import BackSVG from '../assets/icons/back.svg'
 import { buildCuratedTrip, VIRTUAL_ROUTES } from '../data/curatedRoutes'
@@ -15,6 +15,7 @@ const Trip = () => {
   const toast = useToast()
   const saving = useRef(false)
   const [selected, setSelected] = useState(null)
+  const { data: currentTrip, isLoading } = useQuery(['settings'], getUserSettings)
   const trips = useMemo(() => VIRTUAL_ROUTES.map(buildCuratedTrip), [])
 
   const startTrip = async (trip) => {
@@ -54,6 +55,21 @@ const Trip = () => {
     }
   }
 
+  const chooseTrip = (trip) => {
+    if (!hasActiveTrip(currentTrip) || currentTrip.completed) {
+      startTrip(trip)
+      return
+    }
+    Alert.alert(
+      'Start a new route?',
+      'Your current route will move to Trip History. Your new route starts at zero steps.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start new route', onPress: () => startTrip(trip) }
+      ]
+    )
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
       <StatusBar barStyle="dark-content" />
@@ -70,8 +86,10 @@ const Trip = () => {
         <VStack space="3">
           {trips.map((trip) => (
             <Flex key={trip.curatedRouteId} bg="white" borderRadius="16px" p="4">
-              <Text fontSize="18px" fontWeight="700" accessibilityRole="header">{trip.title}</Text>
-              <Text mt="1" color="gray.700">{trip.badges[0].vicinity} · {trip.distance.toFixed(1)} km</Text>
+              <Flex bg="primary.400" borderRadius="12px" p="4">
+                <Text color="secondary.400">{trip.badges[0].vicinity} · {trip.distance.toFixed(1)} km</Text>
+                <Text mt="1" color="white" fontSize="20px" fontWeight="700" accessibilityRole="header">{trip.title}</Text>
+              </Flex>
               <Text mt="2" mb="3" color="gray.600">
                 {trip.starting.title} → {trip.badges.map(({ name }) => name).join(' → ')}
               </Text>
@@ -79,8 +97,8 @@ const Trip = () => {
                 variant="primary"
                 size="lg"
                 isLoading={selected === trip.curatedRouteId}
-                isDisabled={!!selected}
-                onPress={() => startTrip(trip)}
+                isDisabled={isLoading || !!selected}
+                onPress={() => chooseTrip(trip)}
                 accessibilityLabel={`Start ${trip.title} at zero steps`}
               >
                 Start route

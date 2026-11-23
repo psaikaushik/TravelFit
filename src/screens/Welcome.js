@@ -70,10 +70,10 @@ const Welcome = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1A2225' }}>
       <Text style={styles.appName}>TravelFit</Text>
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text style={styles.title} accessibilityRole="header">Unleash Your Health</Text>
+        <Text style={styles.title} accessibilityRole="header">Walk here. Explore somewhere new.</Text>
       </View>
       <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Start now, create an account">
-        <Text style={styles.welcomeText}>Start Now</Text>
+        <Text style={styles.welcomeText}>Create an account</Text>
       </TouchableOpacity>
       {Platform.OS === 'ios' && appleAuth.isSupported && (
         <AppleButton

@@ -69,7 +69,7 @@ const TripHistory = () => {
               No trips yet
             </Text>
             <Text fontSize="14px" color="gray.400" textAlign="center">
-              Completed trips will appear here.{'\n'}Start a new trip to begin your journey!
+              Past trips appear here when you start another route.
             </Text>
           </VStack>
         )}
@@ -92,7 +92,7 @@ const TripHistory = () => {
                       : ''}
                     {trip.completed
                       ? ` — ${moment(trip.completedDate).format('MMM D, YYYY')}`
-                      : ' — In progress'}
+                      : ' — Unfinished'}
                   </Text>
                   <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1}>
                     {trip.starting?.title || 'Unknown'}
