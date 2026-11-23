@@ -41,7 +41,9 @@ npx --yes firebase-tools@15.37.0 emulators:exec --project demo-travelfit-audit -
    ```
 
    Open `ios/TravelFit.xcworkspace`, configure the Apple signing team, and verify HealthKit and Sign in with Apple in the signed Release archive. Use a test device without an existing production installation of the same bundle ID.
-5. Install the Release build from Xcode, or run `bash scripts/install-ios-device.sh DEVICE_UDID` from a Mac with the staging plist, pinned tools, and Apple signing configured. Running the script without an ID lists Xcode destinations. Verify signup, returning login, granting and skipping Apple Health, route start, foreground and resumed sync, route completion, account switching, account deletion, and useful crash reports. Check the archive’s required SDK privacy manifests before uploading to internal TestFlight.
+5. Install the Release build from Xcode, or run `bash scripts/install-ios-device.sh DEVICE_UDID` from a Mac with the staging plist, pinned tools, and Apple signing configured. Running the script without an ID lists Xcode destinations. Verify signup, returning login, granting and skipping Apple Health, route start, foreground and resumed sync, route completion, account switching, and account deletion. Check the archive’s required SDK privacy manifests before uploading to internal TestFlight. Use TestFlight crash reports and beta feedback for diagnostics.
+
+Before a public App Store submission, publish the privacy policy at a verified public HTTPS URL and add a monitored contact to the in-app and public policies. Review the App Privacy answers against the signed archive and its SDK privacy report. If Firebase Crashlytics collection is enabled later, verify delivery in staging and update the data disclosures before distributing that build.
 
 Android is a separate release track. Its debug build uses the debug keystore. A signed Release build requires `TRAVELFIT_ANDROID_KEYSTORE`, `TRAVELFIT_ANDROID_STORE_PASSWORD`, `TRAVELFIT_ANDROID_KEY_ALIAS`, and `TRAVELFIT_ANDROID_KEY_PASSWORD`. The native toolchain, Play target SDK, Firebase configuration, and Android step integration still need release verification.
 

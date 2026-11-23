@@ -53,19 +53,18 @@ const PrivacyPolicy = () => {
               </Text>
 
               <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                Diagnostics
-              </Text>
-              <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                Firebase Crashlytics helps us diagnose app crashes and device compatibility issues.
-              </Text>
-
-              <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
                 Delete your account
               </Text>
               <Text fontSize="14px" color="gray.700" lineHeight="22px">
                 Open Profile and choose Delete Account to remove your sign-in and profile.
                 This also clears TravelFit data for your account on this device.
-                For privacy questions, contact privacy@travelfit.app.
+              </Text>
+
+              <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
+                Contact
+              </Text>
+              <Text fontSize="14px" color="gray.700" lineHeight="22px">
+                For privacy questions about this beta, use Send Beta Feedback in TestFlight.
               </Text>
             </VStack>
 
