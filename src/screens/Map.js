@@ -78,7 +78,7 @@ const Map = () => {
         accessibilityLabel="Map of your virtual route"
         testID="trip-map"
       >
-        <Polyline coordinates={route} strokeWidth={5} strokeColor="#6D7571" />
+        <Polyline coordinates={route} strokeWidth={5} strokeColor="#6D7571" lineDashPattern={[6, 6]} />
         {walkedRoute?.length > 1 && (
           <Polyline coordinates={walkedRoute} strokeWidth={6} strokeColor="#617921" />
         )}
