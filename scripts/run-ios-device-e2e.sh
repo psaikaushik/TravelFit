@@ -100,7 +100,7 @@ if ! cmp -s "$build_config" "$app/GoogleService-Info.plist"; then
   echo "The built application does not contain the verified staging configuration." >&2
   exit 1
 fi
-/usr/bin/codesign --verify --strict "$app"
+python3 scripts/verify-ios-release.py "$app"
 
 xcodebuild test-without-building "${build_arguments[@]}" \
   -only-testing:TravelFitUITests/TravelFitUITests/testSignedDeviceWalkerLifecycle \
