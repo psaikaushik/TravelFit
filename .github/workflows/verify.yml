@@ -92,6 +92,7 @@ jobs:
         with:
           path: ios/Pods
           key: travelfit-installed-pods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'Gemfile.lock', 'ios/Podfile.lock', 'ios/TravelFit.xcodeproj/project.pbxproj') }}
+          restore-keys: travelfit-installed-pods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-
       - name: Install locked iOS dependencies
         working-directory: ios
         run: bundle exec pod install --deployment
