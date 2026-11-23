@@ -69,12 +69,14 @@ jobs:
         with:
           bundler-cache: true
       - name: Select Xcode 26
+        id: xcode
         run: |
           xcode=$(ruby -e 'puts Dir["/Applications/Xcode_26*.app"].max_by { |path| File.basename(path).scan(/\d+/).map(&:to_i) }')
           test -n "$xcode"
           sudo xcode-select --switch "$xcode/Contents/Developer"
           xcodebuild -version
           xcrun --sdk iphonesimulator --show-sdk-version
+          echo "build=$(xcodebuild -version | awk '/^Build version/ {print $3}')" >> "$GITHUB_OUTPUT"
       - name: Restore CocoaPods downloads
         id: pod-downloads
         uses: actions/cache/restore@v4
@@ -84,9 +86,21 @@ jobs:
             ~/.cocoapods/repos
           key: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-
+      - name: Restore installed CocoaPods
+        id: installed-pods
+        uses: actions/cache/restore@v4
+        with:
+          path: ios/Pods
+          key: travelfit-installed-pods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'Gemfile.lock', 'ios/Podfile.lock', 'ios/TravelFit.xcodeproj/project.pbxproj') }}
       - name: Install locked iOS dependencies
         working-directory: ios
         run: bundle exec pod install --deployment
+      - name: Save installed CocoaPods
+        if: steps.installed-pods.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios/Pods
+          key: ${{ steps.installed-pods.outputs.cache-primary-key }}
       - name: Save CocoaPods downloads
         if: steps.pod-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
