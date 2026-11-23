@@ -75,9 +75,25 @@ jobs:
           sudo xcode-select --switch "$xcode/Contents/Developer"
           xcodebuild -version
           xcrun --sdk iphonesimulator --show-sdk-version
+      - name: Restore CocoaPods downloads
+        id: pod-downloads
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+          key: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile.lock') }}
       - name: Install locked iOS dependencies
         working-directory: ios
         run: bundle exec pod install --deployment
+      - name: Save CocoaPods downloads
+        if: steps.pod-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+          key: ${{ steps.pod-downloads.outputs.cache-primary-key }}
       - name: Configure an isolated Firebase fixture
         run: |
           python3 - <<'PY'
