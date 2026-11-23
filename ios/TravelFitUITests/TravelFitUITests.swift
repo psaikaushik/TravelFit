@@ -33,8 +33,17 @@ final class TravelFitUITests: XCTestCase {
         XCTContext.runActivity(named: "Create an account and preview a route without Health access") { _ in
             app.launch()
             passOnboarding()
+            attach("Welcome")
+            tap("welcome-privacy")
+            assertVisible("Privacy Policy")
+            attach("Privacy policy")
+            tap("privacy-back")
             register(name: "TravelFit Walker", email: firstEmail)
+            assertVisible("health-skip")
+            attach("Apple Health setup")
             tap("health-skip")
+            assertVisible("Choose a virtual route")
+            attach("Route picker")
             tap("route-start-central-park", in: "routes-list")
             assertMap(title: "Across Central Park")
             waitForLabel("trip-map-status", "Step sync is off.")
@@ -45,11 +54,15 @@ final class TravelFitUITests: XCTestCase {
             tap("trip-map-routes")
             tap("route-start-golden-gate", in: "routes-list")
             tapAlertButton("Cancel", alert: "Start a new route?")
+            tap("routes-back")
+            assertMap(title: "Across Central Park")
+            tap("trip-map-routes")
             tap("route-start-golden-gate", in: "routes-list")
             tapAlertButton("Start new route", alert: "Start a new route?")
             assertMap(title: "Golden Gate Waterfront")
             openHistory()
             waitForLabel("trip-history-start", "Harlem Meer")
+            attach("Archived route in trip history")
             tap("trip-history-back")
             tap("tab-map")
         }
@@ -65,6 +78,12 @@ final class TravelFitUITests: XCTestCase {
                 let stepCount = progress.split(separator: "·").last.map { String($0.filter { $0.isNumber }) }
                 XCTAssertEqual(stepCount, "20000", "Unexpected fixture step count: \(progress)")
                 attach("Completed route with simulated steps")
+                tap("tab-progress")
+                assertVisible("Goal reached!")
+                attach("Daily goal reached")
+                tap("tab-achievements")
+                assertVisible("Torpedo Wharf")
+                attach("Landmark achievements")
             }
         } else {
             waitForLabel("trip-map-status", "Step sync is off.")
@@ -109,7 +128,10 @@ final class TravelFitUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
                        "TravelFit did not open onboarding or Welcome")
-        if skip.exists { skip.tap() }
+        if skip.exists {
+            attach("Onboarding")
+            skip.tap()
+        }
         assertVisible("welcome-sign-up")
     }
 

@@ -18,6 +18,7 @@ const PrivacyPolicy = () => {
           onPress={goBack}
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          testID="privacy-back"
         >
           <BackSVG />
         </Pressable>

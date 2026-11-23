@@ -41,7 +41,7 @@ const TabScreen = ({ children }) => {
             )}
           </Flex>
         </Pressable>
-        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Progress" onPress={() => navigate('Progress')}>
+        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Progress" onPress={() => navigate('Progress')} testID="tab-progress">
           <Flex flex="1" align="center" justify="center">
             {index === 1 ? (
               <ProgressActiveSVG width={23} />
@@ -50,7 +50,7 @@ const TabScreen = ({ children }) => {
             )}
           </Flex>
         </Pressable>
-        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Achievements" onPress={() => navigate('Achievements')}>
+        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Achievements" onPress={() => navigate('Achievements')} testID="tab-achievements">
           <Flex flex="1" align="center" justify="center">
             {index === 2 ? (
               <StarActiveSVG width={26} />

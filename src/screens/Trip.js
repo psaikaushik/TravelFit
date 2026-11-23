@@ -79,7 +79,7 @@ const Trip = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
       <StatusBar barStyle="dark-content" />
       {navigation.canGoBack() && (
-        <Pressable onPress={navigation.goBack} p="3" alignSelf="flex-start" accessibilityRole="button" accessibilityLabel="Go back">
+        <Pressable onPress={navigation.goBack} p="3" alignSelf="flex-start" accessibilityRole="button" accessibilityLabel="Go back" testID="routes-back">
           <BackSVG />
         </Pressable>
       )}

@@ -95,6 +95,7 @@ const Welcome = () => {
       <TouchableOpacity
         style={styles.privacyBtn}
         accessibilityRole="link"
+        testID="welcome-privacy"
         onPress={() => navigate('PrivacyPolicy')}
       >
         <Text style={styles.privacyText}>Privacy Policy</Text>
