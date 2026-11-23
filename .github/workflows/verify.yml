@@ -3,7 +3,7 @@ name: Verify TravelFit
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, release/fitness-recovery]
   workflow_dispatch:
 
 permissions:
@@ -34,3 +34,85 @@ jobs:
         run: |
           npm ci --prefix functions --engine-strict
           node --check functions/index.js
+  ios-simulator:
+    if: github.ref == 'refs/heads/release/fitness-recovery'
+    # The legacy Podfile excludes arm64 for simulator builds.
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      RCT_NO_LAUNCH_PACKAGER: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install JavaScript dependencies
+        run: |
+          npm install --global npm@10.9.4
+          npm ci
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Select Xcode 26
+        run: |
+          xcode=$(ruby -e 'puts Dir["/Applications/Xcode_26*.app"].max_by { |path| File.basename(path).scan(/\d+/).map(&:to_i) }')
+          test -n "$xcode"
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+      - name: Install locked iOS dependencies
+        working-directory: ios
+        run: bundle exec pod install --deployment
+      - name: Configure an isolated Firebase fixture
+        run: |
+          python3 - <<'PY'
+          import plistlib
+
+          config = {
+              "API_KEY": "AIza" + "0" * 35,
+              "BUNDLE_ID": "com.travelfit.app",
+              "DATABASE_URL": "http://127.0.0.1:9000?ns=demo-travelfit",
+              "GCM_SENDER_ID": "100000000000",
+              "GOOGLE_APP_ID": "1:100000000000:ios:0000000000000000000000",
+              "IS_ANALYTICS_ENABLED": False,
+              "PLIST_VERSION": "1",
+              "PROJECT_ID": "demo-travelfit",
+          }
+          with open("ios/GoogleService-Info.local.plist", "wb") as file:
+              plistlib.dump(config, file)
+          PY
+      - name: Run the Release onboarding smoke test
+        run: |
+          simulator=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+
+          runtimes = json.load(sys.stdin)["devices"]
+          candidates = [key for key in runtimes if ".iOS-26-" in key or key.endswith(".iOS-26")]
+          for runtime in sorted(candidates, key=lambda key: tuple(map(int, key.split("iOS-")[1].split("-"))), reverse=True):
+              for device in runtimes[runtime]:
+                  if device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      sys.exit()
+          sys.exit("No available iPhone simulator with an iOS 26 runtime")
+          ')
+          xcodebuild test \
+            -workspace ios/TravelFit.xcworkspace \
+            -scheme TravelFit \
+            -configuration Release \
+            -destination "platform=iOS Simulator,id=$simulator" \
+            -derivedDataPath "$RUNNER_TEMP/travelfit-derived-data" \
+            -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-result
+          path: ${{ runner.temp }}/travelfit-ios.xcresult
+          if-no-files-found: ignore

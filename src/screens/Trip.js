@@ -18,9 +18,8 @@ const Trip = () => {
   const { data: currentTrip, isLoading } = useQuery(['settings'], getUserSettings)
   const trips = useMemo(() => VIRTUAL_ROUTES.map(buildCuratedTrip), [])
 
-  const startTrip = async (trip) => {
-    const uid = getCurrentAccountId()
-    if (!uid || saving.current) return
+  const startTrip = async (trip, uid) => {
+    if (getCurrentAccountId() !== uid || saving.current) return
     saving.current = true
     setSelected(trip.curatedRouteId)
 
@@ -46,9 +45,13 @@ const Trip = () => {
         queryClient.invalidateQueries(['settings']),
         queryClient.invalidateQueries(['stats'])
       ])
-      navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
+      if (getCurrentAccountId() === uid) {
+        navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
+      }
     } catch {
-      toast.show({ status: 'error', description: 'Could not start your trip. Please try again.' })
+      if (getCurrentAccountId() === uid) {
+        toast.show({ status: 'error', description: 'Could not start your trip. Please try again.' })
+      }
     } finally {
       saving.current = false
       setSelected(null)
@@ -56,16 +59,18 @@ const Trip = () => {
   }
 
   const chooseTrip = (trip) => {
+    const uid = getCurrentAccountId()
+    if (!uid) return
+
     if (!hasActiveTrip(currentTrip) || currentTrip.completed) {
-      startTrip(trip)
-      return
+      return startTrip(trip, uid)
     }
     Alert.alert(
       'Start a new route?',
       'Your current route will move to Trip History. Your new route starts at zero steps.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Start new route', onPress: () => startTrip(trip) }
+        { text: 'Start new route', onPress: () => startTrip(trip, uid) }
       ]
     )
   }
