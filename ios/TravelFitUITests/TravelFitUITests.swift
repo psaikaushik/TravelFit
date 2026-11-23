@@ -9,9 +9,26 @@ final class TravelFitUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testEmulatedWalkerLifecycle() {
-        let firstEmail = emailForTestAccount()
-        let secondEmail = emailForTestAccount()
+    func testEmulatedWalkerLifecycle() throws {
+        #if targetEnvironment(simulator)
+        walkThroughAccountLifecycle(useHealthFixture: true)
+        #else
+        throw XCTSkip("Run the Health fixture test in the simulator.")
+        #endif
+    }
+
+    func testSignedDeviceWalkerLifecycle() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("Run the staging test on a signed physical iPhone build.")
+        #else
+        walkThroughAccountLifecycle(useHealthFixture: false)
+        #endif
+    }
+
+    private func walkThroughAccountLifecycle(useHealthFixture: Bool) {
+        let domain = useHealthFixture ? "example.com" : "example.invalid"
+        let firstEmail = emailForTestAccount(domain: domain)
+        let secondEmail = emailForTestAccount(domain: domain)
 
         XCTContext.runActivity(named: "Create an account and preview a route without Health access") { _ in
             app.launch()
@@ -37,18 +54,22 @@ final class TravelFitUITests: XCTestCase {
             tap("tab-map")
         }
 
-        XCTContext.runActivity(named: "Connect Health and finish the route with simulator fixture steps") { _ in
-            tap("trip-map-connect-health")
-            tap("health-connect")
-            assertMap(title: "Golden Gate Waterfront")
-            waitForLabel("trip-map-status", "Route complete")
-            let progress = element("trip-map-progress").label
-            XCTAssertTrue(progress.contains("100%"), "The completed route did not show 100%: \(progress)")
-            let stepCount = progress.split(separator: "·").last.map { String($0.filter { $0.isNumber }) }
-            XCTAssertEqual(stepCount, "20000", "Unexpected fixture step count: \(progress)")
-            attach("Completed route with simulated steps")
-            signOut()
+        if useHealthFixture {
+            XCTContext.runActivity(named: "Connect Health and finish the route with simulator fixture steps") { _ in
+                tap("trip-map-connect-health")
+                tap("health-connect")
+                assertMap(title: "Golden Gate Waterfront")
+                waitForLabel("trip-map-status", "Route complete")
+                let progress = element("trip-map-progress").label
+                XCTAssertTrue(progress.contains("100%"), "The completed route did not show 100%: \(progress)")
+                let stepCount = progress.split(separator: "·").last.map { String($0.filter { $0.isNumber }) }
+                XCTAssertEqual(stepCount, "20000", "Unexpected fixture step count: \(progress)")
+                attach("Completed route with simulated steps")
+            }
+        } else {
+            waitForLabel("trip-map-status", "Step sync is off.")
         }
+        signOut()
 
         XCTContext.runActivity(named: "Use a second account without the first account's history") { _ in
             register(name: "Second Walker", email: secondEmail)
@@ -63,12 +84,12 @@ final class TravelFitUITests: XCTestCase {
         }
 
         XCTContext.runActivity(named: "Restore the first account after a fresh launch, then delete it") { _ in
-            requestPasswordResetAndLogIn(email: firstEmail)
+            logIn(email: firstEmail, requestPasswordReset: useHealthFixture)
             assertMap(title: "Golden Gate Waterfront")
             app.terminate()
             app.launch()
             assertMap(title: "Golden Gate Waterfront")
-            waitForLabel("trip-map-status", "Route complete")
+            waitForLabel("trip-map-status", useHealthFixture ? "Route complete" : "Step sync is off.")
             openHistory()
             waitForLabel("trip-history-start", "Harlem Meer")
             tap("trip-history-back")
@@ -77,8 +98,8 @@ final class TravelFitUITests: XCTestCase {
         }
     }
 
-    private func emailForTestAccount() -> String {
-        "travelfit-e2e-\(UUID().uuidString.lowercased().prefix(12))@example.com"
+    private func emailForTestAccount(domain: String) -> String {
+        "travelfit-e2e-\(UUID().uuidString.lowercased().prefix(12))@\(domain)"
     }
 
     private func passOnboarding() {
@@ -100,11 +121,13 @@ final class TravelFitUITests: XCTestCase {
         tap("sign-up-submit", in: "auth-scroll")
     }
 
-    private func requestPasswordResetAndLogIn(email: String) {
+    private func logIn(email: String, requestPasswordReset: Bool) {
         tap("welcome-log-in")
-        tap("log-in-forgot-password", in: "auth-scroll")
-        fill("reset-password-email", with: email, dismissKeyboard: true)
-        tap("reset-password-submit", in: "auth-scroll")
+        if requestPasswordReset {
+            tap("log-in-forgot-password", in: "auth-scroll")
+            fill("reset-password-email", with: email, dismissKeyboard: true)
+            tap("reset-password-submit", in: "auth-scroll")
+        }
         fill("log-in-email", with: email)
         fill("log-in-password", with: password, secure: true)
         tap("log-in-submit", in: "auth-scroll")

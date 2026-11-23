@@ -49,6 +49,14 @@ Android is a separate release track. Its debug build uses the debug keystore. A 
 
 Run this on the same signed candidate testers will receive, against Firebase staging. Use a fresh install and a returning install, and record the build number and device/OS for each run.
 
+On a paired Mac, use a dedicated test iPhone with Developer Mode enabled and no production TravelFit installation. Set up Apple Development signing for the app and XCUITest runner, select an authorized Firebase staging project, and save its iOS configuration as described above. Start from a signed-out TravelFit installation or a fresh test phone.
+
+```sh
+TRAVELFIT_STAGING_PROJECT_ID=your-staging-project bash scripts/run-ios-device-e2e.sh DEVICE_UDID
+```
+
+The script builds the checkout's committed `HEAD` in a temporary directory, checks the Firebase configuration inside the signed build, and runs the physical-device lifecycle test. It creates and deletes two synthetic accounts, keeps Health sync off, and saves the Xcode result bundle and logs to the reported path. Password-reset email, Apple sign-in, real HealthKit samples, and background step delivery have separate release checks.
+
 | Customer flow | Expected behavior |
 |---|---|
 | Cold start, onboarding, welcome and privacy | Splash clears. Next and Skip reach Welcome. Privacy opens before sign-in and returns correctly. Check large text and VoiceOver on the smallest supported iPhone. |

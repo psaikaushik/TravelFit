@@ -27,15 +27,19 @@ test_target.build_configurations.each do |configuration|
     'TARGETED_DEVICE_FAMILY' => '1',
     'TEST_TARGET_NAME' => app.name
   )
+  team = app.build_settings(configuration.name)['DEVELOPMENT_TEAM']
+  configuration.build_settings['DEVELOPMENT_TEAM'] = team if team
 end
 
 target_attributes = project.root_object.attributes['TargetAttributes'] ||= {}
 target_attributes[test_target.uuid] = { 'TestTargetID' => app.uuid }
 project.save
 
-scheme = Xcodeproj::XCScheme.new
-scheme.configure_with_targets(app, test_target, launch_target: true)
-scheme.test_action.build_configuration = 'Release'
-scheme.test_action.add_macro_expansion(Xcodeproj::XCScheme::MacroExpansion.new(app))
-scheme.save_as(project_path, 'TravelFitSimulatorE2E', true)
-puts "Configured TravelFitSimulatorE2E with #{test_target_name}"
+%w[TravelFitSimulatorE2E TravelFitDeviceE2E].each do |name|
+  scheme = Xcodeproj::XCScheme.new
+  scheme.configure_with_targets(app, test_target, launch_target: true)
+  scheme.test_action.build_configuration = 'Release'
+  scheme.test_action.add_macro_expansion(Xcodeproj::XCScheme::MacroExpansion.new(app))
+  scheme.save_as(project_path, name, true)
+  puts "Configured #{name} with #{test_target_name}"
+end

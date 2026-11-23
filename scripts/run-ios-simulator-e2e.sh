@@ -21,6 +21,7 @@ xcodebuild test \
   -destination "platform=iOS Simulator,id=$simulator" \
   -derivedDataPath "$RUNNER_TEMP/travelfit-derived-data" \
   -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
+  -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
   -parallel-testing-enabled NO \
   -testLanguage en -testRegion US \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
