@@ -11,12 +11,17 @@ const useBackgroundTasks = () => {
   const queryClient = useQueryClient()
   const mounted = useRef(false)
   const syncing = useRef(false)
+  const syncQueued = useRef(false)
   const [status, setStatus] = useState('syncing')
 
   const sync = useCallback(async () => {
-    if (syncing.current) return
+    if (!mounted.current) return
+    if (syncing.current) {
+      syncQueued.current = true
+      return
+    }
     syncing.current = true
-    if (mounted.current) setStatus('syncing')
+    setStatus('syncing')
     const uid = getCurrentAccountId()
 
     try {
@@ -26,12 +31,13 @@ const useBackgroundTasks = () => {
 
       if (result.status !== 'ready' && result.status !== 'complete') return
 
-      const [goal, prefs] = await Promise.all([checkDailyGoal(), getNotificationPrefs()])
+      const [goal, prefs] = await Promise.all([checkDailyGoal(), getNotificationPrefs(uid)])
       if (!mounted.current || getCurrentAccountId() !== uid) return
       await Promise.all([
         queryClient.invalidateQueries(['streak']),
         queryClient.invalidateQueries(['streak-profile'])
       ])
+      if (!mounted.current || getCurrentAccountId() !== uid) return
       if (!prefs.enabled || isInQuietHours(prefs)) return
 
       if (prefs.milestoneAlerts) {
@@ -56,7 +62,11 @@ const useBackgroundTasks = () => {
     } catch {
       if (mounted.current && getCurrentAccountId() === uid) setStatus('unavailable')
     } finally {
+      // A step event can arrive after the ongoing query took its snapshot.
+      const runAgain = syncQueued.current && mounted.current && getCurrentAccountId() === uid
+      syncQueued.current = false
       syncing.current = false
+      if (runAgain) void sync()
     }
   }, [queryClient])
 
