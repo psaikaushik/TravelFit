@@ -1,4 +1,4 @@
-import { Platform } from 'react-native'
+import { AppState, Platform } from 'react-native'
 import DeviceInfo from 'react-native-device-info'
 import firebase from '@react-native-firebase/app'
 import auth from '@react-native-firebase/auth'
@@ -21,8 +21,17 @@ auth().useEmulator('http://127.0.0.1:19099')
 database().useEmulator('127.0.0.1', 19000)
 functions().useEmulator('127.0.0.1', 19501)
 
-HealthKit.initHealthKit = (_options, callback) => callback(null, true)
+let healthConnected = false
+let stepCount = 1200
+AppState.addEventListener('change', (state) => {
+  if (healthConnected && state === 'background') stepCount = 20000
+})
+
+HealthKit.initHealthKit = (_options, callback) => {
+  healthConnected = true
+  callback(null, true)
+}
 HealthKit.getDailyStepCountSamples = (_options, callback) => {
   const now = new Date().toISOString()
-  callback(null, [{ startDate: now, endDate: now, value: 20000 }])
+  callback(null, [{ startDate: now, endDate: now, value: stepCount }])
 }

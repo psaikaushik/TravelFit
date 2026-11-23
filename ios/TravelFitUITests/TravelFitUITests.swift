@@ -68,15 +68,26 @@ final class TravelFitUITests: XCTestCase {
         }
 
         if useHealthFixture {
-            XCTContext.runActivity(named: "Connect Health and finish the route with simulator fixture steps") { _ in
+            XCTContext.runActivity(named: "Connect Health, then resume with additional simulated steps") { _ in
                 tap("trip-map-connect-health")
                 tap("health-connect")
                 assertMap(title: "Golden Gate Waterfront")
+                waitForLabel("trip-map-status", "Steps synced")
+                assertMapStepCount("1200")
+                attach("Partial route progress with simulated steps")
+
+                XCUIDevice.shared.press(.home)
+                let inBackground = NSPredicate { _, _ in
+                    self.app.state == .runningBackground || self.app.state == .runningBackgroundSuspended
+                }
+                let expectation = XCTNSPredicateExpectation(predicate: inBackground, object: nil)
+                XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
+                               "TravelFit did not move into the background")
+                app.activate()
                 waitForLabel("trip-map-status", "Route complete")
                 let progress = element("trip-map-progress").label
                 XCTAssertTrue(progress.contains("100%"), "The completed route did not show 100%: \(progress)")
-                let stepCount = progress.split(separator: "·").last.map { String($0.filter { $0.isNumber }) }
-                XCTAssertEqual(stepCount, "20000", "Unexpected fixture step count: \(progress)")
+                assertMapStepCount("20000")
                 attach("Completed route with simulated steps")
                 tap("tab-progress")
                 assertVisible("Goal reached!")
@@ -168,6 +179,12 @@ final class TravelFitUITests: XCTestCase {
         let view = assertVisible("trip-map")
         XCTAssertGreaterThan(view.frame.width, 0, "MapKit viewport has no width")
         XCTAssertGreaterThan(view.frame.height, 0, "MapKit viewport has no height")
+    }
+
+    private func assertMapStepCount(_ expected: String) {
+        let progress = assertVisible("trip-map-progress").label
+        let steps = progress.split(separator: "·").last.map { String($0.filter { $0.isNumber }) }
+        XCTAssertEqual(steps, expected, "Unexpected fixture step count: \(progress)")
     }
 
     private func openHistory() {

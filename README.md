@@ -13,7 +13,7 @@ npm test -- --runInBand
 npm run bundle:ios -- --bundle-output /tmp/travelfit.jsbundle --assets-dest /tmp/travelfit-assets
 ```
 
-The GitHub Actions run on `release/fitness-recovery` also builds the unsigned Release app on an iOS 26 simulator. XCUITest drives two demo accounts through signup, Apple Health Skip and reconnect, route selection and completion, trip history, relaunch, and account deletion. The CI checkout uses local Firebase emulators and a deterministic 20,000-step fixture. The tracked app entry point used for signed builds stays separate from the fixture. XCTest results and screenshots are uploaded to the workflow run.
+The GitHub Actions run on `release/fitness-recovery` also builds the unsigned Release app on an iOS 26 simulator. XCUITest drives two demo accounts through signup, Apple Health Skip and reconnect, route selection and completion, trip history, relaunch, and account deletion. The CI checkout uses local Firebase emulators and a Health fixture that supplies 1,200 steps on connection and 20,000 steps after the app resumes. The tracked app entry point used for signed builds stays separate from the fixture. XCTest results and screenshots are uploaded to the workflow run.
 
 To run the backend customer-flow check with Node 22 and Java 21, use the Firebase Local Emulator Suite. This test creates demo users, verifies profile isolation, resets an account password, calls account deletion, and checks that the deleted account no longer works.
 
