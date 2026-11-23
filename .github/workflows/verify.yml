@@ -83,6 +83,7 @@ jobs:
             ~/Library/Caches/CocoaPods
             ~/.cocoapods/repos
           key: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-
       - name: Install locked iOS dependencies
         working-directory: ios
         run: bundle exec pod install --deployment

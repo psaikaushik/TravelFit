@@ -10,6 +10,33 @@ if boost_spec.include?(legacy_boost_url)
   File.write(boost_podspec, boost_spec.sub(legacy_boost_url, 'https://archives.boost.io/release/'))
 end
 
+# Xcode 26 can skip the implicit dependency on these static pod frameworks.
+# Link the generated aggregate targets explicitly for app and test builds.
+post_integrate do |installer|
+  pods_project = installer.pods_project
+  installer.aggregate_targets.group_by(&:user_project).each do |project, aggregates|
+    reference = project.reference_for_path(pods_project.path) ||
+      project.main_group.new_reference(pods_project.path)
+    aggregates.each do |aggregate|
+      pods_target = pods_project.targets.find { |target| target.name == aggregate.label }
+      raise "Missing CocoaPods target #{aggregate.label}" unless pods_target
+
+      aggregate.user_targets.each do |target|
+        dependency = target.dependencies.find do |item|
+          item.target_proxy.container_portal == reference.uuid &&
+            item.target_proxy.remote_info == pods_target.name
+        end
+        if dependency
+          dependency.target_proxy.remote_global_id_string = pods_target.uuid
+        else
+          target.add_dependency(pods_target)
+        end
+      end
+    end
+    project.save
+  end
+end
+
 # These legacy pod helpers use the File.exists? alias removed in Ruby 3.2.
 [
   '../node_modules/react-native-gesture-handler/RNGestureHandler.podspec',
