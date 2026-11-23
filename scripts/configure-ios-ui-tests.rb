@@ -23,6 +23,9 @@ test_target.build_configurations.each do |configuration|
   configuration.build_settings.merge!(
     'GENERATE_INFOPLIST_FILE' => 'YES',
     'PRODUCT_BUNDLE_IDENTIFIER' => 'com.travelfit.app.uitests',
+    'PRODUCT_NAME' => test_target_name,
+    'EXECUTABLE_NAME' => '$(PRODUCT_NAME)',
+    'WRAPPER_EXTENSION' => 'xctest',
     'SWIFT_VERSION' => '5.0',
     'TARGETED_DEVICE_FAMILY' => '1',
     'TEST_TARGET_NAME' => app.name
