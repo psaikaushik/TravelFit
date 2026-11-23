@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
 import { Text, Button, useToast, Container, Flex } from 'native-base'
 import { Image, Platform, SafeAreaView, StatusBar } from 'react-native'
@@ -7,47 +7,56 @@ import AppleHealthKit from 'react-native-health'
 import { getCurrentAccountId, getUserSettings, setUserSettings } from '../services/database'
 import { hasActiveTrip } from '../services/helpers'
 
+const requestStepAccess = () => new Promise((resolve, reject) => {
+  AppleHealthKit.initHealthKit({
+    permissions: { read: [AppleHealthKit.Constants.Permissions.StepCount], write: [] }
+  }, (error) => error ? reject(error) : resolve())
+})
+
 const AppleHealth = () => {
   const { reset } = useNavigation()
   const isFocused = useIsFocused()
   const toast = useToast()
-  const [isConnecting, setIsConnecting] = useState(false)
+  const mounted = useRef(false)
+  const busy = useRef(false)
+  const [pending, setPending] = useState(null)
 
-  const handleNext = async (health, uid = getCurrentAccountId()) => {
-    if (!uid || getCurrentAccountId() !== uid) return
-    try {
-      const settings = await getUserSettings(uid)
-      await setUserSettings({ ...settings, health, healthSetupCompleted: true }, uid)
-      if (getCurrentAccountId() !== uid) return
-      reset({ index: 0, routes: [{ name: hasActiveTrip(settings) ? 'Main' : 'Trip' }] })
-    } catch {
-      toast.show({ status: 'error', description: 'Could not save your Health preference. Try again.' })
-    }
-  }
-
-  const handleConnect = () => {
+  const completeSetup = async (health) => {
     const uid = getCurrentAccountId()
-    if (!uid) return
-    if (Platform.OS !== 'ios' || !AppleHealthKit?.initHealthKit) {
+    if (!uid || busy.current) return
+    if (health && (Platform.OS !== 'ios' || !AppleHealthKit?.initHealthKit)) {
       toast.show({ status: 'info', description: 'Apple Health is unavailable on this device.' })
       return
     }
 
-    setIsConnecting(true)
-    AppleHealthKit.initHealthKit({
-      permissions: { read: [AppleHealthKit.Constants.Permissions.StepCount], write: [] }
-    }, async (error) => {
-      try {
-        if (error) {
-          toast.show({ status: 'error', description: 'Could not open Health permissions. You can continue without syncing.' })
-        } else {
-          await handleNext(true, uid)
-        }
-      } finally {
-        setIsConnecting(false)
+    busy.current = true
+    setPending(health ? 'connect' : 'skip')
+    const isCurrent = () => mounted.current && getCurrentAccountId() === uid
+    let errorMessage = 'Could not open Health permissions. You can continue without syncing.'
+
+    try {
+      if (health) await requestStepAccess()
+      if (!isCurrent()) return
+
+      errorMessage = 'Could not save your Health preference. Try again.'
+      const settings = await getUserSettings(uid)
+      if (!isCurrent()) return
+      await setUserSettings({ ...settings, health, healthSetupCompleted: true }, uid)
+      if (isCurrent()) {
+        reset({ index: 0, routes: [{ name: hasActiveTrip(settings) ? 'Main' : 'Trip' }] })
       }
-    })
+    } catch {
+      if (isCurrent()) toast.show({ status: 'error', description: errorMessage })
+    } finally {
+      busy.current = false
+      if (mounted.current) setPending(null)
+    }
   }
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   useEffect(() => {
     if (isFocused) {
@@ -76,10 +85,10 @@ const AppleHealth = () => {
             Allow TravelFit to read your steps and move you along your virtual route. You can manage access in Apple Health at any time.
           </Text>
         </Flex>
-        <Button size="lg" variant="primary" mt="30px" onPress={handleConnect} isLoading={isConnecting} accessibilityLabel="Connect to Apple Health">
+        <Button size="lg" variant="primary" mt="30px" onPress={() => completeSetup(true)} isLoading={pending === 'connect'} isDisabled={!!pending} accessibilityLabel="Connect to Apple Health">
           Connect Apple Health
         </Button>
-        <Button size="lg" variant="ghost" isDisabled={isConnecting} onPress={() => handleNext(false)}>
+        <Button size="lg" variant="ghost" isLoading={pending === 'skip'} isDisabled={!!pending} onPress={() => completeSetup(false)}>
           Continue without syncing
         </Button>
       </Container>
