@@ -70,6 +70,7 @@ const Login = () => {
     <AuthScreen title="Welcome back" appleEnabled={true} footer={footer}>
       <FormInput
         id="email"
+        testID="log-in-email"
         w="100%"
         mt="30px"
         variant="primary"
@@ -86,6 +87,7 @@ const Login = () => {
       />
       <FormInput
         id="password"
+        testID="log-in-password"
         type="password"
         w="100%"
         mt="16px"
@@ -103,6 +105,7 @@ const Login = () => {
           variant="link"
           width="auto"
           onPress={handleReset}
+          testID="log-in-forgot-password"
         >
           Forgot password
         </Button>
@@ -114,6 +117,7 @@ const Login = () => {
         isLoading={isSubmitting}
         onPress={handleSubmit(handleLogIn)}
         accessibilityLabel="Log in to your account"
+        testID="log-in-submit"
       >
         Log in
       </Button>

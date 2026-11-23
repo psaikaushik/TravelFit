@@ -85,10 +85,10 @@ const AppleHealth = () => {
             Allow TravelFit to read your steps and move you along your virtual route. You can manage access in Apple Health at any time.
           </Text>
         </Flex>
-        <Button size="lg" variant="primary" mt="30px" onPress={() => completeSetup(true)} isLoading={pending === 'connect'} isDisabled={!!pending} accessibilityLabel="Connect to Apple Health">
+        <Button size="lg" variant="primary" mt="30px" onPress={() => completeSetup(true)} isLoading={pending === 'connect'} isDisabled={!!pending} accessibilityLabel="Connect to Apple Health" testID="health-connect">
           Connect Apple Health
         </Button>
-        <Button size="lg" variant="ghost" isLoading={pending === 'skip'} isDisabled={!!pending} onPress={() => completeSetup(false)}>
+        <Button size="lg" variant="ghost" isLoading={pending === 'skip'} isDisabled={!!pending} onPress={() => completeSetup(false)} testID="health-skip">
           Continue without syncing
         </Button>
       </Container>

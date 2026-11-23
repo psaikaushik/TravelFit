@@ -94,47 +94,53 @@ jobs:
             ~/Library/Caches/CocoaPods
             ~/.cocoapods/repos
           key: ${{ steps.pod-downloads.outputs.cache-primary-key }}
-      - name: Configure an isolated Firebase fixture
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure the simulator-only Firebase and Health fixtures
         run: |
           python3 - <<'PY'
           import plistlib
+          from pathlib import Path
 
           config = {
               "API_KEY": "AIza" + "0" * 35,
               "BUNDLE_ID": "com.travelfit.app",
-              "DATABASE_URL": "http://127.0.0.1:9000?ns=demo-travelfit",
+              "DATABASE_URL": "https://demo-travelfit-audit.firebaseio.com",
               "GCM_SENDER_ID": "100000000000",
               "GOOGLE_APP_ID": "1:100000000000:ios:0000000000000000000000",
               "IS_ANALYTICS_ENABLED": False,
               "PLIST_VERSION": "1",
-              "PROJECT_ID": "demo-travelfit",
+              "PROJECT_ID": "demo-travelfit-audit",
           }
           with open("ios/GoogleService-Info.local.plist", "wb") as file:
               plistlib.dump(config, file)
-          PY
-      - name: Run the Release onboarding smoke test
-        run: |
-          simulator=$(xcrun simctl list devices available --json | python3 -c '
-          import json, sys
 
-          runtimes = json.load(sys.stdin)["devices"]
-          candidates = [key for key in runtimes if ".iOS-26-" in key or key.endswith(".iOS-26")]
-          for runtime in sorted(candidates, key=lambda key: tuple(map(int, key.split("iOS-")[1].split("-"))), reverse=True):
-              for device in runtimes[runtime]:
-                  if device["name"].startswith("iPhone"):
-                      print(device["udid"])
-                      sys.exit()
-          sys.exit("No available iPhone simulator with an iOS 26 runtime")
-          ')
-          xcodebuild test \
-            -workspace ios/TravelFit.xcworkspace \
-            -scheme TravelFit \
-            -configuration Release \
-            -destination "platform=iOS Simulator,id=$simulator" \
-            -derivedDataPath "$RUNNER_TEMP/travelfit-derived-data" \
-            -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
-            -parallel-testing-enabled NO \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          entry = Path("index.js")
+          original = entry.read_text()
+          gesture_handler = "import 'react-native-gesture-handler'\n"
+          assert original.startswith(gesture_handler)
+          entry.write_text(original.replace(
+              gesture_handler,
+              gesture_handler + "import './scripts/ios-simulator-fixture'\n",
+              1
+          ))
+
+          info = Path("ios/TravelFit/Info.plist")
+          with info.open("rb") as file:
+              simulator_info = plistlib.load(file)
+          simulator_info.setdefault("NSAppTransportSecurity", {})["NSAllowsLocalNetworking"] = True
+          with info.open("wb") as file:
+              plistlib.dump(simulator_info, file)
+          PY
+          bundle exec ruby scripts/configure-ios-ui-tests.rb
+      - name: Run TravelFit end to end in the Release simulator
+        run: |
+          npm ci --prefix functions --engine-strict
+          npx --yes firebase-tools@15.37.0 emulators:exec \
+            --project demo-travelfit-audit --only auth,database,functions \
+            'bash scripts/run-ios-simulator-e2e.sh'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

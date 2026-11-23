@@ -42,6 +42,7 @@ const Login = () => {
     <AuthScreen title="Reset Password">
       <FormInput
         id="email"
+        testID="reset-password-email"
         w="100%"
         mt="30px"
         variant="primary"
@@ -62,6 +63,7 @@ const Login = () => {
         mt="40px"
         isLoading={isSubmitting}
         onPress={handleSubmit(handleReset)}
+        testID="reset-password-submit"
       >
         Send Reset Link
       </Button>

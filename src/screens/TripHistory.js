@@ -47,7 +47,7 @@ const TripHistory = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
       <StatusBar barStyle="dark-content" />
       <Flex direction="row" align="center" px="16px" py="12px">
-        <Pressable onPress={goBack} p="4px" accessibilityLabel="Go back" accessibilityRole="button">
+        <Pressable onPress={goBack} p="4px" accessibilityLabel="Go back" accessibilityRole="button" testID="trip-history-back">
           <BackSVG />
         </Pressable>
         <Text fontSize="20px" fontWeight="700" ml="12px" accessibilityRole="header">
@@ -65,7 +65,7 @@ const TripHistory = () => {
         {!isLoading && trips.length === 0 && (
           <VStack alignItems="center" mt="60px" space="3">
             <Text fontSize="48px">{'🗺️'}</Text>
-            <Text fontSize="18px" fontWeight="600" color="gray.600">
+            <Text fontSize="18px" fontWeight="600" color="gray.600" testID="trip-history-empty">
               No trips yet
             </Text>
             <Text fontSize="14px" color="gray.400" textAlign="center">
@@ -94,7 +94,7 @@ const TripHistory = () => {
                       ? ` — ${moment(trip.completedDate).format('MMM D, YYYY')}`
                       : ' — Unfinished'}
                   </Text>
-                  <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1}>
+                  <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1} testID="trip-history-start">
                     {trip.starting?.title || 'Unknown'}
                   </Text>
                   <HStack alignItems="center" space="1">

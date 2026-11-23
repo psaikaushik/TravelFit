@@ -90,6 +90,7 @@ const Onboarding = () => {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Skip"
+          testID="onboarding-skip"
         >
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>

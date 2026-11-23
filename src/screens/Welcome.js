@@ -72,7 +72,7 @@ const Welcome = () => {
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text style={styles.title} accessibilityRole="header">Walk here. Explore somewhere new.</Text>
       </View>
-      <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Start now, create an account">
+      <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Start now, create an account" testID="welcome-sign-up">
         <Text style={styles.welcomeText}>Create an account</Text>
       </TouchableOpacity>
       {Platform.OS === 'ios' && appleAuth.isSupported && (
@@ -89,7 +89,7 @@ const Welcome = () => {
           onPress={appleLoading ? undefined : handleAppleSignIn}
         />
       )}
-      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} accessibilityRole="button" accessibilityLabel="Already have an account, log in">
+      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} accessibilityRole="button" accessibilityLabel="Already have an account, log in" testID="welcome-log-in">
         <Text style={styles.loginText}>Already have an account</Text>
       </TouchableOpacity>
       <TouchableOpacity

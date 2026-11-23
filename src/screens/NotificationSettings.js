@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { SafeAreaView, StatusBar } from 'react-native'
 import {
   Box,
@@ -26,6 +26,8 @@ const NotificationSettings = () => {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [prefs, setPrefs] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const saveInFlight = useRef(false)
 
   const { data: savedPrefs, isLoading } = useQuery(
     ['notification-prefs'],
@@ -40,19 +42,28 @@ const NotificationSettings = () => {
 
   const updatePref = useCallback(
     async (key, value) => {
+      if (saveInFlight.current || prefs[key] === value) return
+      saveInFlight.current = true
+      setSaving(true)
       const updated = { ...prefs, [key]: value }
 
-      setPrefs(updated)
       try {
         await saveNotificationPrefs(updated)
-        await queryClient.invalidateQueries(['notification-prefs'])
+        setPrefs(updated)
+        queryClient.setQueryData(['notification-prefs'], updated)
         if (key === 'enabled') {
-          if (value) registerNotifications()
-          else clearNotifications()
+          try {
+            if (value) registerNotifications()
+            else clearNotifications()
+          } catch {
+            toast.show({ status: 'error', description: 'Preference saved. Check notification permissions in iOS Settings.' })
+          }
         }
       } catch {
-        setPrefs(prefs)
         toast.show({ status: 'error', description: 'Could not update notifications. Try again.' })
+      } finally {
+        saveInFlight.current = false
+        setSaving(false)
       }
     },
     [prefs, queryClient, toast]
@@ -106,6 +117,7 @@ const NotificationSettings = () => {
               </VStack>
               <Switch
                 isChecked={prefs.enabled}
+                isDisabled={saving}
                 onToggle={(value) => updatePref('enabled', value)}
                 accessibilityLabel="Toggle all notifications"
               />
@@ -133,7 +145,7 @@ const NotificationSettings = () => {
                 <Switch
                   isChecked={prefs.milestoneAlerts}
                   onToggle={(value) => updatePref('milestoneAlerts', value)}
-                  isDisabled={!prefs.enabled}
+                  isDisabled={saving || !prefs.enabled}
                   accessibilityLabel="Toggle milestone alerts"
                 />
               </HStack>
@@ -151,7 +163,7 @@ const NotificationSettings = () => {
                 <Switch
                   isChecked={prefs.dailyGoalReminder}
                   onToggle={(value) => updatePref('dailyGoalReminder', value)}
-                  isDisabled={!prefs.enabled}
+                  isDisabled={saving || !prefs.enabled}
                   accessibilityLabel="Toggle daily goal alerts"
                 />
               </HStack>

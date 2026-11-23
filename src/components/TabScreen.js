@@ -32,7 +32,7 @@ const TabScreen = ({ children }) => {
         position="absolute"
         bottom={isIphoneX ? '34px' : '20px'}
       >
-        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Map" onPress={() => navigate('Map')}>
+        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Map" onPress={() => navigate('Map')} testID="tab-map">
           <Flex flex="1" align="center" justify="center">
             {index === 0 ? (
               <RouteActiveSVG width={22} />
@@ -59,7 +59,7 @@ const TabScreen = ({ children }) => {
             )}
           </Flex>
         </Pressable>
-        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Profile" onPress={() => navigate('Profile')}>
+        <Pressable flex="1" accessibilityRole="tab" accessibilityLabel="Profile" onPress={() => navigate('Profile')} testID="tab-profile">
           <Flex flex="1" align="center" justify="center">
             {index === 3 ? (
               <ProfileActiveSVG width={22} />

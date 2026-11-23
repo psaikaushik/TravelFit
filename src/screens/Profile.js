@@ -136,7 +136,7 @@ const Profile = () => {
   return (
     <TabScreen>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
-        <ScrollView flex="1" showsVerticalScrollIndicator={false}>
+        <ScrollView flex="1" showsVerticalScrollIndicator={false} testID="profile-content">
           <Container flex="1" px="20px" mt="16px" mb="100px" w="100%" minW="100%">
             <VStack space="5" flex="1">
               {/* User Profile */}
@@ -266,6 +266,7 @@ const Profile = () => {
               <Pressable
                 onPress={() => navigate('TripHistory')}
                 accessibilityLabel="View trip history"
+                testID="profile-trip-history"
                 accessibilityRole="button"
               >
                 <Box bg="white" borderRadius="16px" p="20px">
@@ -340,6 +341,7 @@ const Profile = () => {
                 onPress={handleLogOut}
                 isDisabled={isDeleting}
                 accessibilityLabel="Sign out of your account"
+                testID="profile-sign-out"
               >
                 Sign Out
               </Button>
@@ -350,6 +352,7 @@ const Profile = () => {
                 colorScheme="danger"
                 isLoading={isDeleting}
                 onPress={confirmDeleteAccount}
+                testID="profile-delete-account"
               >
                 Delete Account
               </Button>

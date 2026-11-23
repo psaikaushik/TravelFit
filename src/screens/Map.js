@@ -76,6 +76,7 @@ const Map = () => {
         mapPadding={{ top: insets.top + 144, bottom: insets.bottom + 70, left: 20, right: 20 }}
         style={{ flex: 1 }}
         accessibilityLabel="Map of your virtual route"
+        testID="trip-map"
       >
         <Polyline coordinates={route} strokeWidth={5} strokeColor="#6D7571" />
         {walkedRoute?.length > 1 && (
@@ -101,8 +102,8 @@ const Map = () => {
       <Box position="absolute" top={insets.top + 8} left="20px" right="20px" p="3" bg="white" borderRadius="16px" shadow="2">
         <HStack justifyContent="space-between" space="3" alignItems="center">
           <Box flex="1">
-            <Text fontWeight="700" fontSize="18px" accessibilityRole="header">{title}</Text>
-            <Text color="gray.700" fontSize="13px">
+            <Text fontWeight="700" fontSize="18px" accessibilityRole="header" testID="trip-map-title">{title}</Text>
+            <Text color="gray.700" fontSize="13px" testID="trip-map-progress">
               {traveled.toFixed(2)} / {distance.toFixed(2)} km · {progress}% · {steps.toLocaleString()} steps
             </Text>
           </Box>
@@ -110,15 +111,16 @@ const Map = () => {
             variant="outline"
             size="sm"
             accessibilityLabel="Change virtual route"
+            testID="trip-map-routes"
             onPress={() => navigate('Trip')}
           >
             {status === 'complete' ? 'Next route' : 'Routes'}
           </Button>
         </HStack>
         <HStack justifyContent="space-between" space="3" alignItems="center" mt="2">
-          <Text flex="1" color="gray.700" fontSize="13px" accessibilityLiveRegion="polite">{syncLabel}</Text>
+          <Text flex="1" color="gray.700" fontSize="13px" accessibilityLiveRegion="polite" testID="trip-map-status">{syncLabel}</Text>
           {Platform.OS === 'ios' && (status === 'off' ? (
-            <Button size="sm" variant="ghost" onPress={() => navigate('AppleHealth')}>Connect Health</Button>
+            <Button size="sm" variant="ghost" onPress={() => navigate('AppleHealth')} testID="trip-map-connect-health">Connect Health</Button>
           ) : status !== 'complete' && (
             <Button size="sm" variant="ghost" onPress={sync} isLoading={status === 'syncing'}>Refresh</Button>
           ))}

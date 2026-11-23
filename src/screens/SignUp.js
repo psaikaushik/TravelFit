@@ -63,6 +63,7 @@ const SignUp = () => {
     <AuthScreen title="Join Us" appleEnabled={true} footer={footer}>
       <FormInput
         id="name"
+        testID="sign-up-name"
         w="100%"
         mt="20px"
         variant="primary"
@@ -73,6 +74,7 @@ const SignUp = () => {
       />
       <FormInput
         id="email"
+        testID="sign-up-email"
         w="100%"
         mt="16px"
         variant="primary"
@@ -89,6 +91,7 @@ const SignUp = () => {
       />
       <FormInput
         id="password"
+        testID="sign-up-password"
         type="password"
         w="100%"
         mt="16px"
@@ -105,6 +108,7 @@ const SignUp = () => {
         isLoading={isSubmitting}
         onPress={handleSubmit(handleRegister)}
         accessibilityLabel="Create your account"
+        testID="sign-up-submit"
       >
         Register
       </Button>

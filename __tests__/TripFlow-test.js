@@ -1,12 +1,14 @@
 import React from 'react'
 import { Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import AppleHealthKit from 'react-native-health'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import renderer, { act } from 'react-test-renderer'
 import Trip from '../src/screens/Trip'
 import { buildCuratedTrip, VIRTUAL_ROUTES } from '../src/data/curatedRoutes'
 import { getUserSettings, setUserSettings } from '../src/services/database'
-import { getTripHistory } from '../src/services/tripHistory'
+import { deleteTripFromHistory, getTripHistory } from '../src/services/tripHistory'
+import { checkFlow, getTripProgressIndex, updateProgress } from '../src/services/helpers'
 
 let mockUser
 let mockNavigation
@@ -30,7 +32,7 @@ jest.mock('native-base', () => ({
   useToast: () => mockToast
 }))
 jest.mock('../src/assets/icons/back.svg', () => 'BackIcon')
-jest.mock('react-native-health', () => ({}))
+jest.mock('react-native-health', () => ({ getDailyStepCountSamples: jest.fn() }))
 jest.mock('../src/services/maps', () => ({}))
 jest.mock('../src/services/subscription', () => ({ hasActiveSubscription: jest.fn() }))
 
@@ -223,4 +225,45 @@ it('keeps navigation with the current account if auth changes while refresh is p
   expect(mockNavigation.reset).not.toHaveBeenCalled()
   expect(await getUserSettings('other-walker')).toEqual({})
   invalidate.mockRestore()
+})
+
+
+it('completes a route, resumes it from storage, then starts over and removes the old trip', async () => {
+  await mountPicker({ health: true, healthSetupCompleted: true })
+  await select(firstRoute)
+  const started = await getUserSettings()
+  expect(started).toMatchObject({ curatedRouteId: firstRoute.id, steps: 0 })
+  expect(started.badges.every((badge) => badge.progress === 0)).toBe(true)
+
+  const steps = Math.ceil((started.distance + 0.02) * 1200)
+  const samples = AppleHealthKit.getDailyStepCountSamples.mockImplementation((_, callback) =>
+    callback(null, [{ value: steps }])
+  )
+  let status
+  await act(async () => {
+    status = await updateProgress(queryClient)
+  })
+  expect(status).toMatchObject({ status: 'complete' })
+  expect(status.alerts.map(({ name }) => name)).toEqual(started.badges.map(({ name }) => name))
+  expect(samples).toHaveBeenCalledWith({ startDate: started.startedTime }, expect.any(Function))
+
+  const completed = await getUserSettings()
+  expect(completed).toMatchObject({ steps, completed: expect.any(String) })
+  expect(completed.badges.every((badge) => badge.progress === 100)).toBe(true)
+  expect(getTripProgressIndex(steps, completed.distance, completed.route)).toBe(completed.route.length - 1)
+  await expect(checkFlow(mockUser)).resolves.toBe('Main')
+  await expect(updateProgress()).resolves.toEqual({ status: 'complete' })
+  expect(samples).toHaveBeenCalledTimes(1)
+
+  act(() => screen.unmount())
+  await mountPicker(completed)
+  await select(secondRoute)
+  expect(alert).not.toHaveBeenCalled()
+  expect(await getUserSettings()).toMatchObject({ curatedRouteId: secondRoute.id, steps: 0 })
+  const history = await getTripHistory()
+  expect(history).toEqual([
+    expect.objectContaining({ completed: completed.completed, steps, badges: completed.badges.length })
+  ])
+  await deleteTripFromHistory(history[0].id)
+  await expect(getTripHistory()).resolves.toEqual([])
 })
