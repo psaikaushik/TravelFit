@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
 import { Alert, Platform, SafeAreaView, StatusBar } from 'react-native'
 import { appleAuth } from '@invertase/react-native-apple-authentication'
@@ -19,6 +19,7 @@ const Profile = () => {
   const toast = useToast()
   const queryClient = useQueryClient()
   const user = auth().currentUser
+  const deleting = useRef(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showGoalPicker, setShowGoalPicker] = useState(false)
 
@@ -39,44 +40,55 @@ const Profile = () => {
 
   const returnToWelcome = () => {
     queryClient.clear()
-    if (Platform.OS === 'ios') clearNotifications()
+    if (Platform.OS === 'ios') {
+      try {
+        clearNotifications()
+      } catch {
+        toast.show({ status: 'info', description: 'Some delivered notifications may remain on this device.' })
+      }
+    }
     reset({ index: 0, routes: [{ name: 'Welcome' }] })
   }
 
   const handleLogOut = async () => {
+    if (!user || auth().currentUser?.uid !== user.uid || deleting.current) return
     try {
       await auth().signOut()
-      returnToWelcome()
+      if (!auth().currentUser) returnToWelcome()
     } catch {
       toast.show({ status: 'error', description: 'Could not sign out. Try again.' })
     }
   }
 
   const removeAccount = async () => {
-    if (!user) return
+    if (!user || auth().currentUser?.uid !== user.uid || deleting.current) return
+    deleting.current = true
     setIsDeleting(true)
     try {
       if (user.providerData.some((provider) => provider.providerId === 'apple.com')) {
         const { identityToken, nonce, authorizationCode } = await appleAuth.performRequest({
           requestedOperation: appleAuth.Operation.LOGIN
         })
+        if (auth().currentUser?.uid !== user.uid) return
         if (!identityToken || !authorizationCode) {
           throw new Error('Could not verify your Apple account. Try again.')
         }
         await user.reauthenticateWithCredential(auth.AppleAuthProvider.credential(identityToken, nonce))
+        if (auth().currentUser?.uid !== user.uid) return
         await auth().revokeToken(authorizationCode)
       }
       await user.getIdToken(true)
-      await deleteAccount()
+      if (auth().currentUser?.uid !== user.uid) return
+      await deleteAccount(user.uid)
       try {
         await clearLocalAccountData(user.uid)
       } catch {
         Alert.alert('Account deleted', 'TravelFit could not remove its local files. Removing the app clears them from this device.')
       }
-      await auth().signOut().catch(() => {})
-      returnToWelcome()
+      if (auth().currentUser?.uid === user.uid) await auth().signOut().catch(() => {})
+      if (!auth().currentUser) returnToWelcome()
     } catch (error) {
-      if (error.code === appleAuth.Error.CANCELED) return
+      if (error.code === appleAuth.Error.CANCELED || auth().currentUser?.uid !== user.uid) return
       toast.show({
         status: 'error',
         description: error.code === 'functions/failed-precondition'
@@ -84,6 +96,7 @@ const Profile = () => {
           : 'Could not delete your account. Try again.'
       })
     } finally {
+      deleting.current = false
       setIsDeleting(false)
     }
   }

@@ -77,13 +77,20 @@ const Onboarding = () => {
   )
 
   const keyExtractor = useCallback((_, index) => index.toString(), [])
+  const nextLabel = currentIndex === steps.length - 1 ? 'Get Started' : 'Next'
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1A2225" />
 
       <Flex direction="row" justifyContent="flex-end" px={5} pt={3}>
-        <Pressable onPress={completeOnboarding} hitSlop={8} accessibilityRole="button">
+        <Pressable
+          onPress={completeOnboarding}
+          onAccessibilityTap={completeOnboarding}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Skip"
+        >
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       </Flex>
@@ -120,10 +127,14 @@ const Onboarding = () => {
           ))}
         </Flex>
 
-        <Pressable style={styles.nextButton} onPress={handleNext} accessibilityRole="button">
-          <Text style={styles.nextButtonText}>
-            {currentIndex === steps.length - 1 ? 'Get Started' : 'Next'}
-          </Text>
+        <Pressable
+          style={styles.nextButton}
+          onPress={handleNext}
+          onAccessibilityTap={handleNext}
+          accessibilityRole="button"
+          accessibilityLabel={nextLabel}
+        >
+          <Text style={styles.nextButtonText}>{nextLabel}</Text>
         </Pressable>
       </Box>
     </SafeAreaView>

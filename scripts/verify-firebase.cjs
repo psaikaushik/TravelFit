@@ -37,9 +37,9 @@ const profile = (uid, { token, ...options } = {}) => {
   return request(url, { ...options, token: token === 'owner' ? token : undefined })
 }
 
-const removeAccount = (token, status) => request(
+const removeAccount = (token, expectedUid, status) => request(
   `${functionsOrigin}/${project}/us-central1/deleteAccount`,
-  { method: 'POST', token, body: { data: {} }, status }
+  { method: 'POST', token, body: { data: { expectedUid } }, status }
 )
 
 async function main() {
@@ -72,8 +72,11 @@ async function main() {
   assert.equal(signedIn.localId, uid)
   assert.deepEqual(await profile(uid, { token: signedIn.idToken }), data)
 
-  await removeAccount(undefined, 401)
-  assert.deepEqual(await removeAccount(signedIn.idToken), { result: { deleted: true } })
+  await removeAccount(undefined, uid, 401)
+  const mismatch = await removeAccount(secondAccount.idToken, uid, 400)
+  assert.equal(mismatch.error.status, 'FAILED_PRECONDITION')
+  assert.deepEqual(await profile(uid, { token: signedIn.idToken }), data)
+  assert.deepEqual(await removeAccount(signedIn.idToken, uid), { result: { deleted: true } })
   assert.equal(await profile(uid, { token: 'owner' }), null)
   await auth('signInWithPassword', { email, password: nextPassword, returnSecureToken: true }, 400)
   await profile(uid, { method: 'PUT', token: signedIn.idToken, body: data, status: 401 })

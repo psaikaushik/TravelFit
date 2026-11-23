@@ -125,3 +125,18 @@ jobs:
           name: ios-simulator-result
           path: ${{ runner.temp }}/travelfit-ios.xcresult
           if-no-files-found: ignore
+      - name: Export simulator screenshots
+        if: always()
+        run: |
+          result="$RUNNER_TEMP/travelfit-ios.xcresult"
+          if [ -d "$result" ]; then
+            xcrun xcresulttool export attachments \
+              --path "$result" \
+              --output-path "$RUNNER_TEMP/travelfit-ios-attachments"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-attachments
+          path: ${{ runner.temp }}/travelfit-ios-attachments
+          if-no-files-found: ignore

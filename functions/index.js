@@ -16,6 +16,12 @@ const requireAccount = (request) => {
 
 exports.deleteAccount = onCall(async (request) => {
   const uid = requireAccount(request)
+  if (request.data?.expectedUid !== uid) {
+    throw new HttpsError(
+      'failed-precondition',
+      'The signed-in account changed. Open Profile and try again.'
+    )
+  }
   const authTime = request.auth.token.auth_time
   if (!Number.isFinite(authTime) || Date.now() / 1000 - authTime > recentSignInSeconds) {
     throw new HttpsError(
