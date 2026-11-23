@@ -1,21 +1,35 @@
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 require_relative '../node_modules/@react-native-community/cli-platform-ios/native_modules'
 
+# React Native 0.70's Boost URL now redirects to an HTML page. Keep its
+# original archive checksum and fetch the same release from Boost's archive.
+boost_podspec = File.join(__dir__, '../node_modules/react-native/third-party-podspecs/boost.podspec')
+boost_spec = File.read(boost_podspec)
+legacy_boost_url = 'https://boostorg.jfrog.io/artifactory/main/release/'
+if boost_spec.include?(legacy_boost_url)
+  File.write(boost_podspec, boost_spec.sub(legacy_boost_url, 'https://archives.boost.io/release/'))
+end
+
+# These legacy pod helpers use the File.exists? alias removed in Ruby 3.2.
+[
+  '../node_modules/react-native-gesture-handler/RNGestureHandler.podspec',
+  '../node_modules/react-native-reanimated/scripts/reanimated_utils.rb'
+].each do |relative_path|
+  helper_path = File.join(__dir__, relative_path)
+  helper_source = File.read(helper_path)
+  if helper_source.include?('File.exists?')
+    File.write(helper_path, helper_source.gsub('File.exists?', 'File.exist?'))
+  end
+end
+
 platform :ios, '13'
 install! 'cocoapods', :deterministic_uuids => false
 
 $RNFirebaseAsStaticFramework = true
 
-pod 'GoogleMaps'
-pod 'Google-Maps-iOS-Utils'
-
 target 'TravelFit' do
 
   use_frameworks! :linkage => :static
-
-  # React Native Maps dependencies
-  rn_maps_path = '../node_modules/react-native-maps'
-  pod 'react-native-google-maps', :path => rn_maps_path
 
 #   pod 'FirebaseCore', :modular_headers => true
 #   pod 'GoogleUtilities', :modular_headers => true
@@ -62,9 +76,6 @@ target 'TravelFit' do
 
   $static_framework = [
     'react-native-maps',
-    'react-native-google-maps',
-    'Google-Maps-iOS-Utils',
-    'GoogleMaps',
     'RNPermissions',
     'RNFirebaseAsStaticFramework',
   ]

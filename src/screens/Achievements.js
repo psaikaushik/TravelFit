@@ -6,7 +6,7 @@ import {
   Animated,
   TouchableOpacity
 } from 'react-native'
-import { Flex, Image, Progress, ScrollView, Text, View } from 'native-base'
+import { Flex, Progress, ScrollView, Text, View } from 'native-base'
 import TabScreen from '../components/TabScreen'
 import { useQuery } from '@tanstack/react-query'
 import { getUserSettings } from '../services/database'
@@ -16,13 +16,12 @@ import {
   printK,
   stepsToDistance
 } from '../services/helpers'
-import { getPlacePhotoUrl } from '../config/stripe'
 import { SceneMap, TabView } from 'react-native-tab-view'
 
 const LandmarksRoute = ({ route: { data } }) => {
   const badgesGroup = printGrid((data || []).filter((x) => !!x))
 
-  const renderItem = ({ place_id, name, progress = 0, photos }, index) => (
+  const renderItem = ({ place_id, name, progress = 0 }, index) => (
     <Flex
       key={`${index}${place_id}`}
       flex="1"
@@ -33,50 +32,12 @@ const LandmarksRoute = ({ route: { data } }) => {
       borderColor={progress > 0 ? '#a3cb88' : '#F3F3F6'}
       align="center"
     >
-      {!!photos && photos.length > 0 && (
-        <Image
-          w="100%"
-          aspectRatio={1}
-          borderRadius="12px"
-          alt={photos[0].photo_reference}
-          source={{
-            uri: getPlacePhotoUrl(photos[0].photo_reference, 1000, 1250)
-          }}
-        />
-      )}
-      {progress === 0 && (
-        <Flex
-          left="0"
-          right="0"
-          top="0"
-          bottom="0"
-          borderRadius="16px"
-          bg="#88888890"
-          position="absolute"
-        />
-      )}
-      <Flex
-        flex="1"
-        left="0"
-        right="0"
-        bottom="0"
-        p="5px"
-        borderBottomRadius="10px"
-        bg="#11111195"
-        justify="center"
-        position="absolute"
-      >
-        <Text
-          variant={`placeName${progress > 0 ? 'Act' : ''}`}
-          numberOfLines={2}
-        >
-          {name}
+      <Flex minH="120px" w="100%" p="4" justify="center">
+        <Text fontWeight="600" numberOfLines={2}>{name}</Text>
+        <Text color="gray.600" mt="2">
+          {progress >= 100 ? 'Completed' : `${Math.round(progress)}% complete`}
         </Text>
-        {progress === 100 && <Text variant="placeDistance">Completed</Text>}
-        {progress > 0 && progress < 100 && (
-          <Progress colorScheme="green" value={progress} my="5px" />
-        )}
-        {progress === 0 && <Progress colorScheme="gray" value={100} my="5px" />}
+        <Progress colorScheme="green" value={progress} mt="2" />
       </Flex>
     </Flex>
   )
@@ -97,7 +58,7 @@ const LandmarksRoute = ({ route: { data } }) => {
 const CitiesRoute = ({ route: { data } }) => {
   const citiesGroup = printGrid((data || []).filter((x) => !!x))
 
-  const renderItem = ({ place_id, name, photos }, index) => (
+  const renderItem = ({ place_id, name }, index) => (
     <Flex
       key={`${index}${place_id}`}
       flex="1"
@@ -108,17 +69,6 @@ const CitiesRoute = ({ route: { data } }) => {
       borderColor="border"
       align="center"
     >
-      {!!photos && photos.length > 0 && (
-        <Image
-          w="100%"
-          aspectRatio={1.3}
-          borderTopRadius="12px"
-          alt={photos[0].photo_reference}
-          source={{
-            uri: getPlacePhotoUrl(photos[0].photo_reference, 1000, 1250)
-          }}
-        />
-      )}
       <Flex py="12px" px="5px" borderBottomRadius="10px" justify="center">
         <Text variant="cityName" numberOfLines={2}>
           {name}

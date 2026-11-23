@@ -1,29 +1,18 @@
 import React from 'react'
-import { Flex, Image, Text } from 'native-base'
-import { getPlacePhotoUrl } from '../config/stripe'
+import { Flex, Text } from 'native-base'
 
 const PlaceModal = ({ route }) => {
   const { badge } = route?.params || {}
-  const { name, vicinity, photos } = badge || {}
+  const { name, vicinity } = badge || {}
 
   return (
-    <Flex px="16px">
+    <Flex px="16px" pb="16px">
       <Text variant="place" mb="2px" numberOfLines={2}>
         {name}
       </Text>
       <Text variant="vicinity" numberOfLines={1}>
-        Tourist Attraction - {vicinity}
+        {vicinity || 'Landmark'}
       </Text>
-      <Image
-        w="100%"
-        my="16px"
-        aspectRatio={1.3}
-        borderRadius="16px"
-        alt={photos[0].photo_reference}
-        source={{
-          uri: getPlacePhotoUrl(photos[0].photo_reference, 1000, 1250)
-        }}
-      />
     </Flex>
   )
 }

@@ -129,6 +129,16 @@ def reactNativeArchitectures() {
     return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
 }
 
+def releaseKeystore = providers.environmentVariable("TRAVELFIT_ANDROID_KEYSTORE").orNull
+def releaseStorePassword = providers.environmentVariable("TRAVELFIT_ANDROID_STORE_PASSWORD").orNull
+def releaseKeyAlias = providers.environmentVariable("TRAVELFIT_ANDROID_KEY_ALIAS").orNull
+def releaseKeyPassword = providers.environmentVariable("TRAVELFIT_ANDROID_KEY_PASSWORD").orNull
+def releaseSigningValues = [releaseKeystore, releaseStorePassword, releaseKeyAlias, releaseKeyPassword]
+def canSignRelease = releaseSigningValues.every { it }
+if (releaseSigningValues.any { it } && !canSignRelease) {
+    throw new GradleException("Set all four TRAVELFIT_ANDROID signing environment variables.")
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -217,15 +227,23 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (canSignRelease) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (canSignRelease) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

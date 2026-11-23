@@ -1,54 +1,74 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import auth from '@react-native-firebase/auth'
 
-const getData = async (type) => {
+const clearedAccounts = new Set()
+
+export const getCurrentAccountId = () => auth().currentUser?.uid
+
+const accountPrefix = (uid) => `travelfit:account:${encodeURIComponent(uid)}:`
+
+const canUseAccount = (uid) =>
+  !!uid && uid === getCurrentAccountId() && !clearedAccounts.has(uid)
+
+const getData = async (type, accountId) => {
+  const uid = typeof accountId === 'string' ? accountId : getCurrentAccountId()
+  if (!canUseAccount(uid)) return null
+
   try {
-    return await AsyncStorage.getItem(type)
+    const value = await AsyncStorage.getItem(accountPrefix(uid) + type)
+    return canUseAccount(uid) ? value : null
   } catch (e) {
     return null
   }
 }
 
-const storeData = async (type, value) => {
+const storeData = async (type, value, uid = getCurrentAccountId()) => {
+  if (!canUseAccount(uid)) return
+  await AsyncStorage.setItem(accountPrefix(uid) + type, value)
+}
+
+const removeData = async (type, uid = getCurrentAccountId()) => {
+  if (!canUseAccount(uid)) return
+  await AsyncStorage.removeItem(accountPrefix(uid) + type)
+}
+
+const getListData = async (type, uid) => {
   try {
-    await AsyncStorage.setItem(type, value)
+    return JSON.parse(await getData(type, uid)) || {}
   } catch (e) {
-    console.log('storeData', e)
+    return {}
   }
 }
 
-const removeData = async (type) => {
-  try {
-    await AsyncStorage.removeItem(type, value)
-  } catch (e) {
-    console.log('removeData', e)
-  }
+const setListData = async (type, value, uid) => {
+  await storeData(type, JSON.stringify(value), uid)
 }
 
-const getListData = async (type) => {
-  const data = await getData(type)
-  return data && data !== 'null' && typeof data !== 'undefined'
-    ? JSON.parse(data)
-    : {}
+const getUserData = async (uid) => {
+  return getListData('user_data', uid)
 }
 
-const setListData = async (type, value) => {
-  await storeData(type, JSON.stringify(value))
+const setUserData = async (value, uid) => {
+  return setListData('user_data', value, uid)
 }
 
-const getUserData = async () => {
-  return getListData('user_data')
+const getUserSettings = async (uid) => {
+  return getListData('user_settings', uid)
 }
 
-const setUserData = async (value) => {
-  return setListData('user_data', value)
+const setUserSettings = async (value, uid) => {
+  return setListData('user_settings', value, uid)
 }
 
-const getUserSettings = async () => {
-  return getListData('user_settings')
-}
+export const clearLocalAccountData = async (uid) => {
+  if (!uid) return
 
-const setUserSettings = async (value) => {
-  return setListData('user_settings', value)
+  clearedAccounts.add(uid)
+  const prefix = accountPrefix(uid)
+  const keys = (await AsyncStorage.getAllKeys()).filter((key) =>
+    key.startsWith(prefix)
+  )
+  if (keys.length) await AsyncStorage.multiRemove(keys)
 }
 
 export {

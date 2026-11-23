@@ -5,9 +5,9 @@ import { Text, Button, Flex, useToast } from 'native-base'
 import { useForm } from 'react-hook-form'
 import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
-import { getProfile } from '../services/users'
-import { setUserData } from '../services/database'
-import { createStripeCustomer } from '../services/api'
+
+import { cacheAccountProfile } from '../services/users'
+import { checkFlow } from '../services/helpers'
 
 const Login = () => {
   const { reset, navigate } = useNavigation()
@@ -30,21 +30,12 @@ const Login = () => {
     try {
       const { email, password } = data
       const { user } = await auth().signInWithEmailAndPassword(email, password)
-      console.log('user', user)
-      const profile = await getProfile()
-      console.log('profile', profile)
-      await setUserData(profile)
-      // Ensure Stripe customer exists for this user
-      await createStripeCustomer(profile?.email || email, profile?.name).catch((err) =>
-        console.log('Stripe customer will be created on CreditCard screen:', err)
-      )
-      // Navigate to credit card screen after successful login
+      await cacheAccountProfile(user)
       reset({
         index: 0,
-        routes: [{ name: 'CreditCard' }]
+        routes: [{ name: await checkFlow(user) }]
       })
     } catch (e) {
-      console.log('handleLogIn', e)
       toast.show({
         status: 'error',
         description: e.message
@@ -76,7 +67,7 @@ const Login = () => {
   )
 
   return (
-    <AuthScreen title="Welcome back" googleEnabled={true} footer={footer}>
+    <AuthScreen title="Welcome back" appleEnabled={true} footer={footer}>
       <FormInput
         id="email"
         w="100%"

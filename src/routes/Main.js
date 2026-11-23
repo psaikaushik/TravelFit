@@ -7,7 +7,6 @@ import Map from '../screens/Map'
 import Profile from '../screens/Profile'
 import Progress from '../screens/Progress'
 import Achievements from '../screens/Achievements'
-import Social from '../screens/Social'
 
 const Tab = createBottomTabNavigator()
 
@@ -38,15 +37,6 @@ const Main = () => {
           title: 'Progress',
           tabBarStyle: { display: 'none' },
           headerBackground: () => <Flex flex="1" bg="secondary.400" />
-        }}
-      />
-      <Tab.Screen
-        name="Social"
-        component={Social}
-        options={{
-          title: 'Social',
-          tabBarStyle: { display: 'none' },
-          header: () => <></>
         }}
       />
       <Tab.Screen

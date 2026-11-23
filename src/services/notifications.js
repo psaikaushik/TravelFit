@@ -1,12 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getData, storeData } from './database'
 import { Notifications } from 'react-native-notifications'
 
 const NOTIFICATION_PREFS_KEY = 'notification_prefs'
 
 const DEFAULT_PREFS = {
-  enabled: true,
-  inactivityReminder: true,
-  streakReminder: true,
+  enabled: false,
   milestoneAlerts: true,
   dailyGoalReminder: true,
   quietHoursStart: 22,
@@ -15,28 +13,22 @@ const DEFAULT_PREFS = {
 
 const getNotificationPrefs = async () => {
   try {
-    const raw = await AsyncStorage.getItem(NOTIFICATION_PREFS_KEY)
+    const raw = await getData(NOTIFICATION_PREFS_KEY)
     if (!raw || raw === 'null') {
       return DEFAULT_PREFS
     }
-    return JSON.parse(raw)
+    return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
   } catch (e) {
     console.log('getNotificationPrefs error:', e)
     return DEFAULT_PREFS
   }
 }
 
-const saveNotificationPrefs = async (prefs) => {
-  try {
-    await AsyncStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs))
-  } catch (e) {
-    console.log('saveNotificationPrefs error:', e)
-  }
-}
+const saveNotificationPrefs = (prefs) =>
+  storeData(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs))
 
-const registerNotifications = () => {
-  Notifications.registerRemoteNotifications()
-}
+const registerNotifications = () => Notifications.registerRemoteNotifications()
+const clearNotifications = () => Notifications.removeAllDeliveredNotifications()
 
 const isInQuietHours = (prefs) => {
   const now = new Date()
@@ -52,82 +44,10 @@ const isInQuietHours = (prefs) => {
   return currentHour >= quietHoursStart && currentHour < quietHoursEnd
 }
 
-const scheduleInactivityReminder = async (lastActiveDate) => {
-  const prefs = await getNotificationPrefs()
-  if (!prefs.enabled || !prefs.inactivityReminder) return
-  if (isInQuietHours(prefs)) return
-
-  const now = new Date()
-  const lastActive = new Date(lastActiveDate)
-  const diffMs = now.getTime() - lastActive.getTime()
-  const diffDays = diffMs / (1000 * 60 * 60 * 24)
-
-  if (diffDays > 2) {
-    Notifications.postLocalNotification({
-      title: 'Time to Walk!',
-      body: 'We miss you! Your virtual journey is waiting.',
-      sound: 'default',
-      category: 'inactivity'
-    })
-  }
-}
-
-const scheduleMilestoneAlert = async (currentSteps, nextMilestoneSteps) => {
-  const prefs = await getNotificationPrefs()
-  if (!prefs.enabled || !prefs.milestoneAlerts) return
-  if (isInQuietHours(prefs)) return
-
-  const threshold = nextMilestoneSteps * 0.9
-  if (currentSteps >= threshold && currentSteps < nextMilestoneSteps) {
-    const remainingKm = ((nextMilestoneSteps - currentSteps) / 1200).toFixed(1)
-    Notifications.postLocalNotification({
-      title: 'Milestone Approaching!',
-      body: `You're almost at ${nextMilestoneSteps.toLocaleString()} km!`,
-      sound: 'default',
-      category: 'milestone'
-    })
-  }
-}
-
-const scheduleStreakReminder = async () => {
-  const prefs = await getNotificationPrefs()
-  if (!prefs.enabled || !prefs.streakReminder) return
-  if (isInQuietHours(prefs)) return
-
-  Notifications.postLocalNotification({
-    title: 'Streak Reminder',
-    body: 'Keep your streak going! Walk today to maintain progress.',
-    sound: 'default',
-    category: 'streak'
-  })
-}
-
-const scheduleDailyGoalReminder = async (goalSteps) => {
-  const prefs = await getNotificationPrefs()
-  if (!prefs.enabled || !prefs.dailyGoalReminder) return
-  if (isInQuietHours(prefs)) return
-
-  Notifications.postLocalNotification({
-    title: 'Daily Goal',
-    body: `You're ${goalSteps.toLocaleString()} steps away from your daily goal!`,
-    sound: 'default',
-    category: 'daily_goal'
-  })
-}
-
-const cancelAllScheduled = () => {
-  Notifications.cancelAllLocalNotifications()
-}
-
 export {
   getNotificationPrefs,
   saveNotificationPrefs,
   registerNotifications,
-  scheduleInactivityReminder,
-  scheduleMilestoneAlert,
-  scheduleStreakReminder,
-  scheduleDailyGoalReminder,
-  cancelAllScheduled,
-  isInQuietHours,
-  DEFAULT_PREFS
+  clearNotifications,
+  isInQuietHours
 }

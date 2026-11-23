@@ -1,430 +1,94 @@
-import React, { useEffect, useState } from 'react'
-import { useIsFocused, useNavigation } from '@react-navigation/native'
-import {
-  Text,
-  Button,
-  useToast,
-  Container,
-  Flex,
-  WarningOutlineIcon,
-  FormControl,
-  Checkbox,
-  Pressable
-} from 'native-base'
+import React, { useMemo, useRef, useState } from 'react'
 import { SafeAreaView, StatusBar } from 'react-native'
-import TripSVG from '../assets/icons/trip.svg'
-import { useForm } from 'react-hook-form'
-import SearchableDropdown from '../components/SearchableDropdown'
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
-import {
-  getCityDetails,
-  getPlaceDetails,
-  getPlaces,
-  getRoute
-} from '../services/maps'
-import { getUserSettings, setUserSettings } from '../services/database'
-import MapPolyline from '@mapbox/polyline'
-import {
-  calcProgress,
-  calcSteps,
-  checkCity,
-  getDestinationStep
-} from '../services/helpers'
+import { useNavigation } from '@react-navigation/native'
 import { useQueryClient } from '@tanstack/react-query'
-import moment from 'moment'
+import { Button, Flex, Pressable, ScrollView, Text, VStack, useToast } from 'native-base'
 import BackSVG from '../assets/icons/back.svg'
+import { buildCuratedTrip, VIRTUAL_ROUTES } from '../data/curatedRoutes'
+import { getCurrentAccountId, getUserSettings, setUserSettings } from '../services/database'
+import { hasActiveTrip } from '../services/helpers'
 import { archiveCurrentTrip } from '../services/tripHistory'
 
-const Trip = ({ route }) => {
-  let SEARCHING = false
-  let SHOULD_SEARCH = null
-  const { fromMap } = route?.params || {}
-  const [addExtra, setAddExtra] = useState(-1)
-  const [originText, setOriginText] = useState(null)
-  const [resetSteps, setResetSteps] = useState(false)
-  const [originItems, setOriginItems] = useState([
-    { id: 'ChIJE9on3F3HwoAR9AhGJW_fL-I', name: 'Los Angeles, CA, USA' },
-    { id: 'ChIJdd4hrwug2EcRmSrV3Vo6llI', name: 'London, UK' }
-  ])
-  const [destinationText, setDestinationText] = useState(null)
-  const [destinationItems, setDestinationItems] = useState([
-    { id: 'ChIJIQBpAG2ahYAR_6128GcTUEo', name: 'San Francisco, CA, USA' },
-    { id: 'ChIJOwg_06VPwokRYv534QaPC8g', name: 'New York, NY, USA' }
-  ])
+const Trip = () => {
+  const navigation = useNavigation()
   const queryClient = useQueryClient()
-  const isFocused = useIsFocused()
-  const { goBack, reset } = useNavigation()
   const toast = useToast()
-  const {
-    getValues,
-    setValue,
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting }
-  } = useForm()
+  const saving = useRef(false)
+  const [selected, setSelected] = useState(null)
+  const trips = useMemo(() => VIRTUAL_ROUTES.map(buildCuratedTrip), [])
 
-  const origin = register('origin', { required: true })
-  const destination = register('destination', { required: true })
+  const startTrip = async (trip) => {
+    const uid = getCurrentAccountId()
+    if (!uid || saving.current) return
+    saving.current = true
+    setSelected(trip.curatedRouteId)
 
-  const setOptions = (list, text, type) => {
-    if (type === 'origin') {
-      if (originText !== text) return
-      setOriginItems(list)
-    } else {
-      if (destinationText !== text) return
-      setDestinationItems(list)
+    try {
+      const previous = await getUserSettings(uid)
+      if (getCurrentAccountId() !== uid) return
+      if (hasActiveTrip(previous)) await archiveCurrentTrip(previous, uid)
+      if (getCurrentAccountId() !== uid) return
+
+      const startedTime = new Date().toISOString()
+      await setUserSettings({
+        ...trip,
+        tripId: startedTime,
+        startedTime,
+        health: previous.health,
+        healthSetupCompleted: previous.healthSetupCompleted,
+        steps: 0,
+        cities: []
+      }, uid)
+
+      if (getCurrentAccountId() !== uid) return
+      await Promise.all([
+        queryClient.invalidateQueries(['settings']),
+        queryClient.invalidateQueries(['stats'])
+      ])
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
+    } catch {
+      toast.show({ status: 'error', description: 'Could not start your trip. Please try again.' })
+    } finally {
+      saving.current = false
+      setSelected(null)
     }
   }
-
-  const handleTextChange = async (text, type) => {
-    if (SEARCHING) {
-      SHOULD_SEARCH = text
-      return
-    }
-    SEARCHING = true
-    SHOULD_SEARCH = null
-
-    const searchText = (text || '').trim().toLowerCase()
-    if (!!searchText && searchText.length > 0) {
-      const results = await getCityDetails(text)
-      const { predictions } = results || {}
-      console.log('results', text, predictions.length)
-      const options = predictions.slice(0, 3).map((x) => ({
-        id: x.place_id,
-        name: x.description
-      }))
-      setOptions(options, text, type)
-    } else {
-      setOptions([], text, type)
-    }
-
-    if (SHOULD_SEARCH && SHOULD_SEARCH !== text) {
-      SEARCHING = false
-      handleTextChange(SHOULD_SEARCH, type).then(() => null)
-    } else {
-      SEARCHING = false
-    }
-  }
-
-  const handleSave = async () => {
-    const { origin, destination } = getValues()
-    const userSettings = await getUserSettings()
-    const { steps, startedTime } = userSettings || {}
-
-    console.log('resetSteps', resetSteps)
-
-    // Archive current trip before starting a new one
-    if (userSettings?.starting && userSettings?.destination) {
-      await archiveCurrentTrip(userSettings)
-    }
-
-    // Get Location details of origin and destination
-    const promises = []
-    promises.push(getPlaceDetails(origin.id, 'geometry'))
-    promises.push(getPlaceDetails(destination.id, 'geometry'))
-    const [originRes, destinationRes] = await Promise.all(promises)
-    const originLocation = originRes.result?.geometry?.location
-    const destinationLocation = destinationRes.result?.geometry?.location
-    if (!originLocation) {
-      toast.show({
-        status: 'error',
-        description: 'Could not fetch origin details'
-      })
-      return
-    }
-    if (!destinationLocation) {
-      toast.show({
-        status: 'error',
-        description: 'Could not fetch origin details'
-      })
-      return
-    }
-
-    // Fetch Route between origin and destination
-    const res = await getRoute(
-      { latitude: originLocation.lat, longitude: originLocation.lng },
-      { latitude: destinationLocation.lat, longitude: destinationLocation.lng }
-    )
-    if (!res.routes || res.routes.length === 0) {
-      toast.show({
-        status: 'error',
-        description:
-          'Could not find a valid route between both cities. Try again with different cities'
-      })
-      return
-    }
-    const routeDetails = res.routes[0]
-    const pts = MapPolyline.decode(routeDetails.overview_polyline.points)
-    const route = pts.map((point) => ({
-      latitude: point[0],
-      longitude: point[1]
-    }))
-    const distance = routeDetails.legs[0].distance.value / 1000
-    const duration = routeDetails.legs[0].duration.value
-    const totalSteps = resetSteps ? 0 : steps || 0
-    const progress = calcSteps(totalSteps)
-
-    console.log('route', route.length)
-
-    // Create Break points and Nearby Places in each break point
-    const { breakPoints, places } = await getPlaces(
-      totalSteps,
-      route,
-      [],
-      distance
-    )
-
-    console.log('getPlaces', places.length)
-
-    const progressIdx = Math.round(
-      (calcProgress(totalSteps, distance) / 100) * route?.length
-    )
-    const progressRoute = getDestinationStep(progressIdx, route)
-    const destinationPoint =
-      !!progressRoute && progressRoute.length > 0
-        ? progressRoute[progressRoute.length - 1]
-        : route[0]
-
-    //  Check if city is new then add city badge
-    const cities = await checkCity(destinationPoint, [])
-
-    console.log('cities', cities.length)
-
-    await setUserSettings({
-      ...userSettings,
-      starting: {
-        title: origin.name,
-        coordinate: {
-          latitude: originLocation.lat,
-          longitude: originLocation.lng
-        }
-      },
-      destination: {
-        title: destination.name,
-        coordinate: {
-          latitude: destinationLocation.lat,
-          longitude: destinationLocation.lng
-        }
-      },
-      steps: totalSteps,
-      startedTime:
-        resetSteps || !startedTime
-          ? moment().startOf('day').toISOString()
-          : startedTime,
-      completed: progress >= distance ? moment().toISOString() : undefined,
-      bounds: routeDetails.bounds,
-      duration,
-      distance,
-      route,
-      breakPoints,
-      cities,
-      badges: places
-    })
-    await queryClient.invalidateQueries(['settings'])
-    await queryClient.invalidateQueries(['stats'])
-
-    reset({
-      index: 0,
-      routes: [{ name: 'Main' }]
-    })
-  }
-
-  useEffect(() => {
-    if (isFocused) {
-      StatusBar.setBarStyle('dark-content', true)
-    }
-  }, [isFocused])
-
-  useEffect(() => {
-    if (originText !== null) {
-      handleTextChange(originText, 'origin').then(() => null)
-    }
-  }, [originText])
-
-  useEffect(() => {
-    if (destinationText !== null) {
-      handleTextChange(destinationText, 'destination').then(() => null)
-    }
-  }, [destinationText])
-
-  // useEffect(() => {
-  //   if (addExtra !== -1) {
-  //     console.log('addExtra', addExtra)
-  //     if (addExtra === 1) {
-  //       setTimeout(() => {
-  //         this.flatListRef.scrollTo({ y: 30 })
-  //       }, 4000)
-  //     } else if (addExtra === 1) {
-  //       setTimeout(() => {
-  //         this.flatListRef.scrollTo({ y: 120 })
-  //       }, 4000)
-  //     } else {
-  //       // setTimeout(() => {
-  //       //   this.flatListRef.scrollTo({ y: 0 })
-  //       // }, 1000)
-  //     }
-  //   }
-  // }, [addExtra])
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
-      <Flex align="flex-start">
-        <Pressable
-          ml="12px"
-          mt="6px"
-          p="4px"
-          onPress={() => (fromMap ? goBack() : {})}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
+      <StatusBar barStyle="dark-content" />
+      {navigation.canGoBack() && (
+        <Pressable onPress={navigation.goBack} p="3" alignSelf="flex-start" accessibilityRole="button" accessibilityLabel="Go back">
           <BackSVG />
         </Pressable>
-      </Flex>
-      <KeyboardAwareScrollView
-        innerRef={(ref) => (this.flatListRef = ref)}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps={'handled'}
-        automaticallyAdjustContentInsets={false}
-        scrollEventThrottle={200}
-      >
-        <Container px="20px" mt="12px" w="100%" minW="100%" flexGrow="1">
-          <Flex flexGrow="1" width="100%">
-            <Flex align="center" width="100%">
-              <TripSVG />
-            </Flex>
-            <Text variant="title" mt="30px" accessibilityRole="header">
-              Setup your trip
-            </Text>
-            <Text variant="subtitle" mt="10px">
-              Choose the origin and destination of your virtual trip
-            </Text>
-            <SearchableDropdown
-              key="origin"
-              items={originItems}
-              resetValue={false}
-              onItemSelect={(item) => setValue('origin', item)}
-              itemsContainerStyle={{
-                minHeight: 30,
-                maxHeight: 140,
-                marginTop: -13,
-                paddingVertical: 6,
-                backgroundColor: 'white',
-                borderWidth: 1,
-                borderColor: '#999',
-                borderBottomLeftRadius: 16,
-                borderBottomRightRadius: 16
-              }}
-              itemTextStyle={{ color: '#1A2225' }}
-              itemStyle={{
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderColor: '#bbb'
-              }}
-              textInputProps={{
-                placeholder: 'Origin',
-                placeholderTextColor: '#999',
-                underlineColorAndroid: 'transparent',
-                style: {
-                  height: 60,
-                  marginTop: 30,
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  borderWidth: 1,
-                  borderColor: '#999',
-                  backgroundColor: '#FAFAFA',
-                  fontSize: 16
-                },
-                onTextChange: (text) => setOriginText(text),
-                onFocus: () => setAddExtra(1),
-                onBlur: () => setAddExtra(0)
-              }}
-            />
-            {!!errors?.origin && (
-              <FormControl isInvalid={true}>
-                <FormControl.ErrorMessage
-                  leftIcon={<WarningOutlineIcon size="xs" />}
-                >
-                  {errors.origin.type === 'required' && 'Required field'}
-                  {errors.origin.type !== 'required' && errors.origin.message}
-                </FormControl.ErrorMessage>
-              </FormControl>
-            )}
-            <SearchableDropdown
-              key="destination"
-              items={destinationItems}
-              resetValue={false}
-              onItemSelect={(item) => setValue('destination', item)}
-              itemsContainerStyle={{
-                minHeight: 30,
-                maxHeight: 140,
-                marginTop: -13,
-                paddingVertical: 6,
-                backgroundColor: 'white',
-                borderWidth: 1,
-                borderColor: '#999',
-                borderBottomLeftRadius: 16,
-                borderBottomRightRadius: 16
-              }}
-              itemTextStyle={{ color: '#1A2225' }}
-              itemStyle={{
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderColor: '#bbb'
-              }}
-              textInputProps={{
-                placeholder: 'Destination',
-                placeholderTextColor: '#999',
-                underlineColorAndroid: 'transparent',
-                style: {
-                  height: 60,
-                  marginTop: 30,
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  borderWidth: 1,
-                  borderColor: '#999',
-                  backgroundColor: '#FAFAFA',
-                  fontSize: 16
-                },
-                onTextChange: (text) => setDestinationText(text),
-                onFocus: () => setAddExtra(2),
-                onBlur: () => setAddExtra(0)
-              }}
-            />
-            {!!errors?.destination && (
-              <FormControl isInvalid={true}>
-                <FormControl.ErrorMessage
-                  leftIcon={<WarningOutlineIcon size="xs" />}
-                >
-                  {errors.destination.type === 'required' && 'Required field'}
-                  {errors.destination.type !== 'required' &&
-                    errors.destination.message}
-                </FormControl.ErrorMessage>
-              </FormControl>
-            )}
-            <Checkbox.Group mt="28px">
-              <Checkbox
-                value="resetSteps"
-                colorScheme="green"
-                size="sm"
-                onChange={(val) => setResetSteps(val)}
+      )}
+      <ScrollView flex="1" px="20px" contentContainerStyle={{ paddingBottom: 32 }}>
+        <Text variant="title" mt="24px" accessibilityRole="header">Choose a virtual route</Text>
+        <Text variant="subtitle" mt="2" mb="5">
+          Walk wherever you like. Your steps move you between landmarks on the route.
+        </Text>
+        <VStack space="3">
+          {trips.map((trip) => (
+            <Flex key={trip.curatedRouteId} bg="white" borderRadius="16px" p="4">
+              <Text fontSize="18px" fontWeight="700" accessibilityRole="header">{trip.title}</Text>
+              <Text mt="1" color="gray.700">{trip.badges[0].vicinity} · {trip.distance.toFixed(1)} km</Text>
+              <Text mt="2" mb="3" color="gray.600">
+                {trip.starting.title} → {trip.badges.map(({ name }) => name).join(' → ')}
+              </Text>
+              <Button
+                variant="primary"
+                size="lg"
+                isLoading={selected === trip.curatedRouteId}
+                isDisabled={!!selected}
+                onPress={() => startTrip(trip)}
+                accessibilityLabel={`Start ${trip.title} at zero steps`}
               >
-                Reset Steps Count
-              </Checkbox>
-            </Checkbox.Group>
-          </Flex>
-          <Button
-            size="lg"
-            variant="primary"
-            mt="30px"
-            isLoading={isSubmitting}
-            onPress={handleSubmit(handleSave)}
-            accessibilityLabel="Save trip and start"
-          >
-            Save
-          </Button>
-        </Container>
-      </KeyboardAwareScrollView>
+                Start route
+              </Button>
+            </Flex>
+          ))}
+        </VStack>
+      </ScrollView>
     </SafeAreaView>
   )
 }

@@ -8,19 +8,23 @@ import {
   Switch,
   Flex,
   Pressable,
-  ScrollView
+  ScrollView,
+  useToast
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import BackSVG from '../assets/icons/back.svg'
 import {
+  clearNotifications,
   getNotificationPrefs,
+  registerNotifications,
   saveNotificationPrefs
 } from '../services/notifications'
 
 const NotificationSettings = () => {
   const { goBack } = useNavigation()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [prefs, setPrefs] = useState(null)
 
   const { data: savedPrefs, isLoading } = useQuery(
@@ -38,27 +42,20 @@ const NotificationSettings = () => {
     async (key, value) => {
       const updated = { ...prefs, [key]: value }
 
-      // When master toggle is turned off, disable all sub-toggles
-      if (key === 'enabled' && !value) {
-        updated.inactivityReminder = false
-        updated.streakReminder = false
-        updated.milestoneAlerts = false
-        updated.dailyGoalReminder = false
-      }
-
-      // When master toggle is turned on, re-enable all sub-toggles
-      if (key === 'enabled' && value) {
-        updated.inactivityReminder = true
-        updated.streakReminder = true
-        updated.milestoneAlerts = true
-        updated.dailyGoalReminder = true
-      }
-
       setPrefs(updated)
-      await saveNotificationPrefs(updated)
-      queryClient.invalidateQueries(['notification-prefs'])
+      try {
+        await saveNotificationPrefs(updated)
+        await queryClient.invalidateQueries(['notification-prefs'])
+        if (key === 'enabled') {
+          if (value) registerNotifications()
+          else clearNotifications()
+        }
+      } catch {
+        setPrefs(prefs)
+        toast.show({ status: 'error', description: 'Could not update notifications. Try again.' })
+      }
     },
-    [prefs, queryClient]
+    [prefs, queryClient, toast]
   )
 
   const formatHour = (hour) => {
@@ -104,7 +101,7 @@ const NotificationSettings = () => {
                   All Notifications
                 </Text>
                 <Text fontSize="13px" color="gray.500" mt="2px">
-                  Enable or disable all notifications
+                  Allow achievement alerts. Manage device permissions in iOS Settings.
                 </Text>
               </VStack>
               <Switch
@@ -123,42 +120,6 @@ const NotificationSettings = () => {
             opacity={prefs.enabled ? 1 : 0.5}
           >
             <VStack space="5">
-              {/* Inactivity Reminders */}
-              <HStack justifyContent="space-between" alignItems="center">
-                <VStack flex="1" mr="12px">
-                  <Text fontSize="16px" fontWeight="600">
-                    Inactivity Reminders
-                  </Text>
-                  <Text fontSize="13px" color="gray.500" mt="2px">
-                    Remind you when inactive for more than 2 days
-                  </Text>
-                </VStack>
-                <Switch
-                  isChecked={prefs.inactivityReminder}
-                  onToggle={(value) => updatePref('inactivityReminder', value)}
-                  isDisabled={!prefs.enabled}
-                  accessibilityLabel="Toggle inactivity reminders"
-                />
-              </HStack>
-
-              {/* Streak Reminders */}
-              <HStack justifyContent="space-between" alignItems="center">
-                <VStack flex="1" mr="12px">
-                  <Text fontSize="16px" fontWeight="600">
-                    Streak Reminders
-                  </Text>
-                  <Text fontSize="13px" color="gray.500" mt="2px">
-                    Daily reminder to keep your streak going
-                  </Text>
-                </VStack>
-                <Switch
-                  isChecked={prefs.streakReminder}
-                  onToggle={(value) => updatePref('streakReminder', value)}
-                  isDisabled={!prefs.enabled}
-                  accessibilityLabel="Toggle streak reminders"
-                />
-              </HStack>
-
               {/* Milestone Alerts */}
               <HStack justifyContent="space-between" alignItems="center">
                 <VStack flex="1" mr="12px">
@@ -166,7 +127,7 @@ const NotificationSettings = () => {
                     Milestone Alerts
                   </Text>
                   <Text fontSize="13px" color="gray.500" mt="2px">
-                    Notify when you are close to a milestone
+                    Notify when you reach a landmark
                   </Text>
                 </VStack>
                 <Switch
@@ -177,21 +138,21 @@ const NotificationSettings = () => {
                 />
               </HStack>
 
-              {/* Daily Goal Reminders */}
+              {/* Daily Goal Alerts */}
               <HStack justifyContent="space-between" alignItems="center">
                 <VStack flex="1" mr="12px">
                   <Text fontSize="16px" fontWeight="600">
-                    Daily Goal Reminders
+                    Daily Goal Alerts
                   </Text>
                   <Text fontSize="13px" color="gray.500" mt="2px">
-                    Afternoon reminder if daily goal not yet met
+                    Notify when you reach your step goal
                   </Text>
                 </VStack>
                 <Switch
                   isChecked={prefs.dailyGoalReminder}
                   onToggle={(value) => updatePref('dailyGoalReminder', value)}
                   isDisabled={!prefs.enabled}
-                  accessibilityLabel="Toggle daily goal reminders"
+                  accessibilityLabel="Toggle daily goal alerts"
                 />
               </HStack>
             </VStack>

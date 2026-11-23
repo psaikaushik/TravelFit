@@ -2,8 +2,14 @@
   "name": "TravelFit",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "npm@10.9.4",
+  "engines": {
+    "node": "^22.0.0",
+    "npm": "^10.0.0"
+  },
   "scripts": {
     "android": "react-native run-android",
+    "bundle:ios": "react-native bundle --platform ios --entry-file index.js --dev false",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
@@ -11,24 +17,22 @@
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^4.4.5",
-    "@invertase/react-native-apple-authentication": "^2.3.0",
     "@hookform/resolvers": "^2.9.10",
+    "@invertase/react-native-apple-authentication": "2.3.0",
     "@mapbox/polyline": "^1.1.1",
     "@react-native-async-storage/async-storage": "^1.17.11",
-    "@react-native-firebase/analytics": "^16.5.0",
-    "@react-native-firebase/app": "^16.5.0",
-    "@react-native-firebase/auth": "^16.5.0",
-    "@react-native-firebase/crashlytics": "^16.5.0",
-    "@react-native-firebase/database": "^16.5.0",
-    "@react-native-firebase/functions": "^16.5.0",
-    "@react-native-google-signin/google-signin": "^9.0.2",
+    "@react-native-firebase/analytics": "19.3.0",
+    "@react-native-firebase/app": "19.3.0",
+    "@react-native-firebase/auth": "19.3.0",
+    "@react-native-firebase/crashlytics": "19.3.0",
+    "@react-native-firebase/database": "19.3.0",
+    "@react-native-firebase/functions": "19.3.0",
     "@react-navigation/bottom-tabs": "^6.5.2",
     "@react-navigation/native": "^6.1.1",
     "@react-navigation/native-stack": "^6.9.7",
     "@stripe/stripe-react-native": "^0.50.0",
     "@tanstack/react-query": "^4.20.4",
     "@th3rdwave/react-navigation-bottom-sheet": "^0.2.2",
-    "axios": "^1.2.1",
     "moment": "^2.29.4",
     "native-base": "^3.4.25",
     "react": "18.1.0",
@@ -36,7 +40,7 @@
     "react-native": "0.70.6",
     "react-native-device-info": "^10.3.0",
     "react-native-gesture-handler": "^2.8.0",
-    "react-native-health": "https://github.com/agencyenterprise/react-native-health.git#3b741e3cd4d69200396ea99e1dc1471b869582a0",
+    "react-native-health": "https://codeload.github.com/agencyenterprise/react-native-health/tar.gz/3b741e3cd4d69200396ea99e1dc1471b869582a0",
     "react-native-iap": "^12.16.4",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-keyboard-aware-view": "^0.0.14",
@@ -61,7 +65,6 @@
   "devDependencies": {
     "@babel/core": "^7.12.9",
     "@babel/runtime": "^7.12.5",
-    "@react-native-community/cli": "^19.1.0",
     "@react-native-community/eslint-config": "^2.0.0",
     "babel-jest": "^26.6.3",
     "eslint": "^7.32.0",
@@ -69,6 +72,9 @@
     "metro-react-native-babel-preset": "0.72.3",
     "react-native-svg-transformer": "^1.0.0",
     "react-test-renderer": "18.1.0"
+  },
+  "overrides": {
+    "shell-quote": "^1.8.5"
   },
   "jest": {
     "preset": "react-native"

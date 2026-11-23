@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
-import { SafeAreaView, StatusBar, Platform } from 'react-native'
+import { Alert, Platform, SafeAreaView, StatusBar } from 'react-native'
+import { appleAuth } from '@invertase/react-native-apple-authentication'
 import { Button, Container, Text, useToast, Box, VStack, HStack, Pressable, ScrollView } from 'native-base'
 import auth from '@react-native-firebase/auth'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getUserData, getUserSettings } from '../services/database'
-import { iapService } from '../services/iap'
-import { markPaymentFlowCompleted } from '../services/subscription'
+import { clearLocalAccountData, getUserData } from '../services/database'
+import { deleteAccount } from '../services/api'
+import { clearNotifications } from '../services/notifications'
 import { getStreakData, setDailyGoal } from '../services/streak'
 import TabScreen from '../components/TabScreen'
 
@@ -18,16 +19,13 @@ const Profile = () => {
   const toast = useToast()
   const queryClient = useQueryClient()
   const user = auth().currentUser
-  const [isRestoring, setIsRestoring] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [showGoalPicker, setShowGoalPicker] = useState(false)
 
   const { data: profile, isLoading: profileLoading } = useQuery(
     ['profile'],
     getUserData
   )
-
-  const { data: userSettings } = useQuery(['settings'], getUserSettings)
-  const currentSubscription = userSettings?.subscription
 
   const { data: streakData, refetch: refetchStreak } = useQuery(
     ['streak-profile'],
@@ -39,49 +37,66 @@ const Profile = () => {
   const currentStreak = streakData?.currentStreak || 0
   const longestStreak = streakData?.longestStreak || 0
 
+  const returnToWelcome = () => {
+    queryClient.clear()
+    if (Platform.OS === 'ios') clearNotifications()
+    reset({ index: 0, routes: [{ name: 'Welcome' }] })
+  }
+
   const handleLogOut = async () => {
     try {
       await auth().signOut()
-      reset({
-        index: 0,
-        routes: [{ name: 'Welcome' }]
-      })
-    } catch (e) {
-      console.log('handleLogOut', e)
-      toast.show({
-        status: 'error',
-        description: e.message
-      })
+      returnToWelcome()
+    } catch {
+      toast.show({ status: 'error', description: 'Could not sign out. Try again.' })
     }
   }
 
-  const handleRestorePurchases = async () => {
-    if (Platform.OS !== 'ios') return
-
-    setIsRestoring(true)
+  const removeAccount = async () => {
+    if (!user) return
+    setIsDeleting(true)
     try {
-      const purchases = await iapService.restorePurchases()
-      if (purchases && purchases.length > 0) {
-        await markPaymentFlowCompleted()
-        toast.show({
-          status: 'success',
-          description: 'Purchases restored successfully!'
+      if (user.providerData.some((provider) => provider.providerId === 'apple.com')) {
+        const { identityToken, nonce, authorizationCode } = await appleAuth.performRequest({
+          requestedOperation: appleAuth.Operation.LOGIN
         })
-      } else {
-        toast.show({
-          status: 'info',
-          description: 'No previous purchases found.'
-        })
+        if (!identityToken || !authorizationCode) {
+          throw new Error('Could not verify your Apple account. Try again.')
+        }
+        await user.reauthenticateWithCredential(auth.AppleAuthProvider.credential(identityToken, nonce))
+        await auth().revokeToken(authorizationCode)
       }
+      await user.getIdToken(true)
+      await deleteAccount()
+      try {
+        await clearLocalAccountData(user.uid)
+      } catch {
+        Alert.alert('Account deleted', 'TravelFit could not remove its local files. Removing the app clears them from this device.')
+      }
+      await auth().signOut().catch(() => {})
+      returnToWelcome()
     } catch (error) {
-      console.log('Restore error:', error)
+      if (error.code === appleAuth.Error.CANCELED) return
       toast.show({
         status: 'error',
-        description: 'Failed to restore purchases. Please try again.'
+        description: error.code === 'functions/failed-precondition'
+          ? error.message
+          : 'Could not delete your account. Try again.'
       })
     } finally {
-      setIsRestoring(false)
+      setIsDeleting(false)
     }
+  }
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      'Delete account?',
+      'Your account and saved trips on this device will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete account', style: 'destructive', onPress: removeAccount }
+      ]
+    )
   }
 
   const handleSetGoal = async (goal) => {
@@ -102,10 +117,6 @@ const Profile = () => {
   }, [isFocused])
 
   if (profileLoading) return <></>
-
-  const handleSubscriptionPress = () => {
-    navigate('Subscription')
-  }
 
   const prettifyGoal = (n) => n.toLocaleString()
 
@@ -278,110 +289,6 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
-              {/* Invite Friends — Referral Rewards */}
-              <Pressable
-                onPress={() => navigate('Referrals')}
-                accessibilityLabel="Invite friends for rewards"
-                accessibilityRole="button"
-              >
-                <Box bg="secondary.400" borderRadius="16px" p="20px">
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <HStack space="3" alignItems="center">
-                      <Text fontSize="20px">{'\uD83C\uDF81'}</Text>
-                      <VStack>
-                        <Text fontSize="16px" fontWeight="600" color="primary.400">
-                          Invite Friends
-                        </Text>
-                        <Text fontSize="13px" color="primary.300">
-                          Both get a free week of Premium!
-                        </Text>
-                      </VStack>
-                    </HStack>
-                    <Text fontSize="16px" color="primary.300">{'>'}</Text>
-                  </HStack>
-                </Box>
-              </Pressable>
-
-              {/* Route Races */}
-              <Pressable
-                onPress={() => navigate('Races')}
-                accessibilityLabel="View route races"
-                accessibilityRole="button"
-              >
-                <Box bg="white" borderRadius="16px" p="20px">
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <HStack space="3" alignItems="center">
-                      <Text fontSize="20px">{'\uD83C\uDFC1'}</Text>
-                      <VStack>
-                        <Text fontSize="16px" fontWeight="600">Route Races</Text>
-                        <Text fontSize="13px" color="gray.500">Race friends on the same route</Text>
-                      </VStack>
-                    </HStack>
-                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
-                  </HStack>
-                </Box>
-              </Pressable>
-
-              {/* Leaderboards */}
-              <Pressable
-                onPress={() => navigate('Leaderboards')}
-                accessibilityLabel="View leaderboards"
-                accessibilityRole="button"
-              >
-                <Box bg="white" borderRadius="16px" p="20px">
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <HStack space="3" alignItems="center">
-                      <Text fontSize="20px">{'\uD83E\uDD47'}</Text>
-                      <VStack>
-                        <Text fontSize="16px" fontWeight="600">Leaderboards</Text>
-                        <Text fontSize="13px" color="gray.500">Global, friends & route rankings</Text>
-                      </VStack>
-                    </HStack>
-                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
-                  </HStack>
-                </Box>
-              </Pressable>
-
-              {/* Walking Challenges */}
-              <Pressable
-                onPress={() => navigate('Challenges')}
-                accessibilityLabel="View walking challenges"
-                accessibilityRole="button"
-              >
-                <Box bg="white" borderRadius="16px" p="20px">
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <HStack space="3" alignItems="center">
-                      <Text fontSize="20px">{'\uD83C\uDFC6'}</Text>
-                      <VStack>
-                        <Text fontSize="16px" fontWeight="600">Challenges</Text>
-                        <Text fontSize="13px" color="gray.500">Daily, weekly & monthly goals</Text>
-                      </VStack>
-                    </HStack>
-                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
-                  </HStack>
-                </Box>
-              </Pressable>
-
-              {/* Share Moment (Enhanced) */}
-              <Pressable
-                onPress={() => navigate('ShareMoment')}
-                accessibilityLabel="Share your journey"
-                accessibilityRole="button"
-              >
-                <Box bg="white" borderRadius="16px" p="20px">
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <HStack space="3" alignItems="center">
-                      <Text fontSize="20px">{'\uD83D\uDCE4'}</Text>
-                      <VStack>
-                        <Text fontSize="16px" fontWeight="600">Share Journey</Text>
-                        <Text fontSize="13px" color="gray.500">Beautiful cards for social media</Text>
-                      </VStack>
-                    </HStack>
-                    <Text fontSize="16px" color="gray.400">{'>'}</Text>
-                  </HStack>
-                </Box>
-              </Pressable>
-
               {/* Notification Settings */}
               <Pressable
                 onPress={() => navigate('NotificationSettings')}
@@ -402,76 +309,6 @@ const Profile = () => {
                 </Box>
               </Pressable>
 
-              {/* Subscription Status */}
-              <Box bg="white" borderRadius="16px" p="20px">
-                <VStack space="4">
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <Text fontSize="18px" fontWeight="600">
-                      Subscription
-                    </Text>
-                    {currentSubscription?.isSubscribed ? (
-                      <Box bg="green.100" px="3" py="1" borderRadius="full">
-                        <Text fontSize="12px" fontWeight="600" color="green.800">
-                          Premium
-                        </Text>
-                      </Box>
-                    ) : (
-                      <Box bg="gray.100" px="3" py="1" borderRadius="full">
-                        <Text fontSize="12px" fontWeight="600" color="gray.800">
-                          Free
-                        </Text>
-                      </Box>
-                    )}
-                  </HStack>
-
-                  {currentSubscription?.isSubscribed ? (
-                    <VStack space="2">
-                      <Text fontSize="14px" color="gray.600">
-                        You're subscribed to Premium
-                      </Text>
-                      <Button
-                        size="sm"
-                        colorScheme="blue"
-                        variant="outline"
-                        onPress={handleSubscriptionPress}
-                        accessibilityLabel="Manage subscription"
-                      >
-                        Manage Subscription
-                      </Button>
-                    </VStack>
-                  ) : (
-                    <VStack space="2">
-                      <Text fontSize="14px" color="gray.600">
-                        Upgrade to Premium for unlimited features
-                      </Text>
-                      <Button
-                        size="sm"
-                        colorScheme="blue"
-                        variant="outline"
-                        onPress={handleSubscriptionPress}
-                        accessibilityLabel="Upgrade to premium"
-                      >
-                        Upgrade Now
-                      </Button>
-                    </VStack>
-                  )}
-                </VStack>
-              </Box>
-
-              {/* Restore Purchases */}
-              {Platform.OS === 'ios' && (
-                <Button
-                  size="md"
-                  variant="ghost"
-                  colorScheme="blue"
-                  onPress={handleRestorePurchases}
-                  isLoading={isRestoring}
-                  accessibilityLabel="Restore previous purchases"
-                >
-                  Restore Purchases
-                </Button>
-              )}
-
               {/* Privacy Policy */}
               <Button
                 size="md"
@@ -488,9 +325,20 @@ const Profile = () => {
                 size="lg"
                 variant="primary"
                 onPress={handleLogOut}
+                isDisabled={isDeleting}
                 accessibilityLabel="Sign out of your account"
               >
                 Sign Out
+              </Button>
+
+              <Button
+                size="md"
+                variant="ghost"
+                colorScheme="danger"
+                isLoading={isDeleting}
+                onPress={confirmDeleteAccount}
+              >
+                Delete Account
               </Button>
             </VStack>
           </Container>

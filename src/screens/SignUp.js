@@ -5,10 +5,9 @@ import { useForm } from 'react-hook-form'
 import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
-import { setProfile } from '../services/users'
-import moment from 'moment'
-import { setUserData } from '../services/database'
-import { createStripeCustomer } from '../services/api'
+
+import { cacheAccountProfile } from '../services/users'
+import { checkFlow } from '../services/helpers'
 
 const SignUp = () => {
   const { reset, navigate } = useNavigation()
@@ -30,24 +29,12 @@ const SignUp = () => {
         email,
         password
       )
-      const profile = {
-        name,
-        email,
-        createdTime: moment().startOf('day').toISOString()
-      }
-      await setProfile(profile)
-      await setUserData(profile)
-      // Create Stripe customer for this new user
-      await createStripeCustomer(email, name).catch((err) =>
-        console.log('Stripe customer will be created on CreditCard screen:', err)
-      )
-      // Navigate to credit card screen after successful signup
+      await cacheAccountProfile(user, name)
       reset({
         index: 0,
-        routes: [{ name: 'CreditCard' }]
+        routes: [{ name: await checkFlow(user) }]
       })
     } catch (e) {
-      console.log('handleLogIn', e)
       toast.show({
         status: 'error',
         description: e.message
@@ -73,7 +60,7 @@ const SignUp = () => {
   )
 
   return (
-    <AuthScreen title="Join Us" googleEnabled={true} footer={footer}>
+    <AuthScreen title="Join Us" appleEnabled={true} footer={footer}>
       <FormInput
         id="name"
         w="100%"

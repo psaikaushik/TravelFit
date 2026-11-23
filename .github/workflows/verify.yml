@@ -1,0 +1,36 @@
+name: Verify TravelFit
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install pinned npm version
+        run: npm install --global npm@10.9.4
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --runInBand
+      - name: Build production JavaScript bundle
+        run: |
+          npm run bundle:ios -- \
+            --bundle-output "$RUNNER_TEMP/travelfit-main.jsbundle" \
+            --assets-dest "$RUNNER_TEMP/travelfit-assets" \
+            --max-workers 2
+      - name: Verify Cloud Functions dependencies and syntax
+        run: |
+          npm ci --prefix functions --engine-strict
+          node --check functions/index.js

@@ -1,32 +1,31 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import moment from 'moment'
+import { getCurrentAccountId, getData, storeData } from './database'
 
 const TRIP_HISTORY_KEY = 'trip_history'
 
-const getTripHistory = async () => {
+const getTripHistory = async (uid) => {
   try {
-    const raw = await AsyncStorage.getItem(TRIP_HISTORY_KEY)
-    if (!raw || raw === 'null') return []
-    return JSON.parse(raw)
+    const trips = JSON.parse(await getData(TRIP_HISTORY_KEY, uid))
+    return Array.isArray(trips) ? trips : []
   } catch (e) {
     console.log('getTripHistory error:', e)
     return []
   }
 }
 
-const saveTripHistory = async (trips) => {
+const saveTripHistory = async (trips, uid) => {
   try {
-    await AsyncStorage.setItem(TRIP_HISTORY_KEY, JSON.stringify(trips))
+    await storeData(TRIP_HISTORY_KEY, JSON.stringify(trips), uid)
   } catch (e) {
     console.log('saveTripHistory error:', e)
   }
 }
 
-const archiveCurrentTrip = async (settings) => {
-  if (!settings?.starting || !settings?.destination) return
+const archiveCurrentTrip = async (settings, uid = getCurrentAccountId()) => {
+  if (!uid || !settings?.starting || !settings?.destination) return
 
   const trip = {
-    id: `trip_${Date.now()}`,
+    id: `trip_${settings.tripId || settings.startedTime || Date.now()}`,
     starting: settings.starting,
     destination: settings.destination,
     distance: settings.distance || 0,
@@ -40,16 +39,19 @@ const archiveCurrentTrip = async (settings) => {
     duration: settings.duration || 0
   }
 
-  const history = await getTripHistory()
-  history.unshift(trip)
-  await saveTripHistory(history)
+  const history = await getTripHistory(uid)
+  const updated = [trip, ...history.filter(({ id }) => id !== trip.id)]
+  await storeData(TRIP_HISTORY_KEY, JSON.stringify(updated), uid)
   return trip
 }
 
 const deleteTripFromHistory = async (tripId) => {
-  const history = await getTripHistory()
+  const uid = getCurrentAccountId()
+  if (!uid) return []
+
+  const history = await getTripHistory(uid)
   const updated = history.filter((t) => t.id !== tripId)
-  await saveTripHistory(updated)
+  await saveTripHistory(updated, uid)
   return updated
 }
 

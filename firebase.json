@@ -1,0 +1,12 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "functions": {
+    "source": "functions",
+    "codebase": "beta"
+  },
+  "react-native": {
+    "analytics_auto_collection_enabled": false
+  }
+}

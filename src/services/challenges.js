@@ -1,7 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getCurrentAccountId, getData, storeData } from './database'
 import moment from 'moment'
 
 const STORAGE_KEY = 'walking_challenges'
+const COMPLETED_KEY = 'completed_challenges'
 
 const CHALLENGE_TEMPLATES = [
   {
@@ -71,9 +72,9 @@ const CHALLENGE_TEMPLATES = [
   }
 ]
 
-const getActiveChallenges = async () => {
+const getActiveChallenges = async (uid) => {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY)
+    const raw = await getData(STORAGE_KEY, uid)
     if (!raw || raw === 'null') return []
     const challenges = JSON.parse(raw)
     return challenges.filter((challenge) => !isChallengeExpired(challenge))
@@ -85,10 +86,13 @@ const getActiveChallenges = async () => {
 
 const joinChallenge = async (challengeId) => {
   try {
+    const uid = getCurrentAccountId()
+    if (!uid) return null
+
     const template = CHALLENGE_TEMPLATES.find((t) => t.id === challengeId)
     if (!template) return null
 
-    const active = await getActiveChallenges()
+    const active = await getActiveChallenges(uid)
     const alreadyJoined = active.find((c) => c.id === challengeId)
     if (alreadyJoined) return active
 
@@ -100,7 +104,7 @@ const joinChallenge = async (challengeId) => {
     }
 
     const updated = [...active, newChallenge]
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    await storeData(STORAGE_KEY, JSON.stringify(updated), uid)
     return updated
   } catch (e) {
     console.log('joinChallenge error:', e)
@@ -110,7 +114,10 @@ const joinChallenge = async (challengeId) => {
 
 const updateChallengeProgress = async (challengeId, currentSteps) => {
   try {
-    const active = await getActiveChallenges()
+    const uid = getCurrentAccountId()
+    if (!uid) return []
+
+    const active = await getActiveChallenges(uid)
     const index = active.findIndex((c) => c.id === challengeId)
     if (index === -1) return active
 
@@ -118,13 +125,13 @@ const updateChallengeProgress = async (challengeId, currentSteps) => {
 
     if (currentSteps >= active[index].targetSteps) {
       active[index].completed = true
-      await completeChallenge(active[index])
+      await completeChallenge(active[index], uid)
       const remaining = active.filter((c) => c.id !== challengeId)
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
+      await storeData(STORAGE_KEY, JSON.stringify(remaining), uid)
       return remaining
     }
 
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(active))
+    await storeData(STORAGE_KEY, JSON.stringify(active), uid)
     return active
   } catch (e) {
     console.log('updateChallengeProgress error:', e)
@@ -132,9 +139,9 @@ const updateChallengeProgress = async (challengeId, currentSteps) => {
   }
 }
 
-const getCompletedChallenges = async () => {
+const getCompletedChallenges = async (uid) => {
   try {
-    const raw = await AsyncStorage.getItem('completed_challenges')
+    const raw = await getData(COMPLETED_KEY, uid)
     if (!raw || raw === 'null') return []
     return JSON.parse(raw)
   } catch (e) {
@@ -143,16 +150,18 @@ const getCompletedChallenges = async () => {
   }
 }
 
-const completeChallenge = async (challenge) => {
+const completeChallenge = async (challenge, uid = getCurrentAccountId()) => {
   try {
-    const completed = await getCompletedChallenges()
+    if (!uid) return []
+
+    const completed = await getCompletedChallenges(uid)
     const entry = {
       ...challenge,
       completed: true,
       completedDate: moment().toISOString()
     }
     const updated = [...completed, entry]
-    await AsyncStorage.setItem('completed_challenges', JSON.stringify(updated))
+    await storeData(COMPLETED_KEY, JSON.stringify(updated), uid)
     return updated
   } catch (e) {
     console.log('completeChallenge error:', e)
