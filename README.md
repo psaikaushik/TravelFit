@@ -59,6 +59,12 @@ TRAVELFIT_STAGING_PROJECT_ID=your-staging-project bash scripts/run-ios-device-e2
 
 The script builds the checkout's committed `HEAD` in a temporary directory, checks the Firebase configuration inside the signed build, and runs the physical-device lifecycle test. It creates and deletes two synthetic accounts, keeps Health sync off, and saves the Xcode result bundle and logs to the reported path. Password-reset email, Apple sign-in, real HealthKit samples, and background step delivery have separate release checks.
 
+Run the same signature, capabilities, and bundled privacy manifest checks on the signed archive before validating it in App Store Connect.
+
+```sh
+python3 scripts/verify-ios-release.py path/to/TravelFit.xcarchive
+```
+
 | Customer flow | Expected behavior |
 |---|---|
 | Cold start, onboarding, welcome and privacy | Splash clears. Next and Skip reach Welcome. Privacy opens before sign-in and returns correctly. Check large text and VoiceOver on the smallest supported iPhone. |
