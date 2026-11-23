@@ -23,7 +23,10 @@ end
 end
 
 platform :ios, '13'
-install! 'cocoapods', :deterministic_uuids => false
+install! 'cocoapods',
+         :deterministic_uuids => false,
+         :parallel_pod_downloads => true,
+         :parallel_pod_download_thread_pool_size => 6
 
 $RNFirebaseAsStaticFramework = true
 
