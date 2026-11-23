@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { SafeAreaView, StatusBar } from 'react-native'
 import {
   Box,
@@ -14,6 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import BackSVG from '../assets/icons/back.svg'
+import { getCurrentAccountId } from '../services/database'
 import {
   clearNotifications,
   getNotificationPrefs,
@@ -25,32 +26,27 @@ const NotificationSettings = () => {
   const { goBack } = useNavigation()
   const queryClient = useQueryClient()
   const toast = useToast()
-  const [prefs, setPrefs] = useState(null)
+  const uid = getCurrentAccountId()
   const [saving, setSaving] = useState(false)
   const saveInFlight = useRef(false)
 
-  const { data: savedPrefs, isLoading } = useQuery(
-    ['notification-prefs'],
-    getNotificationPrefs
+  const { data: prefs, isLoading } = useQuery(
+    ['notification-prefs', uid],
+    () => getNotificationPrefs(uid),
+    { enabled: !!uid }
   )
-
-  useEffect(() => {
-    if (savedPrefs) {
-      setPrefs(savedPrefs)
-    }
-  }, [savedPrefs])
 
   const updatePref = useCallback(
     async (key, value) => {
-      if (saveInFlight.current || prefs[key] === value) return
+      if (!uid || getCurrentAccountId() !== uid || saveInFlight.current || prefs[key] === value) return
       saveInFlight.current = true
       setSaving(true)
       const updated = { ...prefs, [key]: value }
 
       try {
-        await saveNotificationPrefs(updated)
-        setPrefs(updated)
-        queryClient.setQueryData(['notification-prefs'], updated)
+        await saveNotificationPrefs(updated, uid)
+        if (getCurrentAccountId() !== uid) return
+        queryClient.setQueryData(['notification-prefs', uid], updated)
         if (key === 'enabled') {
           try {
             if (value) registerNotifications()
@@ -60,13 +56,15 @@ const NotificationSettings = () => {
           }
         }
       } catch {
-        toast.show({ status: 'error', description: 'Could not update notifications. Try again.' })
+        if (getCurrentAccountId() === uid) {
+          toast.show({ status: 'error', description: 'Could not update notifications. Try again.' })
+        }
       } finally {
         saveInFlight.current = false
         setSaving(false)
       }
     },
-    [prefs, queryClient, toast]
+    [prefs, queryClient, toast, uid]
   )
 
   const formatHour = (hour) => {

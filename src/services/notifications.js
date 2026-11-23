@@ -11,9 +11,9 @@ const DEFAULT_PREFS = {
   quietHoursEnd: 7
 }
 
-const getNotificationPrefs = async () => {
+const getNotificationPrefs = async (uid) => {
   try {
-    const raw = await getData(NOTIFICATION_PREFS_KEY)
+    const raw = await getData(NOTIFICATION_PREFS_KEY, uid)
     if (!raw || raw === 'null') {
       return DEFAULT_PREFS
     }
@@ -24,8 +24,8 @@ const getNotificationPrefs = async () => {
   }
 }
 
-const saveNotificationPrefs = (prefs) =>
-  storeData(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs))
+const saveNotificationPrefs = (prefs, uid) =>
+  storeData(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs), uid)
 
 const registerNotifications = () => Notifications.registerRemoteNotifications()
 const clearNotifications = () => Notifications.removeAllDeliveredNotifications()

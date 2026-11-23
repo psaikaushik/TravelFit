@@ -8,6 +8,7 @@ import { getStepsNumAtDate } from '../src/services/helpers'
 import { clearNotifications, getNotificationPrefs, registerNotifications, saveNotificationPrefs } from '../src/services/notifications'
 
 const mockToast = { show: jest.fn() }
+let mockUid
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ goBack: jest.fn() })
@@ -29,6 +30,7 @@ jest.mock('../src/services/helpers', () => ({
   prettifyNum: (steps) => String(steps),
   stepsToDistance: () => '0.0'
 }))
+jest.mock('../src/services/database', () => ({ getCurrentAccountId: () => mockUid }))
 jest.mock('../src/services/notifications', () => ({
   clearNotifications: jest.fn(),
   getNotificationPrefs: jest.fn(),
@@ -59,6 +61,7 @@ const render = async (Screen) => {
 let tree
 beforeEach(() => {
   jest.resetAllMocks()
+  mockUid = 'walker'
   let saved = { ...defaults }
   getNotificationPrefs.mockImplementation(async () => saved)
   saveNotificationPrefs.mockImplementation(async (prefs) => { saved = prefs })
@@ -75,10 +78,10 @@ test('master preference enables native registration, saves event preferences and
   expect(registerNotifications).toHaveBeenCalledTimes(1)
   expect(milestones().props.isDisabled).toBe(false)
   await act(async () => { await milestones().props.onToggle(false) })
-  expect(saveNotificationPrefs).toHaveBeenLastCalledWith({ ...defaults, enabled: true, milestoneAlerts: false })
+  expect(saveNotificationPrefs).toHaveBeenLastCalledWith({ ...defaults, enabled: true, milestoneAlerts: false }, 'walker')
   await act(async () => { await master().props.onToggle(false) })
   expect(clearNotifications).toHaveBeenCalledTimes(1)
-  expect(saveNotificationPrefs).toHaveBeenLastCalledWith({ ...defaults, enabled: false, milestoneAlerts: false })
+  expect(saveNotificationPrefs).toHaveBeenLastCalledWith({ ...defaults, enabled: false, milestoneAlerts: false }, 'walker')
 })
 
 test('notification storage failure restores the previous setting and keeps native side effects untouched', async () => {
@@ -113,7 +116,7 @@ test('native registration failure leaves the saved preference visible', async ()
   tree = await render(NotificationSettings)
   const master = () => findSwitch(tree, 'Toggle all notifications')
   await act(async () => { await master().props.onToggle(true) })
-  expect(saveNotificationPrefs).toHaveBeenCalledWith({ ...defaults, enabled: true })
+  expect(saveNotificationPrefs).toHaveBeenCalledWith({ ...defaults, enabled: true }, 'walker')
   expect(master().props.isChecked).toBe(true)
   expect(mockToast.show).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringMatching(/Preference saved/) }))
 })
@@ -134,4 +137,25 @@ test('an in-flight preference write disables switches and ignores a duplicate to
   })
   expect(master().props.isDisabled).toBe(false)
   expect(master().props.isChecked).toBe(true)
+})
+
+test('account switch during a preference write does not alter replacement cache or register notifications', async () => {
+  let finishSave
+  saveNotificationPrefs.mockImplementationOnce(() => new Promise((resolve) => { finishSave = resolve }))
+  tree = await render(NotificationSettings)
+  const client = tree.root.findByType(QueryClientProvider).props.client
+  const master = () => findSwitch(tree, 'Toggle all notifications')
+  let toggling
+  act(() => { toggling = master().props.onToggle(true) })
+  expect(saveNotificationPrefs).toHaveBeenCalledWith({ ...defaults, enabled: true }, 'walker')
+  mockUid = 'replacement'
+  client.setQueryData(['notification-prefs', mockUid], { ...defaults })
+  await act(async () => {
+    tree.update(<QueryClientProvider client={client}><NotificationSettings /></QueryClientProvider>)
+    finishSave()
+    await toggling
+  })
+  expect(registerNotifications).not.toHaveBeenCalled()
+  expect(client.getQueryData(['notification-prefs', 'replacement'])).toEqual(defaults)
+  expect(master().props.isChecked).toBe(false)
 })
