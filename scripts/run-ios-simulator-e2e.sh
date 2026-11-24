@@ -21,12 +21,16 @@ sys.exit("No available iPhone simulator with an iOS 26 runtime")
 fi
 
 # Match the Intel simulator host and the architecture of the installed pods.
+destination="platform=iOS Simulator,id=$simulator"
+if [[ "${TRAVELFIT_SIMULATOR_ROSETTA:-0}" = 1 ]]; then
+  destination="$destination,arch=x86_64"
+fi
 build_settings=(
   -workspace ios/TravelFit.xcworkspace
   -scheme TravelFitSimulatorE2E
   -configuration Release
-  -destination "platform=iOS Simulator,id=$simulator"
-  -derivedDataPath "$RUNNER_TEMP/travelfit-derived-data"
+  -destination "$destination"
+  -derivedDataPath "${TRAVELFIT_SIMULATOR_DERIVED_DATA:-$RUNNER_TEMP/travelfit-derived-data}"
   ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 )
 

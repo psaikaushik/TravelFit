@@ -116,44 +116,7 @@ jobs:
           java-version: '21'
       - name: Configure the simulator-only Firebase and Health fixtures
         run: |
-          python3 - <<'PY'
-          import plistlib
-          from pathlib import Path
-
-          config = {
-              "API_KEY": "AIza" + "0" * 35,
-              "BUNDLE_ID": "com.travelfit.app",
-              "DATABASE_URL": "https://demo-travelfit-audit.firebaseio.com",
-              "GCM_SENDER_ID": "100000000000",
-              "GOOGLE_APP_ID": "1:100000000000:ios:0000000000000000000000",
-              "IS_ANALYTICS_ENABLED": False,
-              "PLIST_VERSION": "1",
-              "PROJECT_ID": "demo-travelfit-audit",
-          }
-          with open("ios/GoogleService-Info.local.plist", "wb") as file:
-              plistlib.dump(config, file)
-
-          entry = Path("index.js")
-          original = entry.read_text()
-          gesture_handler = "import 'react-native-gesture-handler'\n"
-          assert original.startswith(gesture_handler)
-          entry.write_text(original.replace(
-              gesture_handler,
-              gesture_handler + "import './scripts/ios-simulator-fixture'\n",
-              1
-          ))
-
-          info = Path("ios/TravelFit/Info.plist")
-          with info.open("rb") as file:
-              simulator_info = plistlib.load(file)
-          network = simulator_info.setdefault("NSAppTransportSecurity", {})
-          network["NSAllowsLocalNetworking"] = True
-          network.setdefault("NSExceptionDomains", {})["127.0.0.1"] = {
-              "NSExceptionAllowsInsecureHTTPLoads": True,
-          }
-          with info.open("wb") as file:
-              plistlib.dump(simulator_info, file)
-          PY
+          python3 scripts/configure-ios-simulator-fixtures.py
           bundle exec ruby scripts/configure-ios-ui-tests.rb
       - name: Restore native simulator build
         id: native-build

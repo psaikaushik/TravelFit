@@ -15,6 +15,14 @@ npm run bundle:ios -- --bundle-output /tmp/travelfit.jsbundle --assets-dest /tmp
 
 The GitHub Actions run on `release/fitness-recovery` also builds the unsigned Release app on an iOS 26 simulator. XCUITest drives two demo accounts through signup, Apple Health Skip and reconnect, route selection and completion, trip history, relaunch, and account deletion. The CI checkout uses local Firebase emulators and a Health fixture that supplies 1,200 steps on connection and 20,000 steps after the app resumes. The tracked app entry point used for signed builds stays separate from the fixture. XCTest results and screenshots are uploaded to the workflow run.
 
+To run that same check directly on a Mac, use Xcode 26 with the iOS 26 simulator runtime, the repository's Node and Ruby versions, Bundler, and Java 21. Apple silicon requires Rosetta and a universal iOS simulator runtime that exposes an `x86_64` destination in Xcode.
+
+```sh
+bash scripts/run-local-ios-simulator-e2e.sh
+```
+
+The command builds committed `HEAD` in a scratch checkout, creates a temporary simulator, and reports the directory containing logs, XCTest results, and screenshots. It uses synthetic accounts and Health samples with loopback Firebase emulators.
+
 To run the backend customer-flow check with Node 22 and Java 21, use the Firebase Local Emulator Suite. This test creates demo users, verifies profile isolation, resets an account password, calls account deletion, and checks that the deleted account no longer works.
 
 ```sh
