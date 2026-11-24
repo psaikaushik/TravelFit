@@ -39,10 +39,16 @@ case "${1:-}" in
     xcrun simctl bootstatus "$simulator" -b
     ;;
   test)
+    node scripts/verify-firebase.cjs simulator-ready
+    status=0
     xcodebuild -quiet test-without-building "${build_settings[@]}" \
       -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
       -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
-      -parallel-testing-enabled NO -testLanguage en -testRegion US
+      -parallel-testing-enabled NO -testLanguage en -testRegion US || status=$?
+    if (( status != 0 )); then
+      node scripts/verify-firebase.cjs simulator-report || true
+    fi
+    exit "$status"
     ;;
   *)
     echo "Usage: bash scripts/run-ios-simulator-e2e.sh build|boot|test" >&2

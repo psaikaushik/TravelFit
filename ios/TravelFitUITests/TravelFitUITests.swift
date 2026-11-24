@@ -221,7 +221,9 @@ final class TravelFitUITests: XCTestCase {
     @discardableResult
     private func assertVisible(_ identifier: String) -> XCUIElement {
         let view = element(identifier)
-        XCTAssertTrue(view.waitForExistence(timeout: timeout), "TravelFit did not show \(identifier)")
+        let found = view.waitForExistence(timeout: timeout)
+        if !found { attach("Screen waiting for \(identifier)") }
+        XCTAssertTrue(found, "TravelFit did not show \(identifier)")
         return view
     }
 

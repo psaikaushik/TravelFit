@@ -90,7 +90,7 @@ const Welcome = () => {
         />
       )}
       <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} accessibilityRole="button" accessibilityLabel="Already have an account, log in" testID="welcome-log-in">
-        <Text style={styles.loginText}>Already have an account</Text>
+        <Text style={styles.loginText}>Log in</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.privacyBtn}
@@ -113,7 +113,8 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   title: {
-    fontSize: 42,
+    fontSize: 38,
+    paddingHorizontal: 20,
     marginTop: 20,
     textAlign: 'center',
     color: '#FFFFFF',

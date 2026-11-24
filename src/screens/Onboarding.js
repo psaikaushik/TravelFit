@@ -4,9 +4,10 @@ import {
   StatusBar,
   FlatList,
   useWindowDimensions,
-  StyleSheet
+  StyleSheet,
+  Text
 } from 'react-native'
-import { Flex, Text, Pressable, Box } from 'native-base'
+import { Flex, Pressable, Box } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -68,8 +69,8 @@ const Onboarding = () => {
         justifyContent="center"
         px={8}
       >
-        <Text style={styles.icon}>{item.icon}</Text>
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.icon} accessible={false}>{item.icon}</Text>
+        <Text style={styles.title} accessibilityRole="header">{item.title}</Text>
         <Text style={styles.description}>{item.description}</Text>
       </Flex>
     ),
@@ -158,11 +159,13 @@ const styles = StyleSheet.create({
   icon: {
     color: '#C4EB64',
     fontSize: 64,
+    lineHeight: 76,
     textAlign: 'center',
     marginBottom: 32
   },
   title: {
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '800',
     color: '#FFFFFF',
     textAlign: 'center',

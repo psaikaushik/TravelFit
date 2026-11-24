@@ -64,7 +64,7 @@ const AuthScreen = ({ title, appleEnabled, footer, children }) => {
           <BackSVG />
         </Pressable>
       </Flex>
-      <KeyboardAwareScrollView testID="auth-scroll">
+      <KeyboardAwareScrollView testID="auth-scroll" keyboardShouldPersistTaps="handled">
         <Container px="20px" mt="12px" w="100%" minW="100%">
           <Text variant="title" accessibilityRole="header">{title}</Text>
           {children}

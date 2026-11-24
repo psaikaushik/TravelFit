@@ -83,7 +83,31 @@ async function main() {
   console.log('Firebase emulator passed signup, profile isolation, reset and login, account deletion, and stale-token denial.')
 }
 
-main().catch((error) => {
+async function runCheck() {
+  switch (process.argv[2]) {
+    case 'simulator-ready': {
+      const response = await removeAccount(undefined, 'simulator-readiness-probe', 401)
+      assert.equal(response.error.status, 'UNAUTHENTICATED')
+      console.log('The simulator account-deletion function is available.')
+      break
+    }
+    case 'simulator-report': {
+      const accountsUrl = `${authOrigin}/identitytoolkit.googleapis.com/v1/projects/${project}/accounts:batchGet`
+      const { users = [] } = await request(accountsUrl, { token: 'owner' })
+      const testUsers = users.filter(({ email }) => email?.startsWith('travelfit-e2e-'))
+      const profiles = await Promise.all(testUsers.map(({ localId }) => profile(localId, { token: 'owner' })))
+      console.log(`Simulator persisted ${testUsers.length} synthetic Auth accounts and ${profiles.filter(Boolean).length} profiles.`)
+      break
+    }
+    case undefined:
+      await main()
+      break
+    default:
+      throw new Error('Unknown Firebase emulator check.')
+  }
+}
+
+runCheck().catch((error) => {
   console.error(error)
   process.exitCode = 1
 })
