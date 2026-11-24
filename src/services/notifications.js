@@ -1,5 +1,6 @@
-import { getData, storeData } from './database'
+import { Platform } from 'react-native'
 import { Notifications } from 'react-native-notifications'
+import { getCurrentAccountId, getData, storeData } from './database'
 
 const NOTIFICATION_PREFS_KEY = 'notification_prefs'
 
@@ -28,7 +29,13 @@ const saveNotificationPrefs = (prefs, uid) =>
   storeData(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs), uid)
 
 const registerNotifications = () => Notifications.registerRemoteNotifications()
-const clearNotifications = () => Notifications.removeAllDeliveredNotifications()
+const clearNotifications = () => {
+  try {
+    Notifications.ios.cancelAllLocalNotifications()
+  } finally {
+    Notifications.removeAllDeliveredNotifications()
+  }
+}
 
 const isInQuietHours = (prefs) => {
   const now = new Date()
@@ -44,10 +51,43 @@ const isInQuietHours = (prefs) => {
   return currentHour >= quietHoursStart && currentHour < quietHoursEnd
 }
 
+const listenForNotifications = () => {
+  if (Platform.OS !== 'ios') return
+
+  let listening = true
+  const events = Notifications.events()
+  const foreground = events.registerNotificationReceivedForeground(async ({ payload }, complete) => {
+    let show = false
+    try {
+      const uid = getCurrentAccountId()
+      if (!uid || payload?.accountId !== uid) return
+
+      const prefs = await getNotificationPrefs(uid)
+      const categoryEnabled = payload.category === 'BADGE'
+        ? prefs.milestoneAlerts
+        : payload.category === 'GOAL' && prefs.dailyGoalReminder
+      show = listening && getCurrentAccountId() === uid &&
+        prefs.enabled && categoryEnabled && !isInQuietHours(prefs)
+    } catch {
+      show = false
+    } finally {
+      complete({ alert: show, sound: show, badge: false })
+    }
+  })
+  const opened = events.registerNotificationOpened((_, complete) => complete())
+
+  return () => {
+    listening = false
+    foreground.remove()
+    opened.remove()
+  }
+}
+
 export {
   getNotificationPrefs,
   saveNotificationPrefs,
   registerNotifications,
   clearNotifications,
-  isInQuietHours
+  isInQuietHours,
+  listenForNotifications
 }

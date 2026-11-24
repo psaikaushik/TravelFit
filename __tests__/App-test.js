@@ -1,7 +1,8 @@
 import React from 'react'
 import { AppRegistry, Text } from 'react-native'
-import renderer from 'react-test-renderer'
+import renderer, { act } from 'react-test-renderer'
 import { name as appName } from '../app.json'
+import { listenForNotifications } from '../src/services/notifications'
 
 jest.mock('react-native-gesture-handler', () => ({}))
 jest.mock('react-native-safe-area-context', () => ({
@@ -11,6 +12,7 @@ jest.mock('native-base', () => ({
   NativeBaseProvider: ({ children }) => children,
   extendTheme: (theme) => theme
 }))
+jest.mock('../src/services/notifications', () => ({ listenForNotifications: jest.fn() }))
 jest.mock('../src/routes', () => ({
   Routes: () => {
     const React = require('react')
@@ -25,7 +27,12 @@ it('launches the fitness router from the registered TravelFit app', () => {
   expect(register).toHaveBeenCalledWith(appName, expect.any(Function))
   const Main = register.mock.calls[0][1]()
   register.mockRestore()
-  const app = renderer.create(<Main />)
+  const unsubscribe = jest.fn()
+  listenForNotifications.mockReturnValue(unsubscribe)
+  let app
+  act(() => { app = renderer.create(<Main />) })
   expect(app.root.findByType(Text).props.children).toBe('TravelFit navigation')
-  app.unmount()
+  expect(listenForNotifications).toHaveBeenCalledTimes(1)
+  act(() => app.unmount())
+  expect(unsubscribe).toHaveBeenCalledTimes(1)
 })

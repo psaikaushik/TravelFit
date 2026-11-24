@@ -46,6 +46,7 @@ const useBackgroundTasks = () => {
             title: `${name} Badge`,
             body: `You've reached ${name} on your virtual route.`,
             category: 'BADGE',
+            accountId: uid,
             silent: false
           })
         }
@@ -56,6 +57,7 @@ const useBackgroundTasks = () => {
           title: 'Daily Goal Reached!',
           body: `You hit ${goal.dailyGoal.toLocaleString()} steps today!`,
           category: 'GOAL',
+          accountId: uid,
           silent: false
         })
       }
