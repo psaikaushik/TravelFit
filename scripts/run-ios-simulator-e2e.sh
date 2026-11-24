@@ -14,7 +14,8 @@ for runtime in sorted(candidates, key=lambda key: tuple(map(int, key.split("iOS-
 sys.exit("No available iPhone simulator with an iOS 26 runtime")
 ')
 
-xcodebuild test \
+# Match the Intel simulator host and the architecture of the installed pods.
+xcodebuild -quiet test \
   -workspace ios/TravelFit.xcworkspace \
   -scheme TravelFitSimulatorE2E \
   -configuration Release \
@@ -24,4 +25,4 @@ xcodebuild test \
   -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
   -parallel-testing-enabled NO \
   -testLanguage en -testRegion US \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+  ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
