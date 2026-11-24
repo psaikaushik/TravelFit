@@ -111,6 +111,19 @@ test('month statistics include today and yesterday, plus the earlier four weeks'
   expect(walkTexts()).toContain('635')
 })
 
+test('statistics show an empty state when Health samples are unavailable', async () => {
+  getStepsNumAtDate.mockResolvedValueOnce(null).mockResolvedValueOnce([])
+  tree = await render(WeeklyStats)
+  const walkTexts = () => tree.root.findAllByType('Text').map(({ props }) => props.children)
+  const empty = 'No Apple Health step samples for this period. Check access in the Health app.'
+  expect(walkTexts()).toContain(empty)
+  expect(walkTexts()).not.toContain('Total Steps')
+  act(() => tree.root.findAllByType('Pressable').find(({ props }) =>
+    props.accessibilityLabel === 'Show month stats').props.onPress())
+  expect(walkTexts()).toContain(empty)
+  expect(walkTexts()).not.toContain('30-Day Total')
+})
+
 test('native registration failure leaves the saved preference visible', async () => {
   registerNotifications.mockImplementation(() => { throw new Error('Native service unavailable') })
   tree = await render(NotificationSettings)

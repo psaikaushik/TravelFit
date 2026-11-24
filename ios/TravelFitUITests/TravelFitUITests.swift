@@ -95,6 +95,14 @@ final class TravelFitUITests: XCTestCase {
                 tap("tab-achievements")
                 assertVisible("Torpedo Wharf")
                 attach("Landmark achievements")
+                tap("tab-profile")
+                tap("profile-statistics", in: "profile-content")
+                waitForLabel("statistics-week-total", "20,000")
+                attach("Weekly step totals")
+                tap("statistics-month-tab")
+                waitForLabel("statistics-month-total", "20,000")
+                attach("Monthly step totals")
+                tap("statistics-back")
             }
         } else {
             waitForLabel("trip-map-status", "Step sync is off.")
@@ -104,8 +112,8 @@ final class TravelFitUITests: XCTestCase {
         XCTContext.runActivity(named: "Use a second account without the first account's history") { _ in
             register(name: "Second Walker", email: secondEmail)
             tap("health-skip")
-            tap("route-start-golden-gate", in: "routes-list")
-            assertMap(title: "Golden Gate Waterfront")
+            tap("route-start-seattle-waterfront", in: "routes-list")
+            assertMap(title: "Along the Seattle Waterfront")
             waitForLabel("trip-map-status", "Step sync is off.")
             openHistory()
             waitForLabel("trip-history-empty", "No trips yet")
@@ -113,7 +121,7 @@ final class TravelFitUITests: XCTestCase {
             deleteCurrentAccount()
         }
 
-        XCTContext.runActivity(named: "Restore the first account after a fresh launch, then delete it") { _ in
+        XCTContext.runActivity(named: "Restore the first account, remove its archived route, then delete it") { _ in
             logIn(email: firstEmail, requestPasswordReset: useHealthFixture)
             assertMap(title: "Golden Gate Waterfront")
             app.terminate()
@@ -122,6 +130,8 @@ final class TravelFitUITests: XCTestCase {
             waitForLabel("trip-map-status", useHealthFixture ? "Route complete" : "Step sync is off.")
             openHistory()
             waitForLabel("trip-history-start", "Harlem Meer")
+            tap("Remove this trip from history")
+            waitForLabel("trip-history-empty", "No trips yet")
             tap("trip-history-back")
             deleteCurrentAccount()
             attach("Welcome after account deletion")

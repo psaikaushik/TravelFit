@@ -247,6 +247,7 @@ const Profile = () => {
                 onPress={() => navigate('WeeklyStats')}
                 accessibilityLabel="View weekly and monthly statistics"
                 accessibilityRole="button"
+                testID="profile-statistics"
               >
                 <Box bg="white" borderRadius="16px" p="20px">
                   <HStack justifyContent="space-between" alignItems="center">
