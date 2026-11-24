@@ -12,6 +12,7 @@ import {
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getCurrentAccountId } from '../services/database'
 import { getTripHistory, deleteTripFromHistory } from '../services/tripHistory'
 import { prettifyNum, stepsToDistance } from '../services/helpers'
 import moment from 'moment'
@@ -22,15 +23,28 @@ const TripHistory = () => {
   const toast = useToast()
   const queryClient = useQueryClient()
 
+  const uid = getCurrentAccountId()
+  const queryKey = ['trip-history', uid]
   const { data: trips = [], isLoading } = useQuery(
-    ['trip-history'],
-    getTripHistory
+    queryKey,
+    () => getTripHistory(uid),
+    { enabled: !!uid }
   )
 
   const handleDelete = async (tripId) => {
-    await deleteTripFromHistory(tripId)
-    queryClient.invalidateQueries(['trip-history'])
-    toast.show({ status: 'info', description: 'Trip removed from history' })
+    if (!uid || getCurrentAccountId() !== uid) return
+    try {
+      const updated = await deleteTripFromHistory(tripId, uid)
+      if (!updated || getCurrentAccountId() !== uid) return
+      await queryClient.invalidateQueries(queryKey)
+      if (getCurrentAccountId() === uid) {
+        toast.show({ status: 'info', description: 'Trip removed from history' })
+      }
+    } catch {
+      if (getCurrentAccountId() === uid) {
+        toast.show({ status: 'error', description: 'Could not remove the trip. Try again.' })
+      }
+    }
   }
 
   const formatDuration = (startedTime, completedDate) => {

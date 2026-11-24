@@ -10,14 +10,15 @@ const accountPrefix = (uid) => `travelfit:account:${encodeURIComponent(uid)}:`
 const canUseAccount = (uid) =>
   !!uid && uid === getCurrentAccountId() && !clearedAccounts.has(uid)
 
-const getData = async (type, accountId) => {
+const getData = async (type, accountId, { strict = false } = {}) => {
   const uid = typeof accountId === 'string' ? accountId : getCurrentAccountId()
   if (!canUseAccount(uid)) return null
 
   try {
     const value = await AsyncStorage.getItem(accountPrefix(uid) + type)
     return canUseAccount(uid) ? value : null
-  } catch (e) {
+  } catch (error) {
+    if (strict) throw error
     return null
   }
 }

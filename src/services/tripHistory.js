@@ -3,22 +3,35 @@ import { getCurrentAccountId, getData, storeData } from './database'
 
 const TRIP_HISTORY_KEY = 'trip_history'
 
-const getTripHistory = async (uid) => {
+const historyWrites = new Map()
+
+const getTripHistory = async (uid, options) => {
   try {
-    const trips = JSON.parse(await getData(TRIP_HISTORY_KEY, uid))
+    const trips = JSON.parse(await getData(TRIP_HISTORY_KEY, uid, options))
     return Array.isArray(trips) ? trips : []
-  } catch (e) {
-    console.log('getTripHistory error:', e)
+  } catch (error) {
+    if (options?.strict) throw error
     return []
   }
 }
 
-const saveTripHistory = async (trips, uid) => {
-  try {
-    await storeData(TRIP_HISTORY_KEY, JSON.stringify(trips), uid)
-  } catch (e) {
-    console.log('saveTripHistory error:', e)
-  }
+const saveTripHistory = (trips, uid) =>
+  storeData(TRIP_HISTORY_KEY, JSON.stringify(trips), uid)
+
+// Starting a route and deleting history both edit the same saved list.
+const updateHistory = (uid, update) => {
+  const operation = (historyWrites.get(uid) || Promise.resolve()).catch(() => {}).then(async () => {
+    if (getCurrentAccountId() !== uid) return
+    const history = await getTripHistory(uid, { strict: true })
+    if (getCurrentAccountId() !== uid) return
+    const updated = update(history)
+    await saveTripHistory(updated, uid)
+    return updated
+  })
+  historyWrites.set(uid, operation)
+  return operation.finally(() => {
+    if (historyWrites.get(uid) === operation) historyWrites.delete(uid)
+  })
 }
 
 const archiveCurrentTrip = async (settings, uid = getCurrentAccountId()) => {
@@ -39,20 +52,13 @@ const archiveCurrentTrip = async (settings, uid = getCurrentAccountId()) => {
     duration: settings.duration || 0
   }
 
-  const history = await getTripHistory(uid)
-  const updated = [trip, ...history.filter(({ id }) => id !== trip.id)]
-  await storeData(TRIP_HISTORY_KEY, JSON.stringify(updated), uid)
-  return trip
+  const updated = await updateHistory(uid, (history) => [trip, ...history.filter(({ id }) => id !== trip.id)])
+  return updated ? trip : undefined
 }
 
-const deleteTripFromHistory = async (tripId) => {
-  const uid = getCurrentAccountId()
-  if (!uid) return []
-
-  const history = await getTripHistory(uid)
-  const updated = history.filter((t) => t.id !== tripId)
-  await saveTripHistory(updated, uid)
-  return updated
+const deleteTripFromHistory = async (tripId, uid = getCurrentAccountId()) => {
+  if (!uid) return
+  return updateHistory(uid, (history) => history.filter((trip) => trip.id !== tripId))
 }
 
 export { getTripHistory, saveTripHistory, archiveCurrentTrip, deleteTripFromHistory }

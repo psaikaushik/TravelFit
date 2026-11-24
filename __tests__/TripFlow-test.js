@@ -5,9 +5,10 @@ import AppleHealthKit from 'react-native-health'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import renderer, { act } from 'react-test-renderer'
 import Trip from '../src/screens/Trip'
+import TripHistory from '../src/screens/TripHistory'
 import { buildCuratedTrip, VIRTUAL_ROUTES } from '../src/data/curatedRoutes'
 import { getUserSettings, setUserSettings } from '../src/services/database'
-import { deleteTripFromHistory, getTripHistory } from '../src/services/tripHistory'
+import { archiveCurrentTrip, deleteTripFromHistory, getTripHistory } from '../src/services/tripHistory'
 import { checkFlow, getTripProgressIndex, updateProgress } from '../src/services/helpers'
 
 let mockUser
@@ -23,6 +24,8 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => mockNavigation }))
 jest.mock('native-base', () => ({
+  Box: 'Box',
+  HStack: 'HStack',
   Button: 'Button',
   Flex: 'Flex',
   Pressable: 'Pressable',
@@ -266,4 +269,55 @@ it('completes a route, resumes it from storage, then starts over and removes the
   ])
   await deleteTripFromHistory(history[0].id)
   await expect(getTripHistory()).resolves.toEqual([])
+})
+
+it('keeps a history entry visible and reports a failed removal when device storage rejects the write', async () => {
+  const trip = await archiveCurrentTrip(currentTrip)
+  queryClient.setQueryData(['trip-history', mockUser.uid], [trip])
+  await act(async () => {
+    screen = renderer.create(
+      <QueryClientProvider client={queryClient}><TripHistory /></QueryClientProvider>
+    )
+  })
+  AsyncStorage.setItem.mockRejectedValueOnce(new Error('Trip history write failed'))
+  await act(async () => {
+    await screen.root.findByProps({ accessibilityLabel: 'Remove this trip from history' }).props.onPress()
+  })
+  expect(await getTripHistory(mockUser.uid)).toEqual([trip])
+  expect(mockToast.show).toHaveBeenCalledWith(expect.objectContaining({ status: 'error' }))
+  expect(mockToast.show).toHaveBeenCalledTimes(1)
+  expect(screen.root.findByProps({ accessibilityLabel: 'Remove this trip from history' })).toBeTruthy()
+})
+
+it('does not overwrite an archived route when a concurrent history removal follows it', async () => {
+  const original = await archiveCurrentTrip(currentTrip, mockUser.uid)
+  const replacement = { ...currentTrip, tripId: 'second-trip' }
+  const [archived] = await Promise.all([
+    archiveCurrentTrip(replacement, mockUser.uid),
+    deleteTripFromHistory(original.id, mockUser.uid)
+  ])
+  expect(await getTripHistory(mockUser.uid)).toEqual([archived])
+})
+
+it('does not write history if the account changes during a pending read', async () => {
+  const original = await archiveCurrentTrip(currentTrip, mockUser.uid)
+  let finishRead
+  AsyncStorage.getItem.mockImplementationOnce(() => new Promise((resolve) => { finishRead = resolve }))
+  const pending = deleteTripFromHistory(original.id, mockUser.uid)
+  while (!finishRead) await Promise.resolve()
+  mockUser = { uid: 'replacement' }
+  finishRead(JSON.stringify([original]))
+  await expect(pending).resolves.toBeUndefined()
+  expect(await getTripHistory('replacement')).toEqual([])
+  mockUser = { uid: 'walker' }
+  expect(await getTripHistory('walker')).toEqual([original])
+})
+
+it('leaves history untouched when reading it for removal fails', async () => {
+  const original = await archiveCurrentTrip(currentTrip, mockUser.uid)
+  AsyncStorage.setItem.mockClear()
+  AsyncStorage.getItem.mockRejectedValueOnce(new Error('Trip history read failed'))
+  await expect(deleteTripFromHistory(original.id, mockUser.uid)).rejects.toThrow('Trip history read failed')
+  expect(AsyncStorage.setItem).not.toHaveBeenCalled()
+  expect(await getTripHistory(mockUser.uid)).toEqual([original])
 })
