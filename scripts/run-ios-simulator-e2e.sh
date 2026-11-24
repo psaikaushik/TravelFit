@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-simulator=$(xcrun simctl list devices available --json | python3 -c '
+simulator_file="$RUNNER_TEMP/travelfit-simulator"
+if [[ -s "$simulator_file" ]]; then
+  read -r simulator < "$simulator_file"
+else
+  simulator=$(xcrun simctl list devices available --json | python3 -c '
 import json, sys
 
 runtimes = json.load(sys.stdin)["devices"]
@@ -13,16 +17,35 @@ for runtime in sorted(candidates, key=lambda key: tuple(map(int, key.split("iOS-
             sys.exit()
 sys.exit("No available iPhone simulator with an iOS 26 runtime")
 ')
+  printf '%s\n' "$simulator" > "$simulator_file"
+fi
 
 # Match the Intel simulator host and the architecture of the installed pods.
-xcodebuild -quiet test \
-  -workspace ios/TravelFit.xcworkspace \
-  -scheme TravelFitSimulatorE2E \
-  -configuration Release \
-  -destination "platform=iOS Simulator,id=$simulator" \
-  -derivedDataPath "$RUNNER_TEMP/travelfit-derived-data" \
-  -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
-  -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
-  -parallel-testing-enabled NO \
-  -testLanguage en -testRegion US \
+build_settings=(
+  -workspace ios/TravelFit.xcworkspace
+  -scheme TravelFitSimulatorE2E
+  -configuration Release
+  -destination "platform=iOS Simulator,id=$simulator"
+  -derivedDataPath "$RUNNER_TEMP/travelfit-derived-data"
   ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+)
+
+case "${1:-}" in
+  build)
+    xcodebuild -quiet build-for-testing "${build_settings[@]}" \
+      -resultBundlePath "$RUNNER_TEMP/travelfit-ios-build.xcresult"
+    ;;
+  boot)
+    xcrun simctl bootstatus "$simulator" -b
+    ;;
+  test)
+    xcodebuild -quiet test-without-building "${build_settings[@]}" \
+      -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
+      -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
+      -parallel-testing-enabled NO -testLanguage en -testRegion US
+    ;;
+  *)
+    echo "Usage: bash scripts/run-ios-simulator-e2e.sh build|boot|test" >&2
+    exit 2
+    ;;
+esac

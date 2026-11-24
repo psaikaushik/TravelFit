@@ -47,7 +47,7 @@ jobs:
     if: github.ref == 'refs/heads/release/fitness-recovery'
     # The legacy Podfile excludes arm64 for simulator builds.
     runs-on: macos-15-intel
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       RCT_NO_LAUNCH_PACKAGER: "1"
     defaults:
@@ -160,29 +160,39 @@ jobs:
             ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
           key: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-${{ github.sha }}
           restore-keys: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-
-      - name: Run TravelFit end to end in the Release simulator
-        id: simulator
-        run: |
-          npm ci --prefix functions --engine-strict
-          npx --yes firebase-tools@15.37.0 emulators:exec \
-            --project demo-travelfit-audit --only auth,database,functions \
-            'bash scripts/run-ios-simulator-e2e.sh'
-      - name: Report simulator failure diagnostics
-        if: failure()
-        run: |
-          result="$RUNNER_TEMP/travelfit-ios.xcresult"
-          if [ -d "$result" ]; then
-            xcrun xcresulttool get build-results --path "$result" || true
-            xcrun xcresulttool get test-results summary --path "$result" || true
-          fi
+      - name: Build the unsigned Release app and XCTest runner
+        id: simulator-build
+        timeout-minutes: 30
+        run: bash scripts/run-ios-simulator-e2e.sh build
       - name: Save native simulator build
-        if: ${{ !cancelled() && steps.native-build.outputs.cache-hit != 'true' && (steps.simulator.outcome == 'success' || steps.simulator.outcome == 'failure') }}
+        if: ${{ !cancelled() && steps.native-build.outputs.cache-hit != 'true' && (steps.simulator-build.outcome == 'success' || steps.simulator-build.outcome == 'failure') }}
         uses: actions/cache/save@v4
         with:
           path: |
             ${{ runner.temp }}/travelfit-derived-data/Build
             ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
           key: ${{ steps.native-build.outputs.cache-primary-key }}
+      - name: Boot the selected iPhone simulator
+        timeout-minutes: 8
+        run: bash scripts/run-ios-simulator-e2e.sh boot
+      - name: Run TravelFit end to end in the Release simulator
+        timeout-minutes: 12
+        run: |
+          npm ci --prefix functions --engine-strict
+          npx --yes firebase-tools@15.37.0 emulators:exec \
+            --project demo-travelfit-audit --only auth,database,functions \
+            'bash scripts/run-ios-simulator-e2e.sh test'
+      - name: Report simulator failure diagnostics
+        if: failure()
+        run: |
+          build="$RUNNER_TEMP/travelfit-ios-build.xcresult"
+          result="$RUNNER_TEMP/travelfit-ios.xcresult"
+          if [ -d "$build" ]; then
+            xcrun xcresulttool get build-results --path "$build" || true
+          fi
+          if [ -d "$result" ]; then
+            xcrun xcresulttool get test-results summary --path "$result" || true
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
