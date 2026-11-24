@@ -166,6 +166,7 @@ jobs:
         run: bash scripts/run-ios-simulator-e2e.sh build
       - name: Save native simulator build
         if: ${{ !cancelled() && steps.native-build.outputs.cache-hit != 'true' && (steps.simulator-build.outcome == 'success' || steps.simulator-build.outcome == 'failure') }}
+        continue-on-error: true
         uses: actions/cache/save@v4
         with:
           path: |
@@ -182,12 +183,14 @@ jobs:
           npx --yes firebase-tools@15.37.0 emulators:exec \
             --project demo-travelfit-audit --only auth,database,functions \
             'bash scripts/run-ios-simulator-e2e.sh test'
-      - name: Report simulator failure diagnostics
-        if: failure()
+      - name: Report simulator results
+        if: always()
+        env:
+          BUILD_OUTCOME: ${{ steps.simulator-build.outcome }}
         run: |
           build="$RUNNER_TEMP/travelfit-ios-build.xcresult"
           result="$RUNNER_TEMP/travelfit-ios.xcresult"
-          if [ -d "$build" ]; then
+          if [ "$BUILD_OUTCOME" = failure ] && [ -d "$build" ]; then
             xcrun xcresulttool get build-results --path "$build" || true
           fi
           if [ -d "$result" ]; then
@@ -198,6 +201,12 @@ jobs:
         with:
           name: ios-simulator-result
           path: ${{ runner.temp }}/travelfit-ios.xcresult
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: steps.simulator-build.outcome == 'failure' && !cancelled()
+        with:
+          name: ios-simulator-build-result
+          path: ${{ runner.temp }}/travelfit-ios-build.xcresult
           if-no-files-found: ignore
       - name: Export simulator screenshots
         if: always()
