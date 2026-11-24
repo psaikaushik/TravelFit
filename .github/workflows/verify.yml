@@ -217,6 +217,40 @@ jobs:
               --path "$result" \
               --output-path "$RUNNER_TEMP/travelfit-ios-attachments"
           fi
+      - name: Record small simulator previews for visual review
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 - "$RUNNER_TEMP/travelfit-ios-attachments" <<'PY'
+          import base64
+          import io
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tempfile
+          import textwrap
+          from zipfile import ZipFile
+
+          directory = Path(sys.argv[1])
+          shots = [path for path in sorted(directory.glob('*'))
+                   if path.suffix.lower() in {'.png', '.jpg', '.jpeg'}][:16]
+          if shots:
+              buffer = io.BytesIO()
+              with ZipFile(buffer, 'w') as archive, tempfile.TemporaryDirectory() as temporary:
+                  manifest = directory / 'manifest.json'
+                  if manifest.is_file():
+                      archive.write(manifest, 'manifest.json')
+                  for shot in shots:
+                      preview = Path(temporary) / (shot.stem + '.jpg')
+                      subprocess.run(['/usr/bin/sips', '-Z', '600', '-s', 'format', 'jpeg',
+                                      '-s', 'formatOptions', '65', str(shot), '--out', str(preview)],
+                                     stdout=subprocess.DEVNULL, check=True)
+                      archive.write(preview, preview.name)
+              print('::group::Simulator preview archive')
+              for line in textwrap.wrap(base64.b64encode(buffer.getvalue()).decode(), 256):
+                  print('SIMULATOR_PREVIEW ' + line)
+              print('::endgroup::')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

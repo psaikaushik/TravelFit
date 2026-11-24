@@ -179,7 +179,7 @@ final class TravelFitUITests: XCTestCase {
     private func fill(_ identifier: String, with value: String, secure: Bool = false, dismissKeyboard: Bool = false) {
         let field = secure ? app.secureTextFields[identifier] : app.textFields[identifier]
         XCTAssertTrue(field.waitForExistence(timeout: timeout), "Missing input \(identifier)")
-        if !field.isHittable { app.scrollViews["auth-scroll"].swipeUp() }
+        reveal(field, in: "auth-scroll")
         field.tap()
         field.typeText(secure || dismissKeyboard ? value + "\n" : value)
     }
@@ -228,18 +228,23 @@ final class TravelFitUITests: XCTestCase {
     private func tap(_ identifier: String, in scrollID: String? = nil) {
         let button = element(identifier)
         if let scrollID {
-            let scroll = app.scrollViews[scrollID]
-            XCTAssertTrue(scroll.waitForExistence(timeout: timeout), "Missing scroll view \(scrollID)")
-            for _ in 0..<5 {
-                if button.exists && button.isHittable { break }
-                scroll.swipeUp()
-            }
+            reveal(button, in: scrollID)
         }
         let ready = NSPredicate { _, _ in button.exists && button.isHittable && button.isEnabled }
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
                        "TravelFit could not activate \(identifier)")
         button.tap()
+    }
+
+    private func reveal(_ view: XCUIElement, in scrollID: String) {
+        let container = element(scrollID)
+        for _ in 0..<5 {
+            if view.exists && view.isHittable { return }
+            // React Native scroll containers can be exposed as other elements.
+            let scrollSurface = container.exists && container.isHittable ? container : app
+            scrollSurface.swipeUp()
+        }
     }
 
     private func tapAlertButton(_ title: String, alert: String) {
