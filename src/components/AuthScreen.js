@@ -8,6 +8,7 @@ import { Container, Text, Flex, useToast, Pressable } from 'native-base'
 import auth from '@react-native-firebase/auth'
 
 import { cacheAccountProfile } from '../services/users'
+import { authErrorMessage } from '../services/authErrors'
 import { checkFlow } from '../services/helpers'
 
 const AuthScreen = ({ title, appleEnabled, footer, children }) => {
@@ -42,7 +43,7 @@ const AuthScreen = ({ title, appleEnabled, footer, children }) => {
       if (e.code !== appleAuth.Error.CANCELED) {
         toast.show({
           status: 'error',
-          description: e.message || 'Apple Sign-In failed'
+          description: authErrorMessage(e.code, 'Could not sign in with Apple. Try again.')
         })
       }
     } finally {

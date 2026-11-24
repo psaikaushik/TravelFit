@@ -76,6 +76,30 @@ test('new customer signs up and enters Health setup without payment', async () =
 })
 
 test.each([
+  ['auth/invalid-credential', 'The email or password is incorrect.'],
+  ['auth/network-request-failed', 'Check your connection and try again.']
+])('login gives an actionable error for %s', async (code, description) => {
+  mockAuth.signInWithEmailAndPassword.mockRejectedValue({ code, message: '[Firebase SDK]' })
+  render(Login)
+  fill({ email: 'walker@example.com', password: 'test-password' })
+  await press('Log in')
+  expect(mockToast.show).toHaveBeenCalledWith({ status: 'error', description })
+  expect(mockNavigation.reset).not.toHaveBeenCalled()
+})
+
+test('duplicate signup directs the customer to their existing account', async () => {
+  mockAuth.createUserWithEmailAndPassword.mockRejectedValue({ code: 'auth/email-already-in-use' })
+  render(SignUp)
+  fill({ name: 'Test Walker', email: 'walker@example.com', password: 'test-password' })
+  await press('Register')
+  expect(mockToast.show).toHaveBeenCalledWith({
+    status: 'error',
+    description: 'This email already has an account. Log in or reset your password.'
+  })
+  expect(mockNavigation.reset).not.toHaveBeenCalled()
+})
+
+test.each([
   ['success', null, 'success', true],
   ['unknown account', 'auth/user-not-found', 'success', true],
   ['offline', 'auth/network-request-failed', 'error', false]

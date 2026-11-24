@@ -7,6 +7,7 @@ import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
 
 import { cacheAccountProfile } from '../services/users'
+import { authErrorMessage } from '../services/authErrors'
 import { checkFlow } from '../services/helpers'
 
 const SignUp = () => {
@@ -37,7 +38,7 @@ const SignUp = () => {
     } catch (e) {
       toast.show({
         status: 'error',
-        description: e.message
+        description: authErrorMessage(e.code, 'Could not finish creating your account. Try again.')
       })
     }
   }

@@ -7,6 +7,7 @@ import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 
 import { cacheAccountProfile } from '../services/users'
+import { authErrorMessage } from '../services/authErrors'
 import { checkFlow } from '../services/helpers'
 
 const Login = () => {
@@ -38,7 +39,7 @@ const Login = () => {
     } catch (e) {
       toast.show({
         status: 'error',
-        description: e.message
+        description: authErrorMessage(e.code, 'Could not log in. Try again.')
       })
     }
   }
