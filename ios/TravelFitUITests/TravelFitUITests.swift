@@ -168,7 +168,7 @@ final class TravelFitUITests: XCTestCase {
 
     private func fill(_ identifier: String, with value: String, secure: Bool = false, dismissKeyboard: Bool = false) {
         let field = secure ? app.secureTextFields[identifier] : app.textFields[identifier]
-        XCTAssertTrue(field.waitForExistence(withTimeout: timeout), "Missing input \(identifier)")
+        XCTAssertTrue(field.waitForExistence(timeout: timeout), "Missing input \(identifier)")
         if !field.isHittable { app.scrollViews["auth-scroll"].swipeUp() }
         field.tap()
         field.typeText(secure || dismissKeyboard ? value + "\n" : value)
@@ -211,7 +211,7 @@ final class TravelFitUITests: XCTestCase {
     @discardableResult
     private func assertVisible(_ identifier: String) -> XCUIElement {
         let view = element(identifier)
-        XCTAssertTrue(view.waitForExistence(withTimeout: timeout), "TravelFit did not show \(identifier)")
+        XCTAssertTrue(view.waitForExistence(timeout: timeout), "TravelFit did not show \(identifier)")
         return view
     }
 
@@ -219,7 +219,7 @@ final class TravelFitUITests: XCTestCase {
         let button = element(identifier)
         if let scrollID {
             let scroll = app.scrollViews[scrollID]
-            XCTAssertTrue(scroll.waitForExistence(withTimeout: timeout), "Missing scroll view \(scrollID)")
+            XCTAssertTrue(scroll.waitForExistence(timeout: timeout), "Missing scroll view \(scrollID)")
             for _ in 0..<5 {
                 if button.exists && button.isHittable { break }
                 scroll.swipeUp()
@@ -234,7 +234,7 @@ final class TravelFitUITests: XCTestCase {
 
     private func tapAlertButton(_ title: String, alert: String) {
         let dialog = app.alerts[alert]
-        XCTAssertTrue(dialog.waitForExistence(withTimeout: timeout), "Expected alert \(alert)")
+        XCTAssertTrue(dialog.waitForExistence(timeout: timeout), "Expected alert \(alert)")
         dialog.buttons[title].tap()
     }
 

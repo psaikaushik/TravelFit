@@ -151,7 +151,17 @@ jobs:
               plistlib.dump(simulator_info, file)
           PY
           bundle exec ruby scripts/configure-ios-ui-tests.rb
+      - name: Restore native simulator build
+        id: native-build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/travelfit-derived-data/Build
+            ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
+          key: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-${{ github.sha }}
+          restore-keys: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-
       - name: Run TravelFit end to end in the Release simulator
+        id: simulator
         run: |
           npm ci --prefix functions --engine-strict
           npx --yes firebase-tools@15.37.0 emulators:exec \
@@ -165,6 +175,14 @@ jobs:
             xcrun xcresulttool get build-results --path "$result" || true
             xcrun xcresulttool get test-results summary --path "$result" || true
           fi
+      - name: Save native simulator build
+        if: ${{ !cancelled() && steps.native-build.outputs.cache-hit != 'true' && (steps.simulator.outcome == 'success' || steps.simulator.outcome == 'failure') }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/travelfit-derived-data/Build
+            ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
+          key: ${{ steps.native-build.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
