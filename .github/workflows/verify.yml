@@ -52,7 +52,7 @@ jobs:
     if: github.ref == 'refs/heads/release/fitness-recovery' && !inputs.ios_device_archive
     # The legacy Podfile excludes arm64 for simulator builds.
     runs-on: macos-15-intel
-    timeout-minutes: 65
+    timeout-minutes: 75
     env:
       RCT_NO_LAUNCH_PACKAGER: "1"
     defaults:
@@ -149,7 +149,7 @@ jobs:
         timeout-minutes: 8
         run: bash scripts/run-ios-simulator-e2e.sh boot
       - name: Run TravelFit end to end in the Release simulator
-        timeout-minutes: 22
+        timeout-minutes: 30
         env:
           FUNCTIONS_DISCOVERY_TIMEOUT: '60'
         run: |

@@ -35,6 +35,36 @@ build_settings=(
   ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 )
 
+run_simulator_test() {
+  xcodebuild -quiet test-without-building "${build_settings[@]}" \
+    -resultBundlePath "$1" \
+    -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
+    -parallel-testing-enabled NO -testLanguage en -testRegion US 2>&1 | tee "$2"
+}
+
+only_accessibility_startup_failed() {
+  python3 - "$1" "$2" <<'PY'
+import json
+import subprocess
+import sys
+
+try:
+    output = subprocess.check_output(
+        ['xcrun', 'xcresulttool', 'get', 'test-results', 'summary', '--path', sys.argv[1]],
+        stderr=subprocess.DEVNULL, timeout=30,
+    )
+    summary = json.loads(output)
+except (OSError, subprocess.SubprocessError, ValueError):
+    sys.exit(1)
+
+failures = summary.get('testFailures', [])
+sys.exit(0 if summary.get('passedTests') == 0 and len(failures) == 1
+         and failures[0].get('failureText') == sys.argv[2]
+         and failures[0].get('testIdentifierString', '').startswith('TravelFitUITests-Runner ')
+         else 1)
+PY
+}
+
 case "${1:-}" in
   build)
     xcodebuild -quiet build-for-testing "${build_settings[@]}" \
@@ -82,11 +112,21 @@ if plistlib.loads(sys.stdin.buffer.read()) != expected:
     ;;
   test)
     node scripts/verify-firebase.cjs simulator-ready
+    result="$RUNNER_TEMP/travelfit-ios.xcresult"
+    first_result="$RUNNER_TEMP/travelfit-ios-first-attempt.xcresult"
+    first_log="$RUNNER_TEMP/travelfit-ios-first-attempt.log"
+    startup_failure='The test runner failed to initialize for UI testing. (Underlying Error: Timed out waiting for AX loaded notification)'
     status=0
-    xcodebuild -quiet test-without-building "${build_settings[@]}" \
-      -resultBundlePath "$RUNNER_TEMP/travelfit-ios.xcresult" \
-      -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
-      -parallel-testing-enabled NO -testLanguage en -testRegion US || status=$?
+    run_simulator_test "$result" "$first_log" || status=$?
+    if (( status != 0 )) && [[ -d "$result" && ! -e "$first_result" ]] &&
+      grep -Fq "$startup_failure" "$first_log" && only_accessibility_startup_failed "$result" "$startup_failure"; then
+      echo 'XCTest could not initialize accessibility. Restarting the selected simulator for one retry.'
+      if xcrun simctl shutdown "$simulator" && xcrun simctl bootstatus "$simulator" -b &&
+        mv "$result" "$first_result"; then
+        status=0
+        run_simulator_test "$result" "$RUNNER_TEMP/travelfit-ios-retry.log" || status=$?
+      fi
+    fi
     if (( status != 0 )); then
       python3 - "$simulator" <<'PY' || true
 import json
