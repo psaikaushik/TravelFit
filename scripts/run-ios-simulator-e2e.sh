@@ -67,7 +67,7 @@ with open(sys.argv[2], 'wb') as destination:
 PY
     /usr/bin/codesign --force --sign - --generate-entitlement-der --entitlements "$entitlements" "$app"
     /usr/bin/codesign --verify --strict "$app"
-    /usr/bin/codesign --display --entitlements - "$app" 2>/dev/null | python3 -c '
+    /usr/bin/codesign --display --entitlements - --xml "$app" 2>/dev/null | python3 -c '
 import plistlib
 import sys
 

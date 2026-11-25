@@ -129,7 +129,7 @@ def verify_signed_app(app, staging_project):
         raise ValueError("The application bundle identifier does not match TravelFit.")
     subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)], check=True)
     signed_entitlements = subprocess.run(
-        ["/usr/bin/codesign", "--display", "--entitlements", ":-", str(app)],
+        ["/usr/bin/codesign", "--display", "--entitlements", "-", "--xml", str(app)],
         check=True,
         stdout=subprocess.PIPE,
     ).stdout
