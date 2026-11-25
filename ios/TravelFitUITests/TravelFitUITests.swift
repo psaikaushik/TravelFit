@@ -4,6 +4,7 @@ final class TravelFitUITests: XCTestCase {
     private let app = XCUIApplication(bundleIdentifier: "com.travelfit.app")
     private let password = "travelBetaSteps1234"
     private let timeout: TimeInterval = 20
+    private var passwordSavePromptMayAppear = false
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -165,6 +166,7 @@ final class TravelFitUITests: XCTestCase {
         fill("sign-up-email", with: email)
         fill("sign-up-password", with: password, secure: true)
         tap("sign-up-submit", in: "auth-scroll")
+        passwordSavePromptMayAppear = true
         assertVisible("health-skip", waiting: 60)
     }
 
@@ -178,6 +180,7 @@ final class TravelFitUITests: XCTestCase {
         fill("log-in-email", with: email)
         fill("log-in-password", with: password, secure: true)
         tap("log-in-submit", in: "auth-scroll")
+        passwordSavePromptMayAppear = true
     }
 
     private func fill(_ identifier: String, with value: String, secure: Bool = false, dismissKeyboard: Bool = false) {
@@ -254,14 +257,21 @@ final class TravelFitUITests: XCTestCase {
     }
 
     private func tap(_ identifier: String, in scrollID: String? = nil) {
+        _ = dismissPasswordSavePromptIfPresent()
         let nativeButton = app.buttons.matching(identifier: identifier).firstMatch
         let button = nativeButton.exists ? nativeButton : element(identifier)
         if let scrollID {
             reveal(button, in: scrollID)
         }
         let ready = NSPredicate { _, _ in button.exists && button.isHittable && button.isEnabled }
-        let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
-        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        func waitForButton() -> XCTWaiter.Result {
+            let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
+            return XCTWaiter.wait(for: [expectation], timeout: timeout)
+        }
+        var result = waitForButton()
+        if result != .completed && dismissPasswordSavePromptIfPresent() {
+            result = waitForButton()
+        }
         if result != .completed {
             attach("Screen waiting to activate \(identifier)")
             let exists = button.exists
@@ -271,6 +281,22 @@ final class TravelFitUITests: XCTestCase {
             return
         }
         button.tap()
+    }
+
+    private func dismissPasswordSavePromptIfPresent() -> Bool {
+        guard passwordSavePromptMayAppear else { return false }
+        // iOS exposes this system sheet's button in TravelFit's accessibility tree.
+        let later = app.buttons["Not Now"].firstMatch
+        for _ in 0..<2 {
+            guard later.exists && later.isHittable else { return false }
+            later.tap()
+            let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: later)
+            if XCTWaiter.wait(for: [gone], timeout: 5) == .completed {
+                passwordSavePromptMayAppear = false
+                return true
+            }
+        }
+        return false
     }
 
     private func reveal(_ view: XCUIElement, in scrollID: String) {
