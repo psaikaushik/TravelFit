@@ -124,10 +124,33 @@ PY
     fi
     if (( status != 0 )); then
       python3 - "$simulator" <<'PY' || true
+import hashlib
 import json
+from pathlib import Path
 import re
 import subprocess
 import sys
+
+try:
+    data = subprocess.check_output(
+        ['xcrun', 'simctl', 'get_app_container', sys.argv[1], 'com.travelfit.app', 'data'],
+        stderr=subprocess.DEVNULL, text=True, timeout=10,
+    ).strip()
+    directory = Path(data) / 'Library/Application Support/com.travelfit.app/RCTAsyncLocalStorage_V1'
+    manifest = json.loads((directory / 'manifest.json').read_text())
+    settings_count = route_count = 0
+    for key, value in manifest.items():
+        if not key.startswith('travelfit:account:') or not key.endswith(':user_settings'):
+            continue
+        if value is None:
+            filename = hashlib.md5(key.encode(), usedforsecurity=False).hexdigest()
+            value = (directory / filename).read_text()
+        settings = json.loads(value)
+        settings_count += 1
+        route_count += bool(settings.get('curatedRouteId') and settings.get('tripId'))
+    print(f'Simulator saved settings for {settings_count} accounts and {route_count} active routes.')
+except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
+    print('Simulator saved route counts unavailable.')
 
 counts = dict.fromkeys(('-1022', '-1001', '-1004', '-1009', '-1200'), 0)
 keychain_errors = 0

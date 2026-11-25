@@ -85,7 +85,7 @@ const Trip = () => {
           <BackSVG />
         </Pressable>
       )}
-      <ScrollView flex="1" px="20px" contentContainerStyle={{ paddingBottom: 32 }} testID="routes-list">
+      <ScrollView flex="1" px="20px" contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled" testID="routes-list">
         <Text variant="title" mt="24px" accessibilityRole="header">Choose a virtual route</Text>
         <Text variant="subtitle" mt="2" mb="5">
           Walk wherever you like. Your steps move you between landmarks on the route.

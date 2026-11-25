@@ -44,7 +44,7 @@ final class TravelFitUITests: XCTestCase {
             tap("health-skip")
             assertVisible("Choose a virtual route")
             attach("Route picker")
-            tap("route-start-central-park", in: "routes-list")
+            startFirstRoute("route-start-central-park")
             assertMap(title: "Across Central Park")
             waitForLabel("trip-map-status", "Step sync is off.")
             attach("Map and step sync off")
@@ -116,7 +116,7 @@ final class TravelFitUITests: XCTestCase {
         XCTContext.runActivity(named: "Use a second account without the first account's history") { _ in
             register(name: "Second Walker", email: secondEmail)
             tap("health-skip")
-            tap("route-start-seattle-waterfront", in: "routes-list")
+            startFirstRoute("route-start-seattle-waterfront")
             assertMap(title: "Along the Seattle Waterfront")
             waitForLabel("trip-map-status", "Step sync is off.")
             openHistory()
@@ -218,6 +218,15 @@ final class TravelFitUITests: XCTestCase {
         let view = map.exists ? map : assertVisible("trip-map")
         XCTAssertGreaterThan(view.frame.width, 0, "MapKit viewport has no width")
         XCTAssertGreaterThan(view.frame.height, 0, "MapKit viewport has no height")
+    }
+
+    private func startFirstRoute(_ identifier: String) {
+        tap(identifier, in: "routes-list")
+        let button = element(identifier)
+        if !element("trip-map-title").waitForExistence(timeout: 6), button.exists && button.isEnabled {
+            // An iOS password sheet can consume a tap as it dismisses.
+            tap(identifier, in: "routes-list")
+        }
     }
 
     private func assertMapStepCount(_ expected: String) {
