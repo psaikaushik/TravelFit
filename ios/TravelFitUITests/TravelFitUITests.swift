@@ -26,7 +26,7 @@ final class TravelFitUITests: XCTestCase {
     }
 
     private func walkThroughAccountLifecycle(useHealthFixture: Bool) {
-        let domain = useHealthFixture ? "example.com" : "example.invalid"
+        let domain = useHealthFixture ? "x.test" : "x.invalid"
         let firstEmail = emailForTestAccount(domain: domain)
         let secondEmail = emailForTestAccount(domain: domain)
 
@@ -38,7 +38,7 @@ final class TravelFitUITests: XCTestCase {
             assertVisible("Privacy Policy")
             attach("Privacy policy")
             tap("privacy-back")
-            register(name: "TravelFit Walker", email: firstEmail)
+            register(name: "Avery Walker", email: firstEmail)
             attach("Apple Health setup")
             tap("health-skip")
             assertVisible("Choose a virtual route")
@@ -142,7 +142,7 @@ final class TravelFitUITests: XCTestCase {
     }
 
     private func emailForTestAccount(domain: String) -> String {
-        "travelfit-e2e-\(UUID().uuidString.lowercased().prefix(12))@\(domain)"
+        "w\(UUID().uuidString.lowercased().prefix(8))@\(domain)"
     }
 
     private func passOnboarding() {
@@ -182,10 +182,14 @@ final class TravelFitUITests: XCTestCase {
 
     private func fill(_ identifier: String, with value: String, secure: Bool = false, dismissKeyboard: Bool = false) {
         let field = secure ? app.secureTextFields[identifier] : app.textFields[identifier]
-        XCTAssertTrue(field.waitForExistence(timeout: timeout), "Missing input \(identifier)")
+        let found = field.waitForExistence(timeout: timeout)
+        if !found { attach("Screen waiting for input \(identifier)") }
+        XCTAssertTrue(found, "Missing input \(identifier)")
         reveal(field, in: "auth-scroll")
         field.tap()
-        field.typeText(value)
+        // Give the controlled React Native input time to accept the first key event.
+        field.typeText(String(value.prefix(1)))
+        field.typeText(String(value.dropFirst()))
         let valueMatches = {
             guard let entered = field.value as? String else { return false }
             return secure ? entered.count == value.count : entered == value
@@ -195,9 +199,13 @@ final class TravelFitUITests: XCTestCase {
             if !entered.isEmpty && entered != field.placeholderValue {
                 field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: entered.count))
             }
-            field.typeText(value)
+            for character in value {
+                field.typeText(String(character))
+            }
         }
-        XCTAssertTrue(valueMatches(), "TravelFit did not retain input for \(identifier)")
+        let retained = valueMatches()
+        if !retained { attach("Screen with input issue for \(identifier)") }
+        XCTAssertTrue(retained, "TravelFit did not retain input for \(identifier)")
         if secure || dismissKeyboard { field.typeText("\n") }
     }
 
