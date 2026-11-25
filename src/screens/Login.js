@@ -72,6 +72,9 @@ const Login = () => {
         mt="30px"
         variant="primary"
         placeholder="Email Address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
         control={control}
         errors={errors}
         validation={{

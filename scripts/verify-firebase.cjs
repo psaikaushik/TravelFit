@@ -154,9 +154,9 @@ async function runCheck() {
     case 'simulator-report': {
       const accountsUrl = `${authOrigin}/identitytoolkit.googleapis.com/v1/projects/${project}/accounts:batchGet`
       const { users = [] } = await request(accountsUrl, { token: 'owner' })
-      const testUsers = users.filter(({ email }) => email?.startsWith('travelfit-e2e-'))
-      const profiles = await Promise.all(testUsers.map(({ localId }) => profile(localId, { token: 'owner' })))
-      console.log(`Simulator persisted ${testUsers.length} synthetic Auth accounts and ${profiles.filter(Boolean).length} profiles.`)
+      const profiles = await Promise.all(users.map(({ localId }) => profile(localId, { token: 'owner' })))
+      const matchingProfiles = profiles.filter((record) => record !== null).length
+      console.log(`Simulator persisted ${users.length} Auth accounts with ${matchingProfiles} matching profiles. ${users.length - matchingProfiles} accounts have no profile.`)
       break
     }
     case undefined:

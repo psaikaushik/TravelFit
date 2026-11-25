@@ -50,6 +50,39 @@ case "${1:-}" in
       -only-testing:TravelFitUITests/TravelFitUITests/testEmulatedWalkerLifecycle \
       -parallel-testing-enabled NO -testLanguage en -testRegion US || status=$?
     if (( status != 0 )); then
+      python3 - "$simulator" <<'PY' || true
+import json
+import re
+import subprocess
+import sys
+
+counts = dict.fromkeys(('-1022', '-1001', '-1004', '-1009', '-1200'), 0)
+error_code = re.compile(r'\bNSURLErrorDomain\b\s*(?:Code\s*=\s*|[:(,]\s*)?(-\d+)\b')
+try:
+    result = subprocess.run(
+        ['xcrun', 'simctl', 'spawn', sys.argv[1], 'log', 'show', '--last', '15m',
+         '--style', 'ndjson', '--predicate',
+         'process == "TravelFit" AND eventMessage CONTAINS "NSURLErrorDomain"'],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        text=True, errors='replace', timeout=20, check=True,
+    )
+except (OSError, subprocess.SubprocessError):
+    print('Native TravelFit URL error counts unavailable.')
+    sys.exit(0)
+
+for line in result.stdout.splitlines():
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if not isinstance(event, dict) or not isinstance(event.get('eventMessage'), str):
+        continue
+    for code in set(error_code.findall(event['eventMessage'])) & counts.keys():
+        counts[code] += 1
+
+print('Native TravelFit URL error counts (last 15 minutes): ' +
+      ', '.join(f'{code}={count}' for code, count in counts.items()))
+PY
       node scripts/verify-firebase.cjs simulator-report || true
     fi
     exit "$status"

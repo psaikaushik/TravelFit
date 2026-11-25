@@ -39,7 +39,6 @@ final class TravelFitUITests: XCTestCase {
             attach("Privacy policy")
             tap("privacy-back")
             register(name: "TravelFit Walker", email: firstEmail)
-            assertVisible("health-skip")
             attach("Apple Health setup")
             tap("health-skip")
             assertVisible("Choose a virtual route")
@@ -166,6 +165,7 @@ final class TravelFitUITests: XCTestCase {
         fill("sign-up-email", with: email)
         fill("sign-up-password", with: password, secure: true)
         tap("sign-up-submit", in: "auth-scroll")
+        assertVisible("health-skip", waiting: 60)
     }
 
     private func logIn(email: String, requestPasswordReset: Bool) {
@@ -185,7 +185,20 @@ final class TravelFitUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: timeout), "Missing input \(identifier)")
         reveal(field, in: "auth-scroll")
         field.tap()
-        field.typeText(secure || dismissKeyboard ? value + "\n" : value)
+        field.typeText(value)
+        let valueMatches = {
+            guard let entered = field.value as? String else { return false }
+            return secure ? entered.count == value.count : entered == value
+        }
+        if !valueMatches() {
+            let entered = field.value as? String ?? ""
+            if !entered.isEmpty && entered != field.placeholderValue {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: entered.count))
+            }
+            field.typeText(value)
+        }
+        XCTAssertTrue(valueMatches(), "TravelFit did not retain input for \(identifier)")
+        if secure || dismissKeyboard { field.typeText("\n") }
     }
 
     private func assertMap(title: String) {
@@ -223,9 +236,9 @@ final class TravelFitUITests: XCTestCase {
     }
 
     @discardableResult
-    private func assertVisible(_ identifier: String) -> XCUIElement {
+    private func assertVisible(_ identifier: String, waiting: TimeInterval? = nil) -> XCUIElement {
         let view = element(identifier)
-        let found = view.waitForExistence(timeout: timeout)
+        let found = view.waitForExistence(timeout: waiting ?? timeout)
         if !found { attach("Screen waiting for \(identifier)") }
         XCTAssertTrue(found, "TravelFit did not show \(identifier)")
         return view

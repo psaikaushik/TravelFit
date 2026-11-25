@@ -33,10 +33,7 @@ entry.write_text(original.replace(gesture_handler, gesture_handler + fixture_imp
 info = root / 'ios/TravelFit/Info.plist'
 with info.open('rb') as file:
     simulator_info = plistlib.load(file)
-network = simulator_info.setdefault('NSAppTransportSecurity', {})
-network['NSAllowsLocalNetworking'] = True
-network.setdefault('NSExceptionDomains', {})['127.0.0.1'] = {
-    'NSExceptionAllowsInsecureHTTPLoads': True,
-}
+# The unsigned demo app uses HTTP and WebSocket Firebase emulators on loopback.
+simulator_info['NSAppTransportSecurity'] = {'NSAllowsArbitraryLoads': True}
 with info.open('wb') as file:
     plistlib.dump(simulator_info, file)
