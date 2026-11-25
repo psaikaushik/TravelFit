@@ -55,7 +55,7 @@ npm ci --engine-strict
 npm ci --prefix functions --engine-strict
 bundle check || bundle install
 (cd ios && bundle exec pod install --deployment)
-bundle exec ruby scripts/configure-ios-ui-tests.rb
+bundle exec ruby scripts/configure-ios-ui-tests.rb --simulator
 
 simulator=$(xcrun simctl create 'TravelFit QA' com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro "$runtime")
 printf '%s\n' "$simulator" > "$results/travelfit-simulator"

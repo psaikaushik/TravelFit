@@ -122,7 +122,7 @@ jobs:
       - name: Configure the simulator-only Firebase and Health fixtures
         run: |
           python3 scripts/configure-ios-simulator-fixtures.py
-          bundle exec ruby scripts/configure-ios-ui-tests.rb
+          bundle exec ruby scripts/configure-ios-ui-tests.rb --simulator
       - name: Restore native simulator build
         id: native-build
         uses: actions/cache/restore@v4
@@ -132,7 +132,7 @@ jobs:
             ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
           key: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-${{ github.sha }}
           restore-keys: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-
-      - name: Build the Release simulator app and give it a local keychain signature
+      - name: Build the Release app with Xcode simulator keychain entitlements
         id: simulator-build
         timeout-minutes: 30
         run: bash scripts/run-ios-simulator-e2e.sh build

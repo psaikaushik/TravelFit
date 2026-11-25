@@ -1,10 +1,31 @@
 # Generate a disposable Xcode UI target and shared scheme in the CI checkout.
 require 'xcodeproj'
 
+abort "Usage: #{$PROGRAM_NAME} [--simulator]" unless ARGV.empty? || ARGV == ['--simulator']
+
 project_path = File.expand_path('../ios/TravelFit.xcodeproj', __dir__)
 project = Xcodeproj::Project.open(project_path)
 app = project.targets.find { |target| target.name == 'TravelFit' }
 abort 'TravelFit application target is missing' unless app
+
+if ARGV == ['--simulator']
+  simulator_entitlements = 'TravelFitSimulator.entitlements'
+  unless File.file?(File.join(File.dirname(project_path), simulator_entitlements))
+    abort 'Run scripts/configure-ios-simulator-fixtures.py first.'
+  end
+
+  # Xcode embeds these as simulated entitlements and signs the host app separately.
+  app.build_configurations.each do |configuration|
+    configuration.build_settings.merge!(
+      'CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]' => simulator_entitlements,
+      'CODE_SIGN_IDENTITY[sdk=iphonesimulator*]' => '-',
+      'CODE_SIGN_STYLE[sdk=iphonesimulator*]' => 'Manual',
+      'DEVELOPMENT_TEAM[sdk=iphonesimulator*]' => '',
+      'PROVISIONING_PROFILE[sdk=iphonesimulator*]' => '',
+      'PROVISIONING_PROFILE_SPECIFIER[sdk=iphonesimulator*]' => ''
+    )
+  end
+end
 
 test_target_name = 'TravelFitUITests'
 test_source = 'TravelFitUITests/TravelFitUITests.swift'

@@ -28,12 +28,19 @@ try:
 except FileExistsError:
     raise SystemExit('An iOS Firebase configuration already exists. Use a disposable checkout.') from None
 
+identifier = f'TRAVELFIT0.{config["BUNDLE_ID"]}'
+with (root / 'ios/TravelFitSimulator.entitlements').open('xb') as file:
+    plistlib.dump({
+        'application-identifier': identifier,
+        'keychain-access-groups': [identifier],
+    }, file)
+
 entry.write_text(original.replace(gesture_handler, gesture_handler + fixture_import, 1))
 
 info = root / 'ios/TravelFit/Info.plist'
 with info.open('rb') as file:
     simulator_info = plistlib.load(file)
-# The unsigned demo app uses HTTP and WebSocket Firebase emulators on loopback.
+# The demo app uses HTTP and WebSocket Firebase emulators on loopback.
 simulator_info['NSAppTransportSecurity'] = {'NSAllowsArbitraryLoads': True}
 with info.open('wb') as file:
     plistlib.dump(simulator_info, file)

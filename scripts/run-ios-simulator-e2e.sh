@@ -26,13 +26,14 @@ if [[ "${TRAVELFIT_SIMULATOR_ROSETTA:-0}" = 1 ]]; then
   destination="$destination,arch=x86_64"
 fi
 derived_data="${TRAVELFIT_SIMULATOR_DERIVED_DATA:-$RUNNER_TEMP/travelfit-derived-data}"
+app="$derived_data/Build/Products/Release-iphonesimulator/TravelFit.app"
 build_settings=(
   -workspace ios/TravelFit.xcworkspace
   -scheme TravelFitSimulatorE2E
   -configuration Release
   -destination "$destination"
   -derivedDataPath "$derived_data"
-  ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+  ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
 )
 
 run_simulator_test() {
@@ -69,9 +70,7 @@ case "${1:-}" in
   build)
     xcodebuild -quiet build-for-testing "${build_settings[@]}" \
       -resultBundlePath "$RUNNER_TEMP/travelfit-ios-build.xcresult"
-    app="$derived_data/Build/Products/Release-iphonesimulator/TravelFit.app"
-    entitlements="$RUNNER_TEMP/travelfit-simulator.entitlements"
-    python3 - "$app" "$entitlements" <<'PY'
+    python3 - "$app" "$derived_data/Build/Intermediates.noindex" <<'PY'
 from pathlib import Path
 import plistlib
 import sys
@@ -85,33 +84,29 @@ if (info.get('CFBundleSupportedPlatforms') != ['iPhoneSimulator']
         or info.get('CFBundleIdentifier') != 'com.travelfit.app'
         or firebase.get('PROJECT_ID') != 'demo-travelfit-audit'
         or firebase.get('API_KEY') != 'AIza' + '0' * 35):
-    sys.exit('The simulator signature requires an isolated TravelFit demo app.')
+    sys.exit('The simulator build must be an isolated TravelFit demo app.')
 
-# Firebase Auth needs the simulator keychain to persist its synthetic account.
 identifier = 'TRAVELFIT0.com.travelfit.app'
-with open(sys.argv[2], 'wb') as destination:
-    plistlib.dump({
-        'application-identifier': identifier,
-        'keychain-access-groups': [identifier],
-    }, destination)
+for path in Path(sys.argv[2]).rglob('TravelFit.app-Simulated.xcent'):
+    with path.open('rb') as file:
+        entitlements = plistlib.load(file)
+    if (entitlements.get('application-identifier') == identifier
+            and identifier in entitlements.get('keychain-access-groups', [])):
+        break
+else:
+    sys.exit('Xcode did not build the demo keychain identity into the simulator app.')
 PY
-    /usr/bin/codesign --force --sign - --generate-entitlement-der --entitlements "$entitlements" "$app"
     /usr/bin/codesign --verify --strict "$app"
-    /usr/bin/codesign --display --entitlements - --xml "$app" 2>/dev/null | python3 -c '
-import plistlib
-import sys
-
-with open(sys.argv[1], "rb") as file:
-    expected = plistlib.load(file)
-if plistlib.loads(sys.stdin.buffer.read()) != expected:
-    sys.exit("The simulator app signature is missing its demo keychain identity.")
-    ' "$entitlements"
+    xcrun otool -l "$app/TravelFit" | grep -F 'sectname __entitlements' >/dev/null
     ;;
   boot)
     xcrun simctl bootstatus "$simulator" -b
     ;;
   test)
     node scripts/verify-firebase.cjs simulator-ready
+    xcrun simctl install "$simulator" "$app"
+    xcrun simctl launch "$simulator" com.travelfit.app
+    xcrun simctl terminate "$simulator" com.travelfit.app
     result="$RUNNER_TEMP/travelfit-ios.xcresult"
     first_result="$RUNNER_TEMP/travelfit-ios-first-attempt.xcresult"
     first_log="$RUNNER_TEMP/travelfit-ios-first-attempt.log"
