@@ -1,5 +1,5 @@
 import React from 'react'
-import { Alert } from 'react-native'
+import { Alert, Pressable } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import AppleHealthKit from 'react-native-health'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -86,9 +86,8 @@ const mountPicker = async (settings) => {
   })
 }
 
-const routeButton = (route) => screen.root.findByProps({
-  accessibilityLabel: `Start ${route.title} at zero steps`
-})
+const routeButton = (route) => screen.root.findAllByType(Pressable).find(({ props }) =>
+  props.testID === `route-start-${route.id}`)
 
 const select = async (route) => {
   const button = routeButton(route)
@@ -111,8 +110,15 @@ const confirm = async () => {
 it('starts a first route directly and preserves the account’s Health choice', async () => {
   await mountPicker({ health: false, healthSetupCompleted: true })
   const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+  const button = routeButton(firstRoute)
+  expect(button.props).toMatchObject({
+    accessible: true,
+    accessibilityRole: 'button',
+    accessibilityLabel: `Start ${firstRoute.title} at zero steps`,
+    accessibilityState: { disabled: false, busy: false }
+  })
 
-  await select(firstRoute)
+  await act(async () => { await button.props.onAccessibilityTap() })
 
   expect(alert).not.toHaveBeenCalled()
   const saved = await getUserSettings('walker')
@@ -168,7 +174,7 @@ it('keeps the active route on storage failure and deduplicates history when retr
   expect(await getTripHistory('walker')).toEqual([])
   expect(mockToast.show).toHaveBeenCalledWith(expect.objectContaining({ status: 'error' }))
   expect(mockNavigation.reset).not.toHaveBeenCalled()
-  expect(routeButton(secondRoute).props.isDisabled).toBe(false)
+  expect(routeButton(secondRoute).props.disabled).toBe(false)
 
   AsyncStorage.setItem
     .mockImplementationOnce(write)

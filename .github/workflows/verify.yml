@@ -173,7 +173,7 @@ jobs:
               jq '({totalTestCount, passedTests, failedTests, skippedTests, expectedFailures}
                    | with_entries(select(.value | type == "number")))
                   + {failedControls: [ .testFailures[]?.failureText
-                      | match("(TravelFit (did not retain input for|did not show|could not activate)|Missing input) [a-z0-9-]{1,64}$").string ]}' 2>/dev/null ||
+                      | match("(TravelFit (did not retain input for|did not show|could not activate)|Missing input) [a-z0-9-]{1,64}( exists=(true|false) hittable=(true|false) enabled=(true|false))?$").string ]}' 2>/dev/null ||
               echo 'Simulator test counts are unavailable.'
           fi
       - uses: actions/upload-artifact@v4

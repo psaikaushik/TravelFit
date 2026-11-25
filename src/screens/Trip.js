@@ -1,13 +1,14 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { Alert, SafeAreaView, StatusBar } from 'react-native'
+import { ActivityIndicator, Alert, Pressable as NativePressable, SafeAreaView, StatusBar, StyleSheet, Text as NativeText } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Flex, Pressable, ScrollView, Text, VStack, useToast } from 'native-base'
+import { Flex, Pressable, ScrollView, Text, VStack, useToast } from 'native-base'
 import BackSVG from '../assets/icons/back.svg'
 import { buildCuratedTrip, VIRTUAL_ROUTES } from '../data/curatedRoutes'
 import { getCurrentAccountId, getUserSettings, setUserSettings } from '../services/database'
 import { hasActiveTrip } from '../services/helpers'
 import { archiveCurrentTrip } from '../services/tripHistory'
+import colors from '../theme/colors'
 
 const Trip = () => {
   const navigation = useNavigation()
@@ -17,6 +18,7 @@ const Trip = () => {
   const [selected, setSelected] = useState(null)
   const { data: currentTrip, isLoading } = useQuery(['settings'], getUserSettings)
   const trips = useMemo(() => VIRTUAL_ROUTES.map(buildCuratedTrip), [])
+  const routesDisabled = isLoading || !!selected
 
   const startTrip = async (trip, uid) => {
     if (getCurrentAccountId() !== uid || saving.current) return
@@ -89,32 +91,68 @@ const Trip = () => {
           Walk wherever you like. Your steps move you between landmarks on the route.
         </Text>
         <VStack space="3">
-          {trips.map((trip) => (
-            <Flex key={trip.curatedRouteId} bg="white" borderRadius="16px" p="4">
-              <Flex bg="primary.400" borderRadius="12px" p="4">
-                <Text color="secondary.400">{trip.badges[0].vicinity} · {trip.distance.toFixed(1)} km</Text>
-                <Text mt="1" color="white" fontSize="20px" fontWeight="700" accessibilityRole="header">{trip.title}</Text>
+          {trips.map((trip) => {
+            const startingRoute = selected === trip.curatedRouteId
+            const activate = () => chooseTrip(trip)
+            return (
+              <Flex key={trip.curatedRouteId} bg="white" borderRadius="16px" p="4">
+                <Flex bg="primary.400" borderRadius="12px" p="4">
+                  <Text color="secondary.400">{trip.badges[0].vicinity} · {trip.distance.toFixed(1)} km</Text>
+                  <Text mt="1" color="white" fontSize="20px" fontWeight="700" accessibilityRole="header">{trip.title}</Text>
+                </Flex>
+                <Text mt="2" mb="3" color="gray.600">
+                  {trip.starting.title} → {trip.badges.map(({ name }) => name).join(' → ')}
+                </Text>
+                <NativePressable
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={`Start ${trip.title} at zero steps`}
+                  accessibilityState={{ disabled: routesDisabled, busy: startingRoute }}
+                  testID={`route-start-${trip.curatedRouteId}`}
+                  disabled={routesDisabled}
+                  onPress={activate}
+                  onAccessibilityTap={routesDisabled ? undefined : activate}
+                  style={({ pressed }) => [
+                    styles.routeButton,
+                    pressed && styles.pressedRouteButton,
+                    routesDisabled && styles.disabledRouteButton
+                  ]}
+                >
+                  {startingRoute ? <ActivityIndicator color="white" /> : <NativeText style={styles.routeButtonLabel}>Start route</NativeText>}
+                </NativePressable>
               </Flex>
-              <Text mt="2" mb="3" color="gray.600">
-                {trip.starting.title} → {trip.badges.map(({ name }) => name).join(' → ')}
-              </Text>
-              <Button
-                variant="primary"
-                size="lg"
-                isLoading={selected === trip.curatedRouteId}
-                isDisabled={isLoading || !!selected}
-                onPress={() => chooseTrip(trip)}
-                accessibilityLabel={`Start ${trip.title} at zero steps`}
-                testID={`route-start-${trip.curatedRouteId}`}
-              >
-                Start route
-              </Button>
-            </Flex>
-          ))}
+            )
+          })}
         </VStack>
       </ScrollView>
     </SafeAreaView>
   )
 }
+
+const styles = StyleSheet.create({
+  routeButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    minHeight: 60,
+    padding: 12,
+    backgroundColor: colors.primary[400],
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
+    borderRadius: 12
+  },
+  pressedRouteButton: {
+    backgroundColor: colors.primary[200]
+  },
+  disabledRouteButton: {
+    opacity: 0.4
+  },
+  routeButtonLabel: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center'
+  }
+})
 
 export default Trip

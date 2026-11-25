@@ -211,7 +211,8 @@ final class TravelFitUITests: XCTestCase {
 
     private func assertMap(title: String) {
         waitForLabel("trip-map-title", title)
-        let view = assertVisible("trip-map")
+        let map = app.maps.firstMatch
+        let view = map.exists ? map : assertVisible("trip-map")
         XCTAssertGreaterThan(view.frame.width, 0, "MapKit viewport has no width")
         XCTAssertGreaterThan(view.frame.height, 0, "MapKit viewport has no height")
     }
@@ -253,15 +254,22 @@ final class TravelFitUITests: XCTestCase {
     }
 
     private func tap(_ identifier: String, in scrollID: String? = nil) {
-        let button = element(identifier)
+        let nativeButton = app.buttons.matching(identifier: identifier).firstMatch
+        let button = nativeButton.exists ? nativeButton : element(identifier)
         if let scrollID {
             reveal(button, in: scrollID)
         }
         let ready = NSPredicate { _, _ in button.exists && button.isHittable && button.isEnabled }
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
         let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
-        if result != .completed { attach("Screen waiting to activate \(identifier)") }
-        XCTAssertEqual(result, .completed, "TravelFit could not activate \(identifier)")
+        if result != .completed {
+            attach("Screen waiting to activate \(identifier)")
+            let exists = button.exists
+            let hittable = exists && button.isHittable
+            let enabled = exists && button.isEnabled
+            XCTFail("TravelFit could not activate \(identifier) exists=\(exists) hittable=\(hittable) enabled=\(enabled)")
+            return
+        }
         button.tap()
     }
 
