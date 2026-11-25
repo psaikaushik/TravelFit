@@ -6,7 +6,7 @@ import database from '@react-native-firebase/database'
 import functions from '@react-native-firebase/functions'
 import HealthKit from 'react-native-health'
 
-// A disposable checkout imports this file only for the unsigned simulator test app.
+// A disposable checkout imports this file only for the demo simulator test app.
 const { projectId, apiKey } = firebase.app().options
 if (
   Platform.OS !== 'ios' ||

@@ -1,4 +1,4 @@
-"""Configure the unsigned simulator test app in a disposable checkout."""
+"""Configure the demo simulator test app in a disposable checkout."""
 
 import plistlib
 from pathlib import Path

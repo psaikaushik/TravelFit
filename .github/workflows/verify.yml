@@ -132,7 +132,7 @@ jobs:
             ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
           key: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-${{ github.sha }}
           restore-keys: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-
-      - name: Build the unsigned Release app and XCTest runner
+      - name: Build the Release simulator app and give it a local keychain signature
         id: simulator-build
         timeout-minutes: 30
         run: bash scripts/run-ios-simulator-e2e.sh build

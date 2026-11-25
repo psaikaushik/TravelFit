@@ -25,12 +25,13 @@ destination="platform=iOS Simulator,id=$simulator"
 if [[ "${TRAVELFIT_SIMULATOR_ROSETTA:-0}" = 1 ]]; then
   destination="$destination,arch=x86_64"
 fi
+derived_data="${TRAVELFIT_SIMULATOR_DERIVED_DATA:-$RUNNER_TEMP/travelfit-derived-data}"
 build_settings=(
   -workspace ios/TravelFit.xcworkspace
   -scheme TravelFitSimulatorE2E
   -configuration Release
   -destination "$destination"
-  -derivedDataPath "${TRAVELFIT_SIMULATOR_DERIVED_DATA:-$RUNNER_TEMP/travelfit-derived-data}"
+  -derivedDataPath "$derived_data"
   ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 )
 
@@ -38,6 +39,43 @@ case "${1:-}" in
   build)
     xcodebuild -quiet build-for-testing "${build_settings[@]}" \
       -resultBundlePath "$RUNNER_TEMP/travelfit-ios-build.xcresult"
+    app="$derived_data/Build/Products/Release-iphonesimulator/TravelFit.app"
+    entitlements="$RUNNER_TEMP/travelfit-simulator.entitlements"
+    python3 - "$app" "$entitlements" <<'PY'
+from pathlib import Path
+import plistlib
+import sys
+
+app = Path(sys.argv[1])
+with (app / 'Info.plist').open('rb') as source:
+    info = plistlib.load(source)
+with (app / 'GoogleService-Info.plist').open('rb') as source:
+    firebase = plistlib.load(source)
+if (info.get('CFBundleSupportedPlatforms') != ['iPhoneSimulator']
+        or info.get('CFBundleIdentifier') != 'com.travelfit.app'
+        or firebase.get('PROJECT_ID') != 'demo-travelfit-audit'
+        or firebase.get('API_KEY') != 'AIza' + '0' * 35):
+    sys.exit('The simulator signature requires an isolated TravelFit demo app.')
+
+# Firebase Auth needs the simulator keychain to persist its synthetic account.
+identifier = 'TRAVELFIT0.com.travelfit.app'
+with open(sys.argv[2], 'wb') as destination:
+    plistlib.dump({
+        'application-identifier': identifier,
+        'keychain-access-groups': [identifier],
+    }, destination)
+PY
+    /usr/bin/codesign --force --sign - --generate-entitlement-der --entitlements "$entitlements" "$app"
+    /usr/bin/codesign --verify --strict "$app"
+    /usr/bin/codesign --display --entitlements - "$app" 2>/dev/null | python3 -c '
+import plistlib
+import sys
+
+with open(sys.argv[1], "rb") as file:
+    expected = plistlib.load(file)
+if plistlib.loads(sys.stdin.buffer.read()) != expected:
+    sys.exit("The simulator app signature is missing its demo keychain identity.")
+    ' "$entitlements"
     ;;
   boot)
     xcrun simctl bootstatus "$simulator" -b
@@ -57,12 +95,13 @@ import subprocess
 import sys
 
 counts = dict.fromkeys(('-1022', '-1001', '-1004', '-1009', '-1200'), 0)
+keychain_errors = 0
 error_code = re.compile(r'\bNSURLErrorDomain\b\s*(?:Code\s*=\s*|[:(,]\s*)?(-\d+)\b')
 try:
     result = subprocess.run(
         ['xcrun', 'simctl', 'spawn', sys.argv[1], 'log', 'show', '--last', '15m',
          '--style', 'ndjson', '--predicate',
-         'process == "TravelFit" AND eventMessage CONTAINS "NSURLErrorDomain"'],
+         'process == "TravelFit" AND (eventMessage CONTAINS "NSURLErrorDomain" OR eventMessage CONTAINS "-34018")'],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         text=True, errors='replace', timeout=20, check=True,
     )
@@ -77,11 +116,15 @@ for line in result.stdout.splitlines():
         continue
     if not isinstance(event, dict) or not isinstance(event.get('eventMessage'), str):
         continue
-    for code in set(error_code.findall(event['eventMessage'])) & counts.keys():
+    message = event['eventMessage']
+    if 'SecItem' in message and '-34018' in message:
+        keychain_errors += 1
+    for code in set(error_code.findall(message)) & counts.keys():
         counts[code] += 1
 
 print('Native TravelFit URL error counts (last 15 minutes): ' +
       ', '.join(f'{code}={count}' for code, count in counts.items()))
+print(f'Native TravelFit keychain entitlement errors: {keychain_errors}')
 PY
       node scripts/verify-firebase.cjs simulator-report || true
     fi
