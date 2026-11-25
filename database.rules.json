@@ -2,6 +2,11 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "account_deletions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid && data.val() === true"
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid && !root.child('account_deletions').child($uid).exists()",

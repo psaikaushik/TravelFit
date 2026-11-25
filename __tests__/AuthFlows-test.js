@@ -3,8 +3,7 @@ import renderer, { act } from 'react-test-renderer'
 import Login from '../src/screens/Login'
 import SignUp from '../src/screens/SignUp'
 import Reset from '../src/screens/Reset'
-import { checkFlow } from '../src/services/helpers'
-import { cacheAccountProfile } from '../src/services/users'
+import { getAccountEntryRoute } from '../src/services/users'
 
 const mockAuth = {
   signInWithEmailAndPassword: jest.fn(),
@@ -16,8 +15,7 @@ const mockToast = { show: jest.fn() }
 
 jest.mock('@react-native-firebase/auth', () => () => mockAuth)
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => mockNavigation }))
-jest.mock('../src/services/helpers', () => ({ checkFlow: jest.fn() }))
-jest.mock('../src/services/users', () => ({ cacheAccountProfile: jest.fn() }))
+jest.mock('../src/services/users', () => ({ getAccountEntryRoute: jest.fn() }))
 jest.mock('../src/components/AuthScreen', () => ({ children }) => children)
 jest.mock('../src/components/FormInput', () => {
   const { createElement } = require('react')
@@ -54,25 +52,41 @@ afterEach(() => act(() => tree?.unmount()))
 test('returning customer signs in and resumes the walking app', async () => {
   const user = { uid: 'returning' }
   mockAuth.signInWithEmailAndPassword.mockResolvedValue({ user })
-  checkFlow.mockResolvedValue('Main')
+  getAccountEntryRoute.mockResolvedValue('Main')
   render(Login)
   fill({ email: 'walker@example.com', password: 'test-password' })
   await press('Log in')
   expect(mockAuth.signInWithEmailAndPassword).toHaveBeenCalledWith('walker@example.com', 'test-password')
-  expect(cacheAccountProfile).toHaveBeenCalledWith(user)
+  expect(getAccountEntryRoute).toHaveBeenCalledWith(user)
   expect(mockNavigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Main' }] })
 })
 
 test('new customer signs up and enters Health setup without payment', async () => {
   const user = { uid: 'new' }
   mockAuth.createUserWithEmailAndPassword.mockResolvedValue({ user })
-  checkFlow.mockResolvedValue('AppleHealth')
+  getAccountEntryRoute.mockResolvedValue('AppleHealth')
   render(SignUp)
-  fill({ name: 'Test Walker', email: 'new@example.com', password: 'test-password' })
+  fill({ name: '  Test Walker  ', email: 'new@example.com', password: 'test-password' })
   await press('Register')
   expect(mockAuth.createUserWithEmailAndPassword).toHaveBeenCalledWith('new@example.com', 'test-password')
-  expect(cacheAccountProfile).toHaveBeenCalledWith(user, 'Test Walker')
+  expect(getAccountEntryRoute).toHaveBeenCalledWith(user, 'Test Walker')
   expect(mockNavigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'AppleHealth' }] })
+})
+
+test.each([' '.repeat(3), 'L'.repeat(101)])('signup rejects an invalid name before creating an account', async (name) => {
+  render(SignUp)
+  fill({ name, email: 'new@example.com', password: 'test-password' })
+  await press('Register')
+  expect(mockAuth.createUserWithEmailAndPassword).not.toHaveBeenCalled()
+})
+
+test('login returns to Welcome after finishing a pending deletion', async () => {
+  mockAuth.signInWithEmailAndPassword.mockResolvedValue({ user: { uid: 'pending' } })
+  getAccountEntryRoute.mockResolvedValue('Welcome')
+  render(Login)
+  fill({ email: 'walker@example.com', password: 'test-password' })
+  await press('Log in')
+  expect(mockNavigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Welcome' }] })
 })
 
 test.each([

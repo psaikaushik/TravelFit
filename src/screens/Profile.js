@@ -7,8 +7,10 @@ import auth from '@react-native-firebase/auth'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { clearLocalAccountData, getUserData } from '../services/database'
 import { deleteAccount } from '../services/api'
+import { authErrorMessage } from '../services/authErrors'
 import { clearNotifications } from '../services/notifications'
 import { getStreakData, setDailyGoal } from '../services/streak'
+import { finishPendingAccountDeletion } from '../services/users'
 import TabScreen from '../components/TabScreen'
 
 const GOAL_OPTIONS = [5000, 8000, 10000, 12000, 15000, 20000]
@@ -66,6 +68,11 @@ const Profile = () => {
     setIsDeleting(true)
     try {
       if (user.providerData.some((provider) => provider.providerId === 'apple.com')) {
+        if (await finishPendingAccountDeletion(user.uid)) {
+          if (!auth().currentUser) returnToWelcome()
+          return
+        }
+        if (auth().currentUser?.uid !== user.uid) return
         const { identityToken, nonce, authorizationCode } = await appleAuth.performRequest({
           requestedOperation: appleAuth.Operation.LOGIN
         })
@@ -93,7 +100,7 @@ const Profile = () => {
         status: 'error',
         description: error.code === 'functions/failed-precondition'
           ? error.message
-          : 'Could not delete your account. Try again.'
+          : authErrorMessage(error.code, 'Could not delete your account. Try again.')
       })
     } finally {
       deleting.current = false

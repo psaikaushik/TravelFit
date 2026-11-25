@@ -6,9 +6,8 @@ import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
 
-import { cacheAccountProfile } from '../services/users'
+import { getAccountEntryRoute } from '../services/users'
 import { authErrorMessage } from '../services/authErrors'
-import { checkFlow } from '../services/helpers'
 
 const SignUp = () => {
   const { reset, navigate } = useNavigation()
@@ -30,11 +29,8 @@ const SignUp = () => {
         email,
         password
       )
-      await cacheAccountProfile(user, name)
-      reset({
-        index: 0,
-        routes: [{ name: await checkFlow(user) }]
-      })
+      const route = await getAccountEntryRoute(user, name.trim())
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (e) {
       toast.show({
         status: 'error',
@@ -71,7 +67,13 @@ const SignUp = () => {
         placeholder="Name"
         control={control}
         errors={errors}
-        validation={{ required: true }}
+        validation={{
+          required: true,
+          validate: (name) => {
+            const length = name.trim().length
+            return (length > 0 && length <= 100) || 'Enter a name with 1 to 100 characters.'
+          }
+        }}
       />
       <FormInput
         id="email"

@@ -6,9 +6,8 @@ import { useForm } from 'react-hook-form'
 import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 
-import { cacheAccountProfile } from '../services/users'
+import { getAccountEntryRoute } from '../services/users'
 import { authErrorMessage } from '../services/authErrors'
-import { checkFlow } from '../services/helpers'
 
 const Login = () => {
   const { reset, navigate } = useNavigation()
@@ -31,11 +30,8 @@ const Login = () => {
     try {
       const { email, password } = data
       const { user } = await auth().signInWithEmailAndPassword(email, password)
-      await cacheAccountProfile(user)
-      reset({
-        index: 0,
-        routes: [{ name: await checkFlow(user) }]
-      })
+      const route = await getAccountEntryRoute(user)
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (e) {
       toast.show({
         status: 'error',

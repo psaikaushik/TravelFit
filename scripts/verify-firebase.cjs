@@ -20,9 +20,14 @@ async function request(url, { method = 'GET', token, body, status = 200 } = {}) 
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(15000)
   })
-  const result = await response.json()
-  assert.equal(response.status, status, JSON.stringify(result))
-  return result
+  const { origin, pathname } = new URL(url)
+  const requestLabel = `${method} ${origin}${pathname}`
+  assert.equal(response.status, status, `${requestLabel} returned an unexpected status`)
+  try {
+    return await response.json()
+  } catch {
+    throw new Error(`${requestLabel} returned an invalid JSON response`)
+  }
 }
 
 const auth = (action, body, status) => request(
@@ -30,17 +35,29 @@ const auth = (action, body, status) => request(
   { method: 'POST', body, status }
 )
 
-const profile = (uid, { token, ...options } = {}) => {
-  const url = new URL(`/users/${uid}.json`, databaseOrigin)
+const databaseRecord = (path, { token, ...options } = {}) => {
+  const url = new URL(`/${path}.json`, databaseOrigin)
   url.searchParams.set('ns', project)
   if (token && token !== 'owner') url.searchParams.set('auth', token)
   return request(url, { ...options, token: token === 'owner' ? token : undefined })
 }
 
+const profile = (uid, options) => databaseRecord(`users/${uid}`, options)
+const deletionMarker = (uid, options) => databaseRecord(`account_deletions/${uid}`, options)
+
 const removeAccount = (token, expectedUid, status) => request(
   `${functionsOrigin}/${project}/us-central1/deleteAccount`,
   { method: 'POST', token, body: { data: { expectedUid } }, status }
 )
+
+function staleEmulatorToken(token) {
+  const [header, payload, signature] = token.split('.')
+  assert.equal(signature, '')
+  assert.equal(JSON.parse(Buffer.from(header, 'base64url')).alg, 'none')
+  const claims = JSON.parse(Buffer.from(payload, 'base64url'))
+  claims.auth_time -= 6 * 60
+  return `${header}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.`
+}
 
 async function main() {
   const rulesUrl = new URL('/.settings/rules.json', databaseOrigin)
@@ -48,8 +65,9 @@ async function main() {
   await request(rulesUrl, { method: 'PUT', token: 'owner', body: rules })
 
   const newAccount = await auth('signUp', { email, password, returnSecureToken: true })
+  const secondEmail = `other-${tag}@example.invalid`
   const secondAccount = await auth('signUp', {
-    email: `other-${tag}@example.invalid`,
+    email: secondEmail,
     password,
     returnSecureToken: true
   })
@@ -76,11 +94,52 @@ async function main() {
   const mismatch = await removeAccount(secondAccount.idToken, uid, 400)
   assert.equal(mismatch.error.status, 'FAILED_PRECONDITION')
   assert.deepEqual(await profile(uid, { token: signedIn.idToken }), data)
+
+  const stale = await removeAccount(staleEmulatorToken(signedIn.idToken), uid, 400)
+  assert.equal(stale.error.status, 'FAILED_PRECONDITION')
+  assert.match(stale.error.message, /sign out and sign in again/i)
+  assert.equal(await deletionMarker(uid, { token: 'owner' }), null)
+  await deletionMarker(uid, { token: signedIn.idToken, status: 401 })
+  await deletionMarker(uid, { token: signedIn.idToken, method: 'PUT', body: true, status: 401 })
+
+  const billing = { customerId: 'legacy-billing-fixture' }
+  await databaseRecord(`stripe_customers/${uid}`, { method: 'PUT', token: 'owner', body: billing })
+  const legacy = await removeAccount(signedIn.idToken, uid, 400)
+  assert.equal(legacy.error.status, 'FAILED_PRECONDITION')
+  assert.match(legacy.error.message, /legacy billing/i)
+  assert.equal(await deletionMarker(uid, { token: 'owner' }), null)
+  assert.deepEqual(await profile(uid, { token: signedIn.idToken }), data)
+  await databaseRecord(`stripe_customers/${uid}`, { method: 'DELETE', token: 'owner' })
+
+  const secondUid = secondAccount.localId
+  const secondProfile = { ...data, email: secondEmail }
+  await profile(secondUid, { method: 'PUT', token: secondAccount.idToken, body: secondProfile })
+  // Simulate the atomic database step succeeding before Auth deletion was interrupted.
+  await databaseRecord('', {
+    method: 'PATCH',
+    token: 'owner',
+    body: { [`account_deletions/${secondUid}`]: true, [`users/${secondUid}`]: null }
+  })
+  const staleSecondToken = staleEmulatorToken(secondAccount.idToken)
+  assert.equal(await deletionMarker(secondUid, { token: staleSecondToken }), true)
+  await deletionMarker(secondUid, { token: signedIn.idToken, status: 401 })
+  await deletionMarker(secondUid, { status: 401 })
+  await databaseRecord('account_deletions', { token: staleSecondToken, status: 401 })
+  await deletionMarker(secondUid, { token: staleSecondToken, method: 'DELETE', status: 401 })
+  await profile(secondUid, { token: staleSecondToken, status: 401 })
+  await profile(secondUid, { token: staleSecondToken, method: 'PUT', body: secondProfile, status: 401 })
+  const mismatchRetry = await removeAccount(signedIn.idToken, secondUid, 400)
+  assert.equal(mismatchRetry.error.status, 'FAILED_PRECONDITION')
+  await auth('signInWithPassword', { email: secondEmail, password, returnSecureToken: true })
+  assert.deepEqual(await removeAccount(staleSecondToken, secondUid), { result: { deleted: true } })
+  assert.equal(await profile(secondUid, { token: 'owner' }), null)
+  await auth('signInWithPassword', { email: secondEmail, password, returnSecureToken: true }, 400)
+
   assert.deepEqual(await removeAccount(signedIn.idToken, uid), { result: { deleted: true } })
   assert.equal(await profile(uid, { token: 'owner' }), null)
   await auth('signInWithPassword', { email, password: nextPassword, returnSecureToken: true }, 400)
   await profile(uid, { method: 'PUT', token: signedIn.idToken, body: data, status: 401 })
-  console.log('Firebase emulator passed signup, profile isolation, reset and login, account deletion, and stale-token denial.')
+  console.log('Firebase emulator passed profile isolation, password reset, guarded deletion, and interrupted-deletion recovery.')
 }
 
 async function runCheck() {

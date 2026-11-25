@@ -13,8 +13,8 @@ import {
 import { appleAuth, AppleButton } from '@invertase/react-native-apple-authentication'
 import auth from '@react-native-firebase/auth'
 
-import { cacheAccountProfile } from '../services/users'
-import { checkFlow } from '../services/helpers'
+import { authErrorMessage } from '../services/authErrors'
+import { getAccountEntryRoute } from '../services/users'
 
 const Welcome = () => {
   const { navigate, reset } = useNavigation()
@@ -46,14 +46,11 @@ const Welcome = () => {
       const { user } = await auth().signInWithCredential(appleCredential)
       const fullName = appleAuthRequestResponse.fullName
       const name = [fullName?.givenName, fullName?.familyName].filter(Boolean).join(' ')
-      await cacheAccountProfile(user, name || user.displayName)
-      reset({
-        index: 0,
-        routes: [{ name: await checkFlow(user) }]
-      })
+      const route = await getAccountEntryRoute(user, name || user.displayName)
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (error) {
       if (error.code !== appleAuth.Error.CANCELED) {
-        Alert.alert('Sign In Error', 'Failed to sign in with Apple. Please try again.')
+        Alert.alert('Sign In Error', authErrorMessage(error.code, 'Failed to sign in with Apple. Please try again.'))
       }
     } finally {
       setAppleLoading(false)

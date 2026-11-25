@@ -1,5 +1,7 @@
 export const authErrorMessage = (code, fallback) => {
   switch (code) {
+    case 'account/deletion-pending':
+      return 'Your account deletion is pending. Check your connection and try again to finish deleting it.'
     case 'auth/network-request-failed':
       return 'Check your connection and try again.'
     case 'auth/invalid-credential':

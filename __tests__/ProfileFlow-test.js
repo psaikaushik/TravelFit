@@ -5,6 +5,7 @@ import Profile from '../src/screens/Profile'
 import { clearLocalAccountData } from '../src/services/database'
 import { deleteAccount } from '../src/services/api'
 import { clearNotifications } from '../src/services/notifications'
+import { finishPendingAccountDeletion } from '../src/services/users'
 
 const mockNavigation = { reset: jest.fn(), navigate: jest.fn() }
 const mockToast = { show: jest.fn() }
@@ -14,10 +15,11 @@ const mockAuth = {
   currentUser: mockUser,
   signOut: jest.fn()
 }
+const mockPerformAppleRequest = jest.fn()
 
 jest.mock('@react-native-firebase/auth', () => () => mockAuth)
 jest.mock('@invertase/react-native-apple-authentication', () => ({
-  appleAuth: { Error: { CANCELED: 'canceled' } }
+  appleAuth: { Error: { CANCELED: 'canceled' }, performRequest: mockPerformAppleRequest }
 }))
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
@@ -31,6 +33,7 @@ jest.mock('../src/services/database', () => ({ clearLocalAccountData: jest.fn(),
 jest.mock('../src/services/api', () => ({ deleteAccount: jest.fn() }))
 jest.mock('../src/services/notifications', () => ({ clearNotifications: jest.fn() }))
 jest.mock('../src/services/streak', () => ({ getStreakData: jest.fn(), setDailyGoal: jest.fn() }))
+jest.mock('../src/services/users', () => ({ finishPendingAccountDeletion: jest.fn() }))
 jest.mock('../src/components/TabScreen', () => ({ children }) => children)
 jest.mock('native-base', () => ({
   Button: 'Button',
@@ -57,6 +60,7 @@ const confirm = () => act(async () => {
 beforeEach(() => {
   jest.resetAllMocks()
   mockAuth.currentUser = mockUser
+  mockUser.providerData = []
   alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {})
   mockAuth.signOut.mockImplementation(async () => { mockAuth.currentUser = null })
   mockAuth.currentUser.getIdToken.mockResolvedValue('test-token')
@@ -100,6 +104,19 @@ test('stale sign-in preserves the account and displays the reauthentication mess
   expect(clearLocalAccountData).not.toHaveBeenCalled()
   expect(mockAuth.signOut).not.toHaveBeenCalled()
   expect(mockNavigation.reset).not.toHaveBeenCalled()
+})
+
+test('an interrupted Apple account deletion finishes without revoking Apple a second time', async () => {
+  mockUser.providerData = [{ providerId: 'apple.com' }]
+  finishPendingAccountDeletion.mockImplementation(async () => {
+    mockAuth.currentUser = null
+    return true
+  })
+  await press('Delete Account')
+  await confirm()
+  expect(finishPendingAccountDeletion).toHaveBeenCalledWith(mockUser.uid)
+  expect(mockPerformAppleRequest).not.toHaveBeenCalled()
+  expect(mockNavigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Welcome' }] })
 })
 
 test('account switch invalidates a pending delete confirmation', async () => {

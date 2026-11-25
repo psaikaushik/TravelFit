@@ -7,9 +7,8 @@ import BackSVG from '../assets/icons/back.svg'
 import { Container, Text, Flex, useToast, Pressable } from 'native-base'
 import auth from '@react-native-firebase/auth'
 
-import { cacheAccountProfile } from '../services/users'
+import { getAccountEntryRoute } from '../services/users'
 import { authErrorMessage } from '../services/authErrors'
-import { checkFlow } from '../services/helpers'
 
 const AuthScreen = ({ title, appleEnabled, footer, children }) => {
   const { reset, goBack } = useNavigation()
@@ -34,11 +33,8 @@ const AuthScreen = ({ title, appleEnabled, footer, children }) => {
       const { user } = await auth().signInWithCredential(appleCredential)
       const fullName = appleAuthRequestResponse.fullName
       const name = [fullName?.givenName, fullName?.familyName].filter(Boolean).join(' ')
-      await cacheAccountProfile(user, name || user.displayName)
-      reset({
-        index: 0,
-        routes: [{ name: await checkFlow(user) }]
-      })
+      const route = await getAccountEntryRoute(user, name || user.displayName)
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (e) {
       if (e.code !== appleAuth.Error.CANCELED) {
         toast.show({

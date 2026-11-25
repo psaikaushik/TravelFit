@@ -22,29 +22,33 @@ exports.deleteAccount = onCall(async (request) => {
       'The signed-in account changed. Open Profile and try again.'
     )
   }
-  const authTime = request.auth.token.auth_time
-  if (!Number.isFinite(authTime) || Date.now() / 1000 - authTime > recentSignInSeconds) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Sign out and sign in again before deleting your account.'
-    )
-  }
-
   const database = getDatabase()
-  if ((await database.ref(`stripe_customers/${uid}`).get()).exists()) {
-    throw new HttpsError(
-      'failed-precondition',
-      'This account has legacy billing records. Contact TravelFit support to close the account and resolve billing.'
-    )
+  const marker = await database.ref(`account_deletions/${uid}`).get()
+  if (marker.val() !== true) {
+    const authTime = request.auth.token.auth_time
+    if (!Number.isFinite(authTime) || Date.now() / 1000 - authTime > recentSignInSeconds) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Sign out and sign in again before deleting your account.'
+      )
+    }
+
+    if ((await database.ref(`stripe_customers/${uid}`).get()).exists()) {
+      throw new HttpsError(
+        'failed-precondition',
+        'This account has legacy billing records. Contact TravelFit support to close the account and resolve billing.'
+      )
+    }
+
+    // Record authorized deletion and remove the profile before deleting Auth.
+    // Clients cannot write the marker or recreate a marked profile.
+    await database.ref().update({
+      [`account_deletions/${uid}`]: true,
+      [`users/${uid}`]: null
+    })
   }
 
-  // Mark the account before deleting Auth so outstanding tokens cannot recreate the profile.
-  // Keep this marker server-only. The beta stores no social, health, or payment data.
-  await database.ref().update({
-    [`account_deletions/${uid}`]: true,
-    [`users/${uid}`]: null
-  })
-
+  // An existing marker authorizes resuming Auth deletion for this same UID.
   try {
     await getAuth().deleteUser(uid)
   } catch (error) {

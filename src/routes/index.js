@@ -14,7 +14,8 @@ import Trip from '../screens/Trip'
 import { PlaceRoutes } from './Place'
 import { checkFlow } from '../services/helpers'
 import { getUserData } from '../services/database'
-import { cacheAccountProfile } from '../services/users'
+import { authErrorMessage } from '../services/authErrors'
+import { getAccountEntryRoute } from '../services/users'
 import { navigationRef } from './RootNavigation'
 import PrivacyPolicy from '../screens/PrivacyPolicy'
 import TripHistory from '../screens/TripHistory'
@@ -27,18 +28,18 @@ const { Navigator, Screen } = createNativeStackNavigator()
 
 export const Routes = () => {
   const [initScreen, setInitScreen] = useState(null)
-  const [bootFailed, setBootFailed] = useState(false)
+  const [bootError, setBootError] = useState(null)
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let settled = false
     let started = false
-    const finish = (flow) => {
+    const finish = (flow, error) => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
       if (flow) setInitScreen(flow)
-      else setBootFailed(true)
+      else setBootError(authErrorMessage(error?.code, 'TravelFit could not start. Check your connection and try again.'))
       SplashScreen.hide()
     }
     const timeout = setTimeout(() => finish(), 10000)
@@ -46,12 +47,12 @@ export const Routes = () => {
       if (started || settled) return
       started = true
       try {
-        if (user && !(await getUserData()).name) {
-          await cacheAccountProfile(user)
-        }
-        if (!settled) finish(await checkFlow(user))
-      } catch {
-        finish()
+        const flow = user && !(await getUserData(user.uid)).name
+          ? await getAccountEntryRoute(user)
+          : await checkFlow(user)
+        finish(flow)
+      } catch (error) {
+        finish(null, error)
       }
     })
 
@@ -65,11 +66,11 @@ export const Routes = () => {
   if (!initScreen) {
     return (
       <Center flex={1} backgroundColor="#F3F3F6" px="6">
-        {bootFailed ? (
+        {bootError ? (
           <VStack space="4" alignItems="center">
-            <Text textAlign="center">TravelFit could not start. Check your connection and try again.</Text>
+            <Text textAlign="center">{bootError}</Text>
             <Button onPress={() => {
-              setBootFailed(false)
+              setBootError(null)
               setAttempt((value) => value + 1)
             }}>
               Try again
