@@ -90,8 +90,12 @@ final class TravelFitUITests: XCTestCase {
                 assertMapStepCount("20000")
                 attach("Completed route with simulated steps")
                 tap("tab-progress")
-                assertVisible("Goal reached!")
+                waitForLabel("progress-daily-goal", "Goal reached!", contains: true)
                 attach("Daily goal reached")
+                let history = element("progress-day-ThreeDaysBefore")
+                reveal(history, in: "progress-scroll")
+                XCTAssertTrue(history.exists && history.isHittable, "Unable to scroll to the last daily history row")
+                attach("Daily step history")
                 tap("tab-achievements")
                 assertVisible("Torpedo Wharf")
                 attach("Landmark achievements")
@@ -234,8 +238,9 @@ final class TravelFitUITests: XCTestCase {
         }
         let ready = NSPredicate { _, _ in button.exists && button.isHittable && button.isEnabled }
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
-                       "TravelFit could not activate \(identifier)")
+        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        if result != .completed { attach("Screen waiting to activate \(identifier)") }
+        XCTAssertEqual(result, .completed, "TravelFit could not activate \(identifier)")
         button.tap()
     }
 
@@ -255,12 +260,13 @@ final class TravelFitUITests: XCTestCase {
         dialog.buttons[title].tap()
     }
 
-    private func waitForLabel(_ identifier: String, _ label: String) {
+    private func waitForLabel(_ identifier: String, _ label: String, contains: Bool = false) {
         let view = assertVisible(identifier)
-        let predicate = NSPredicate(format: "label == %@", label)
+        let predicate = NSPredicate(format: contains ? "label CONTAINS %@" : "label == %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: view)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
-                       "Expected \(identifier) to display \(label), got \(view.label)")
+        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        if result != .completed { attach("Screen waiting for \(identifier) to display \(label)") }
+        XCTAssertEqual(result, .completed, "Expected \(identifier) to display \(label), got \(view.label)")
     }
 
     private func attach(_ name: String) {

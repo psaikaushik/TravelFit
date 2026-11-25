@@ -32,7 +32,7 @@ npx --yes firebase-tools@15.37.0 emulators:exec --project demo-travelfit-audit -
 
 ## Set up the internal iOS beta
 
-1. Create a separate Firebase project for beta testing with Firebase Authentication, Realtime Database, and Cloud Functions. Enable email/password authentication and configure Sign in with Apple if it will be used. Register the iOS app as `com.travelfit.app`. Use test accounts and avoid importing existing data.
+1. Create a separate Firebase project for beta testing with Firebase Authentication, Realtime Database, and Cloud Functions. Enable email/password authentication and configure Sign in with Apple. Register the iOS app as `com.travelfit.app`. Use synthetic accounts and keep customer data in its original project.
 2. Enable Realtime Database, then download the iOS Firebase configuration to `ios/GoogleService-Info.local.plist`. The Xcode build checks the bundle ID, database URL, and staging project. The local plist is ignored by Git.
 3. Install the Functions dependencies with `npm ci --prefix functions`. Review the explicit staging project ID before deploying. Use the current Firebase CLI with access to that project.
 
@@ -67,11 +67,15 @@ TRAVELFIT_STAGING_PROJECT_ID=your-staging-project bash scripts/run-ios-device-e2
 
 The script builds the checkout's committed `HEAD` in a temporary directory, checks the Firebase configuration inside the signed build, and runs the physical-device lifecycle test. It creates and deletes two synthetic accounts, keeps Health sync off, and saves the Xcode result bundle and logs to the reported path. Password-reset email, Apple sign-in, real HealthKit samples, and background step delivery have separate release checks.
 
-Run the same signature, capabilities, and bundled privacy manifest checks on the signed archive before validating it in App Store Connect.
+On a Mac with the team's signing certificates and provisioning profiles installed, export the internal TestFlight candidate from committed `HEAD`. Choose an unused build number for this version in App Store Connect first.
 
 ```sh
-python3 scripts/verify-ios-release.py path/to/TravelFit.xcarchive
+TRAVELFIT_STAGING_PROJECT_ID=your-staging-project bash scripts/archive-ios-beta.sh BUILD_NUMBER
 ```
+
+The command verifies the signed archive and exported IPA for HealthKit and Sign in with Apple, privacy manifests, the requested build number, and the bundled staging configuration. It saves both files and Xcode logs locally. Validate the archive in Xcode Organizer and upload it from Organizer, or deliver the verified IPA with Transporter. Assign the processed build to the internal TestFlight group in App Store Connect. Internal testers can install it over Wi-Fi.
+
+The Verify TravelFit workflow also offers a manual `ios_device_archive` preflight on `release/fitness-recovery`. It compiles an unsigned iPhoneOS Release archive with a dummy Firebase configuration and checks the bundled JavaScript, version, and privacy manifests. Use the signed archive above for distribution.
 
 | Customer flow | Expected behavior |
 |---|---|

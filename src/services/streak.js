@@ -154,20 +154,13 @@ const checkDailyGoal = async () => {
 const getStreakSummary = async () => {
   const data = await getStreakData()
   const todaySteps = await getTodaySteps()
-  const today = moment().startOf('day')
-
-  // If goalReachedDate is not today, reset goalReachedToday
-  const goalReachedToday = data.goalReachedDate &&
-    moment(data.goalReachedDate).isSame(today, 'day')
-    ? data.goalReachedToday
-    : todaySteps >= data.dailyGoal
 
   return {
     todaySteps,
     dailyGoal: data.dailyGoal,
     currentStreak: data.currentStreak,
     longestStreak: data.longestStreak || 0,
-    goalReachedToday,
+    goalReachedToday: todaySteps >= data.dailyGoal,
     progress: Math.min((todaySteps / data.dailyGoal) * 100, 100)
   }
 }

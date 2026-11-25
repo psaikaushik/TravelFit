@@ -39,41 +39,8 @@ fi
 build_config="$build_source/ios/GoogleService-Info.local.plist"
 cp "$config" "$build_config"
 
-python3 - "$build_config" "$TRAVELFIT_STAGING_PROJECT_ID" <<'PY'
-import plistlib
-import re
-import sys
-from urllib.parse import urlsplit
-
-config_file, expected_project = sys.argv[1:]
-with open(config_file, "rb") as source:
-    config = plistlib.load(source)
-if (
-    not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", expected_project)
-    or expected_project == "travelfit-app"
-    or expected_project.startswith("demo-")
-    or config.get("PROJECT_ID") != expected_project
-    or config.get("BUNDLE_ID") != "com.travelfit.app"
-):
-    sys.exit("The plist must match the authorized staging project and the TravelFit app ID.")
-
-url = urlsplit(config.get("DATABASE_URL", ""))
-default_db = re.escape(expected_project + "-default-rtdb")
-host = url.hostname or ""
-matches_project = host in {
-    f"{expected_project}.firebaseio.com",
-    f"{expected_project}-default-rtdb.firebaseio.com",
-} or re.fullmatch(rf"{default_db}\.[a-z0-9-]+\.firebasedatabase\.app", host)
-if (
-    not matches_project
-    or url.scheme != "https"
-    or url.netloc != host
-    or url.path not in {"", "/"}
-    or url.query
-    or url.fragment
-):
-    sys.exit("Use the HTTPS default Realtime Database URL for the authorized staging project.")
-PY
+python3 "$build_source/scripts/verify-ios-release.py" \
+  --staging-project "$TRAVELFIT_STAGING_PROJECT_ID" --firebase-config "$build_config"
 
 echo "TravelFit source commit: $revision"
 echo "XCTest logs and result: $results"
@@ -100,7 +67,7 @@ if ! cmp -s "$build_config" "$app/GoogleService-Info.plist"; then
   echo "The built application does not contain the verified staging configuration." >&2
   exit 1
 fi
-python3 scripts/verify-ios-release.py "$app"
+python3 scripts/verify-ios-release.py --staging-project "$TRAVELFIT_STAGING_PROJECT_ID" "$app"
 
 xcodebuild test-without-building "${build_arguments[@]}" \
   -only-testing:TravelFitUITests/TravelFitUITests/testSignedDeviceWalkerLifecycle \

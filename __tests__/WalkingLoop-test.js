@@ -1,15 +1,18 @@
 import AppleHealthKit from 'react-native-health'
 import { buildCuratedTrip, VIRTUAL_ROUTES } from '../src/data/curatedRoutes'
-import { getCurrentAccountId, getUserData, getUserSettings, setUserSettings } from '../src/services/database'
+import { getCurrentAccountId, getData, getUserData, getUserSettings, setUserSettings, storeData } from '../src/services/database'
 import { checkFlow, getStepsNumAtDate, getTripProgressIndex, updateProgress } from '../src/services/helpers'
+import { getStreakSummary, setDailyGoal } from '../src/services/streak'
 
 jest.mock('react-native-health', () => ({ getDailyStepCountSamples: jest.fn() }))
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn() }))
 jest.mock('../src/services/database', () => ({
   getCurrentAccountId: jest.fn(),
+  getData: jest.fn(),
   getUserData: jest.fn(),
   getUserSettings: jest.fn(),
-  setUserSettings: jest.fn()
+  setUserSettings: jest.fn(),
+  storeData: jest.fn()
 }))
 jest.mock('../src/services/subscription', () => ({ hasActiveSubscription: jest.fn() }))
 jest.mock('../src/services/maps', () => ({}))
@@ -63,4 +66,19 @@ it('discards samples returned after an account change', async () => {
 
   await expect(updateProgress()).resolves.toMatchObject({ status: 'unavailable' })
   expect(setUserSettings).not.toHaveBeenCalled()
+})
+
+it('updates current goal progress when a walker raises a goal they already reached', async () => {
+  const now = new Date().toISOString()
+  let streak = JSON.stringify({ dailyGoal: 5000, goalReachedToday: true, goalReachedDate: now })
+  getData.mockImplementation(async () => streak)
+  storeData.mockImplementation(async (_key, value) => { streak = value })
+  getUserSettings.mockResolvedValue({ health: true })
+  AppleHealthKit.getDailyStepCountSamples.mockImplementation((_, callback) => callback(null, [
+    { startDate: now, value: 6000 }
+  ]))
+
+  await expect(getStreakSummary()).resolves.toMatchObject({ goalReachedToday: true, progress: 100 })
+  await setDailyGoal(20000)
+  await expect(getStreakSummary()).resolves.toMatchObject({ goalReachedToday: false, progress: 30 })
 })

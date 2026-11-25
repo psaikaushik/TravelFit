@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Verify TravelFit's signature, capabilities and bundled privacy manifests."""
+"""Verify a staging Firebase plist or a signed TravelFit beta build."""
 
 import argparse
 from pathlib import Path
 import plistlib
+import re
 import subprocess
 import sys
+from urllib.parse import urlsplit
 from xml.parsers.expat import ExpatError
 
 BUNDLE_ID = "com.travelfit.app"
@@ -28,6 +30,58 @@ def app_path(target):
 def read_plist(path):
     with path.open("rb") as source:
         return plistlib.load(source)
+
+
+def verify_staging_config(path, expected_project):
+    if (
+        not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", expected_project)
+        or expected_project == "travelfit-app"
+        or expected_project.startswith("demo-")
+    ):
+        raise ValueError("Specify the authorized non-production Firebase staging project.")
+
+    config = read_plist(path)
+    if (
+        not isinstance(config, dict)
+        or config.get("PROJECT_ID") != expected_project
+        or config.get("BUNDLE_ID") != BUNDLE_ID
+        or config.get("PLIST_VERSION") != "1"
+    ):
+        raise ValueError("Use the downloaded Firebase iOS plist for the authorized staging project.")
+
+    api_key = config.get("API_KEY")
+    app_id = config.get("GOOGLE_APP_ID")
+    if (
+        not isinstance(api_key, str)
+        or not re.fullmatch(r"AIza[\w-]{35}", api_key, flags=re.ASCII)
+        or api_key == "AIza" + "0" * 35
+        or not isinstance(app_id, str)
+        or not re.fullmatch(r"1:[0-9]+:ios:[a-f0-9]+", app_id)
+    ):
+        raise ValueError("The Firebase iOS plist must include the app registration and API key.")
+
+    database_url = config.get("DATABASE_URL")
+    if not isinstance(database_url, str):
+        raise ValueError("The Firebase iOS plist is missing the default Realtime Database URL.")
+    try:
+        url = urlsplit(database_url)
+        host = url.hostname or ""
+    except ValueError:
+        raise ValueError("Use the HTTPS default Realtime Database URL for the staging project.") from None
+    default_db = re.escape(expected_project + "-default-rtdb")
+    matches_project = host in {
+        f"{expected_project}.firebaseio.com",
+        f"{expected_project}-default-rtdb.firebaseio.com",
+    } or re.fullmatch(rf"{default_db}\.[a-z0-9-]+\.firebasedatabase\.app", host)
+    if (
+        not matches_project
+        or url.scheme != "https"
+        or url.netloc != host
+        or url.path not in {"", "/"}
+        or url.query
+        or url.fragment
+    ):
+        raise ValueError("Use the HTTPS default Realtime Database URL for the staging project.")
 
 
 def verify_entitlements(entitlements):
@@ -69,7 +123,7 @@ def verify_privacy(app):
         verify_manifest(manifest)
 
 
-def verify_signed_app(app):
+def verify_signed_app(app, staging_project):
     info = read_plist(app / "Info.plist")
     if not isinstance(info, dict) or info.get("CFBundleIdentifier") != BUNDLE_ID:
         raise ValueError("The application bundle identifier does not match TravelFit.")
@@ -81,18 +135,26 @@ def verify_signed_app(app):
     ).stdout
     verify_entitlements(plistlib.loads(signed_entitlements))
     verify_privacy(app)
+    verify_staging_config(app / "GoogleService-Info.plist", staging_project)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("target", type=Path, help="Path to a signed .app or .xcarchive")
+    parser.add_argument("--staging-project", required=True, help="Authorized Firebase staging project ID")
+    artifact = parser.add_mutually_exclusive_group(required=True)
+    artifact.add_argument("--firebase-config", type=Path, help="Path to a pre-build Firebase plist")
+    artifact.add_argument("target", nargs="?", type=Path, help="Path to a signed .app or .xcarchive")
     args = parser.parse_args()
     try:
-        verify_signed_app(app_path(args.target))
+        if args.firebase_config:
+            verify_staging_config(args.firebase_config, args.staging_project)
+            print("TravelFit Firebase staging configuration verified.")
+        else:
+            verify_signed_app(app_path(args.target), args.staging_project)
+            print("TravelFit signature, capabilities, privacy manifests, and bundled staging configuration verified.")
     except (OSError, ValueError, plistlib.InvalidFileException, ExpatError, subprocess.CalledProcessError) as error:
         print(f"TravelFit release verification failed: {error}", file=sys.stderr)
         return 1
-    print("TravelFit signature, signed capabilities, and app/Firebase privacy manifests verified.")
     return 0
 
 

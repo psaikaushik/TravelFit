@@ -5,6 +5,11 @@ on:
   push:
     branches: [master, release/fitness-recovery]
   workflow_dispatch:
+    inputs:
+      ios_device_archive:
+        description: Preflight an unsigned iPhone Release archive
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -44,7 +49,7 @@ jobs:
             --project demo-travelfit-audit --only auth,database,functions \
             'node scripts/verify-firebase.cjs'
   ios-simulator:
-    if: github.ref == 'refs/heads/release/fitness-recovery'
+    if: github.ref == 'refs/heads/release/fitness-recovery' && !inputs.ios_device_archive
     # The legacy Podfile excludes arm64 for simulator builds.
     runs-on: macos-15-intel
     timeout-minutes: 60
@@ -226,3 +231,97 @@ jobs:
           name: ios-simulator-attachments
           path: ${{ runner.temp }}/travelfit-ios-attachments
           if-no-files-found: ignore
+  ios-device-archive:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/fitness-recovery' && inputs.ios_device_archive
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      RCT_NO_LAUNCH_PACKAGER: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install locked JavaScript dependencies
+        run: |
+          npm install --global npm@10.9.4
+          npm ci --engine-strict
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Select Xcode 26
+        run: |
+          xcode=$(ruby -e 'puts Dir["/Applications/Xcode_26*.app"].max_by { |path| File.basename(path).scan(/\d+/).map(&:to_i) }')
+          test -n "$xcode"
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - name: Install locked iOS dependencies
+        working-directory: ios
+        run: bundle exec pod install --deployment
+      - name: Add demo configuration for the archive build only
+        run: |
+          if git grep -q 'ios-simulator-fixture' -- index.js; then
+            echo 'The device archive must use the unmodified app entry point.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          config = {
+              'API_KEY': 'AIza' + '0' * 35,
+              'BUNDLE_ID': 'com.travelfit.app',
+              'DATABASE_URL': 'https://demo-travelfit-archive.firebaseio.com',
+              'GCM_SENDER_ID': '100000000000',
+              'GOOGLE_APP_ID': '1:100000000000:ios:0000000000000000000000',
+              'IS_ANALYTICS_ENABLED': False,
+              'PLIST_VERSION': '1',
+              'PROJECT_ID': 'demo-travelfit-archive',
+          }
+          with Path('ios/GoogleService-Info.local.plist').open('xb') as file:
+              plistlib.dump(config, file)
+          PY
+          git diff --exit-code -- index.js ios/TravelFit/Info.plist
+      - name: Archive the unsigned iPhone Release app
+        timeout-minutes: 30
+        run: |
+          xcodebuild -quiet archive \
+            -workspace ios/TravelFit.xcworkspace -scheme TravelFit \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/travelfit-device-derived-data" \
+            -archivePath "$RUNNER_TEMP/TravelFitDevice.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
+      - name: Verify the unsigned device archive contents
+        run: |
+          python3 - "$RUNNER_TEMP/TravelFitDevice.xcarchive" "$GITHUB_RUN_NUMBER" <<'PY'
+          import plistlib
+          import re
+          import runpy
+          import sys
+          from pathlib import Path
+
+          app = Path(sys.argv[1]) / 'Products/Applications/TravelFit.app'
+          with (app / 'Info.plist').open('rb') as file:
+              info = plistlib.load(file)
+          version = info.get('CFBundleShortVersionString', '')
+          if (info.get('CFBundleIdentifier') != 'com.travelfit.app'
+                  or info.get('CFBundleSupportedPlatforms') != ['iPhoneOS']
+                  or info.get('CFBundleVersion') != sys.argv[2]
+                  or not re.fullmatch(r'\d+(\.\d+){1,2}', version)
+                  or not (app / 'main.jsbundle').stat().st_size):
+              raise SystemExit('Unexpected unsigned iPhone app archive metadata or bundle.')
+          with (app / 'GoogleService-Info.plist').open('rb') as file:
+              config = plistlib.load(file)
+          if config.get('PROJECT_ID') != 'demo-travelfit-archive':
+              raise SystemExit('The unsigned archive must contain the synthetic Firebase app.')
+          runpy.run_path('scripts/verify-ios-release.py')['verify_privacy'](app)
+          print(f'Verified unsigned TravelFit {version} ({sys.argv[2]}) iPhone archive and privacy manifests.')
+          PY

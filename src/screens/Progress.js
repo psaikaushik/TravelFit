@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Animated, SafeAreaView, StyleSheet, View } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { Animated, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native'
 import { Flex, Text, Avatar, Progress as ProgressNative, Box, HStack, VStack } from 'native-base'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getUserSettings } from '../services/database'
 import { getStreakSummary, calculateStreak } from '../services/streak'
 import TabScreen from '../components/TabScreen'
@@ -19,7 +20,7 @@ const RING_SIZE = 160
 const RING_STROKE = 12
 
 const Progress = () => {
-  const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
   const [goalPulse] = useState(new Animated.Value(1))
   const { data: settings } = useQuery(['settings'], getUserSettings)
   const { data: stats } = useQuery(['stats'], getStats)
@@ -70,6 +71,8 @@ const Progress = () => {
       borderRadius="16px"
       direction="row"
       align="center"
+      accessible
+      testID={`progress-day-${item.id}`}
       accessibilityLabel={`${moment(item.date).format('dddd')}: ${prettifyNum(Math.round(item.steps))} steps, ${stepsToDistance(item.steps)} kilometers`}
     >
       <Flex
@@ -150,7 +153,7 @@ const Progress = () => {
               <Text
                 flexShrink="1"
                 variant="to"
-                color="primary"
+                color="primary.400"
                 mr="12px"
                 numberOfLines={1}
               >
@@ -176,7 +179,7 @@ const Progress = () => {
             {!completed && (
               <Text
                 variant="progress"
-                color="gray.400"
+                color="gray.600"
                 fontWeight="400"
                 numberOfLines={1}
               >
@@ -192,7 +195,11 @@ const Progress = () => {
         </Flex>
 
         {/* Main Content */}
-        <Flex flex="1" px="20px" mt="50px" w="100%" minW="100%">
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 76 }]}
+          testID="progress-scroll"
+        >
           {/* Daily Goal Ring + Streak */}
           <Animated.View style={{ transform: [{ scale: goalPulse }] }}>
             <Box
@@ -200,6 +207,8 @@ const Progress = () => {
               borderRadius="16px"
               p="20px"
               mb="16px"
+              accessible
+              testID="progress-daily-goal"
               accessibilityLabel={`Daily goal: ${prettifyNum(todaySteps)} of ${prettifyNum(dailyGoal)} steps. ${goalReached ? 'Goal reached!' : `${prettifyNum(dailyGoal - todaySteps)} steps remaining.`} Current streak: ${currentStreak} days.`}
             >
               <HStack space="4" alignItems="center">
@@ -249,7 +258,7 @@ const Progress = () => {
                     </Text>
                   )}
                   {goalReached && (
-                    <Text fontSize="13px" color="green.600" fontWeight="700" mt="2px">
+                    <Text fontSize="13px" color="green.700" fontWeight="700" mt="2px">
                       Goal reached!
                     </Text>
                   )}
@@ -279,7 +288,7 @@ const Progress = () => {
                     {currentStreak === 1 ? 'day' : 'days'}
                   </Text>
                   {longestStreak > 0 && longestStreak > currentStreak && (
-                    <Text fontSize="10px" color="gray.400">
+                    <Text fontSize="10px" color="gray.600">
                       Best: {longestStreak}
                     </Text>
                   )}
@@ -327,7 +336,7 @@ const Progress = () => {
               </Text>
               <Text
                 variant="progress"
-                color="gray.400"
+                color="gray.600"
                 fontWeight="400"
                 numberOfLines={1}
               >
@@ -357,22 +366,27 @@ const Progress = () => {
 
           {/* Daily History */}
           <Flex
-            flex="1"
             mt="16px"
             py="10px"
-            mb="80px"
             bg="white"
             borderRadius="16px"
           >
             {(stats || []).slice(1).map(renderProgressItem)}
           </Flex>
-        </Flex>
+        </ScrollView>
       </SafeAreaView>
     </TabScreen>
   )
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    marginTop: 50
+  },
+  content: {
+    paddingHorizontal: 20
+  },
   ringContainer: {
     width: RING_SIZE * 0.55,
     height: RING_SIZE * 0.55,
