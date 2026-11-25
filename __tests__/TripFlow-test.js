@@ -285,6 +285,7 @@ it('keeps a history entry visible and reports a failed removal when device stora
       <QueryClientProvider client={queryClient}><TripHistory /></QueryClientProvider>
     )
   })
+  expect(screen.root.findAllByType('Text').map(({ props }) => props.children)).toContain('Archived')
   AsyncStorage.setItem.mockRejectedValueOnce(new Error('Trip history write failed'))
   await act(async () => {
     await screen.root.findByProps({ accessibilityLabel: 'Remove this trip from history' }).props.onPress()

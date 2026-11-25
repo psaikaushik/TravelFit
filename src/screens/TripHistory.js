@@ -128,7 +128,7 @@ const TripHistory = () => {
                 {!trip.completed && (
                   <Box bg="orange.100" px="8px" py="3px" borderRadius="full" ml="8px">
                     <Text fontSize="11px" fontWeight="700" color="orange.700">
-                      Active
+                      Archived
                     </Text>
                   </Box>
                 )}

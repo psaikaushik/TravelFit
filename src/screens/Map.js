@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Platform } from 'react-native'
+import { Platform, Pressable, StyleSheet } from 'react-native'
 import MapView, { Marker, Polyline } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
@@ -67,6 +67,7 @@ const Map = () => {
   const traveled = Math.min(Number(calcSteps(steps)), distance)
   const progress = Math.floor(calcProgress(steps, distance))
   const syncLabel = Platform.OS === 'ios' ? syncLabels[status] : 'Step sync is available on iOS.'
+  const openHealthSetup = () => navigate('AppleHealth')
 
   return (
     <TabScreen>
@@ -120,7 +121,18 @@ const Map = () => {
         <HStack justifyContent="space-between" space="3" alignItems="center" mt="2">
           <Text flex="1" color="gray.700" fontSize="13px" accessibilityLiveRegion="polite" testID="trip-map-status">{syncLabel}</Text>
           {Platform.OS === 'ios' && (status === 'off' ? (
-            <Button size="sm" variant="ghost" onPress={() => navigate('AppleHealth')} testID="trip-map-connect-health">Connect Health</Button>
+            <Pressable
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Connect to Apple Health"
+              accessibilityState={{ disabled: false }}
+              onPress={openHealthSetup}
+              onAccessibilityTap={openHealthSetup}
+              testID="trip-map-connect-health"
+              style={({ pressed }) => [styles.healthAction, pressed && styles.pressedHealthAction]}
+            >
+              <Text color="primary.400" fontSize="13px" fontWeight="600">Connect Health</Text>
+            </Pressable>
           ) : status !== 'complete' && (
             <Button size="sm" variant="ghost" onPress={sync} isLoading={status === 'syncing'}>Refresh</Button>
           ))}
@@ -129,5 +141,16 @@ const Map = () => {
     </TabScreen>
   )
 }
+
+const styles = StyleSheet.create({
+  healthAction: {
+    minHeight: 44,
+    paddingHorizontal: 8,
+    justifyContent: 'center'
+  },
+  pressedHealthAction: {
+    opacity: 0.65
+  }
+})
 
 export default Map
