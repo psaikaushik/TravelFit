@@ -157,76 +157,73 @@ jobs:
           npx --yes firebase-tools@15.37.0 emulators:exec \
             --project demo-travelfit-audit --only auth,database,functions \
             'bash scripts/run-ios-simulator-e2e.sh test'
-      - name: Report simulator results
-        if: always()
-        env:
-          BUILD_OUTCOME: ${{ steps.simulator-build.outcome }}
+      - name: Report simulator build diagnostics
+        if: always() && github.event.repository.private == true && steps.simulator-build.outcome == 'failure'
         run: |
           build="$RUNNER_TEMP/travelfit-ios-build.xcresult"
-          result="$RUNNER_TEMP/travelfit-ios.xcresult"
-          if [ "$BUILD_OUTCOME" = failure ] && [ -d "$build" ]; then
+          if [ -d "$build" ]; then
             xcrun xcresulttool get build-results --path "$build" || true
           fi
+      - name: Report simulator test counts
+        if: always()
+        run: |
+          result="$RUNNER_TEMP/travelfit-ios.xcresult"
           if [ -d "$result" ]; then
-            xcrun xcresulttool get test-results summary --path "$result" || true
+            xcrun xcresulttool get test-results summary --path "$result" 2>/dev/null |
+              jq '{totalTestCount, passedTests, failedTests, skippedTests, expectedFailures}
+                | with_entries(select(.value | type == "number"))' 2>/dev/null ||
+              echo 'Simulator test counts are unavailable.'
           fi
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && github.event.repository.private == true
         with:
           name: ios-simulator-result
           path: ${{ runner.temp }}/travelfit-ios.xcresult
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
-        if: steps.simulator-build.outcome == 'failure' && !cancelled()
+        if: github.event.repository.private == true && steps.simulator-build.outcome == 'failure' && !cancelled()
         with:
           name: ios-simulator-build-result
           path: ${{ runner.temp }}/travelfit-ios-build.xcresult
           if-no-files-found: ignore
-      - name: Export simulator screenshots
+      - name: Export simulator attachments locally
         if: always()
         run: |
           result="$RUNNER_TEMP/travelfit-ios.xcresult"
           if [ -d "$result" ]; then
             xcrun xcresulttool export attachments \
               --path "$result" \
-              --output-path "$RUNNER_TEMP/travelfit-ios-attachments"
+              --output-path "$RUNNER_TEMP/travelfit-ios-attachments" >/dev/null 2>&1
           fi
-      - name: Record small simulator previews for visual review
-        if: always()
-        continue-on-error: true
+      - name: Stage public simulator screenshots
+        if: always() && github.event.repository.private != true
         run: |
-          python3 - "$RUNNER_TEMP/travelfit-ios-attachments" <<'PY'
-          import base64
-          import io
+          python3 - "$RUNNER_TEMP/travelfit-ios-attachments" "$RUNNER_TEMP/travelfit-ios-screenshots" <<'PY'
           from pathlib import Path
-          import subprocess
+          import shutil
           import sys
-          import tempfile
-          import textwrap
-          from zipfile import ZipFile
 
-          directory = Path(sys.argv[1])
-          shots = [path for path in sorted(directory.glob('*'))
-                   if path.suffix.lower() in {'.png', '.jpg', '.jpeg'}][:16]
-          if shots:
-              buffer = io.BytesIO()
-              with ZipFile(buffer, 'w') as archive, tempfile.TemporaryDirectory() as temporary:
-                  manifest = directory / 'manifest.json'
-                  if manifest.is_file():
-                      archive.write(manifest, 'manifest.json')
-                  for shot in shots:
-                      preview = Path(temporary) / (shot.stem + '.jpg')
-                      subprocess.run(['/usr/bin/sips', '-Z', '600', '-s', 'format', 'jpeg',
-                                      '-s', 'formatOptions', '65', str(shot), '--out', str(preview)],
-                                     stdout=subprocess.DEVNULL, check=True)
-                      archive.write(preview, preview.name)
-              print('::group::Simulator preview archive')
-              for line in textwrap.wrap(base64.b64encode(buffer.getvalue()).decode(), 256):
-                  print('SIMULATOR_PREVIEW ' + line)
-              print('::endgroup::')
+          source, destination = map(Path, sys.argv[1:])
+          png_signature = b'\x89PNG\r\n\x1a\n'
+          count = 0
+          for path in sorted(source.glob('*')):
+              if path.suffix.lower() != '.png' or path.is_symlink() or not path.is_file():
+                  continue
+              with path.open('rb') as image:
+                  if image.read(len(png_signature)) != png_signature:
+                      continue
+              count += 1
+              destination.mkdir(exist_ok=True)
+              shutil.copyfile(path, destination / f'screenshot-{count:02d}.png')
           PY
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && github.event.repository.private != true
+        with:
+          name: ios-simulator-screenshots
+          path: ${{ runner.temp }}/travelfit-ios-screenshots/*.png
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event.repository.private == true
         with:
           name: ios-simulator-attachments
           path: ${{ runner.temp }}/travelfit-ios-attachments
