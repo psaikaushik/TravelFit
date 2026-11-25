@@ -10,7 +10,7 @@ const email = `walker-${tag}@example.invalid`
 const password = 'initial-pass-123'
 const nextPassword = 'replacement-pass-456'
 
-async function request(url, { method = 'GET', token, body, status = 200 } = {}) {
+async function request(url, { method = 'GET', token, body, status = 200, timeoutMs = 15000 } = {}) {
   const response = await fetch(url, {
     method,
     headers: {
@@ -18,7 +18,7 @@ async function request(url, { method = 'GET', token, body, status = 200 } = {}) 
       ...(body !== undefined && { 'content-type': 'application/json' })
     },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(timeoutMs)
   })
   const { origin, pathname } = new URL(url)
   const requestLabel = `${method} ${origin}${pathname}`
@@ -45,9 +45,9 @@ const databaseRecord = (path, { token, ...options } = {}) => {
 const profile = (uid, options) => databaseRecord(`users/${uid}`, options)
 const deletionMarker = (uid, options) => databaseRecord(`account_deletions/${uid}`, options)
 
-const removeAccount = (token, expectedUid, status) => request(
+const removeAccount = (token, expectedUid, status, timeoutMs) => request(
   `${functionsOrigin}/${project}/us-central1/deleteAccount`,
-  { method: 'POST', token, body: { data: { expectedUid } }, status }
+  { method: 'POST', token, body: { data: { expectedUid } }, status, timeoutMs }
 )
 
 function staleEmulatorToken(token) {
@@ -145,7 +145,8 @@ async function main() {
 async function runCheck() {
   switch (process.argv[2]) {
     case 'simulator-ready': {
-      const response = await removeAccount(undefined, 'simulator-readiness-probe', 401)
+      // The first request also starts a Functions worker on the hosted Mac.
+      const response = await removeAccount(undefined, 'simulator-readiness-probe', 401, 90000)
       assert.equal(response.error.status, 'UNAUTHENTICATED')
       console.log('The simulator account-deletion function is available.')
       break
