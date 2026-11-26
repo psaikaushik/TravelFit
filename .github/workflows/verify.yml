@@ -50,8 +50,7 @@ jobs:
             'node scripts/verify-firebase.cjs'
   ios-simulator:
     if: github.ref == 'refs/heads/release/fitness-recovery' && !inputs.ios_device_archive
-    # The legacy Podfile excludes arm64 for simulator builds.
-    runs-on: macos-15-intel
+    runs-on: macos-15
     timeout-minutes: 75
     env:
       RCT_NO_LAUNCH_PACKAGER: "1"
@@ -173,10 +172,13 @@ jobs:
               jq '({totalTestCount, passedTests, failedTests, skippedTests, expectedFailures}
                    | with_entries(select(.value | type == "number")))
                   + {failedControls: [ .testFailures[]?.failureText
+                      | strings
                       | match("(TravelFit (did not retain input for|did not show|could not activate)|Missing input) [a-zA-Z0-9-]{1,64}( exists=(true|false) hittable=(true|false) enabled=(true|false))?$").string ],
                      failedLabels: [ .testFailures[]?.failureText
+                      | strings
                       | match("Expected (?<identifier>[a-zA-Z0-9-]{1,64}) to display ").captures[0].string ],
                      nativeFailures: [ .testFailures[]?.failureText
+                      | strings
                       | if test("keyboard focus"; "i") then "keyboard focus"
                         elif test("synthesize event"; "i") then "input event synthesis"
                         elif test("matching snapshot"; "i") then "accessibility snapshot"

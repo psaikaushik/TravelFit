@@ -20,9 +20,11 @@ sys.exit("No available iPhone simulator with an iOS 26 runtime")
   printf '%s\n' "$simulator" > "$simulator_file"
 fi
 
-# Match the Intel simulator host and the architecture of the installed pods.
+# Use the host's native architecture unless the local runtime requires Rosetta.
+architecture=$(uname -m)
 destination="platform=iOS Simulator,id=$simulator"
 if [[ "${TRAVELFIT_SIMULATOR_ROSETTA:-0}" = 1 ]]; then
+  architecture=x86_64
   destination="$destination,arch=x86_64"
 fi
 derived_data="${TRAVELFIT_SIMULATOR_DERIVED_DATA:-$RUNNER_TEMP/travelfit-derived-data}"
@@ -33,7 +35,7 @@ build_settings=(
   -configuration Release
   -destination "$destination"
   -derivedDataPath "$derived_data"
-  ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
+  "ARCHS=$architecture" EXCLUDED_ARCHS= ONLY_ACTIVE_ARCH=YES
 )
 
 run_simulator_test() {
