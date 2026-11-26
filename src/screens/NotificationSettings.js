@@ -192,7 +192,7 @@ const NotificationSettings = () => {
                 mt="4px"
               >
                 <VStack alignItems="center" flex="1">
-                  <Text fontSize="12px" color="gray.400" fontWeight="500">
+                  <Text fontSize="12px" color="gray.600" fontWeight="500">
                     From
                   </Text>
                   <Text fontSize="18px" fontWeight="700" color="primary.400">
@@ -203,7 +203,7 @@ const NotificationSettings = () => {
                   -
                 </Text>
                 <VStack alignItems="center" flex="1">
-                  <Text fontSize="12px" color="gray.400" fontWeight="500">
+                  <Text fontSize="12px" color="gray.600" fontWeight="500">
                     To
                   </Text>
                   <Text fontSize="18px" fontWeight="700" color="primary.400">

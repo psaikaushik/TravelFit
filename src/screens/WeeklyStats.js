@@ -149,25 +149,25 @@ const WeeklyStats = () => {
             {/* Summary Cards */}
             <HStack space="3">
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Total Steps</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Total Steps</Text>
                 <Text fontSize="20px" fontWeight="800" color="primary.400" testID="statistics-week-total">
                   {prettifyNum(weekTotal)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">{stepsToDistance(weekTotal)} km</Text>
+                <Text fontSize="11px" color="gray.600">{stepsToDistance(weekTotal)} km</Text>
               </Box>
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Daily Avg</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Daily Avg</Text>
                 <Text fontSize="20px" fontWeight="800" color="secondary.900">
                   {prettifyNum(weekAvg)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">steps/day</Text>
+                <Text fontSize="11px" color="gray.600">steps/day</Text>
               </Box>
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Best Day</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Best Day</Text>
                 <Text fontSize="20px" fontWeight="800" color="green.600">
                   {prettifyNum(weekBest)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">steps</Text>
+                <Text fontSize="11px" color="gray.600">steps</Text>
               </Box>
             </HStack>
 
@@ -226,7 +226,7 @@ const WeeklyStats = () => {
                       <Text fontSize="14px" fontWeight={day.isToday ? '700' : '500'} color="primary.400">
                         {day.isToday ? 'Today' : day.fullLabel}
                       </Text>
-                      <Text fontSize="12px" color="gray.400">{stepsToDistance(day.steps)} km</Text>
+                      <Text fontSize="12px" color="gray.600">{stepsToDistance(day.steps)} km</Text>
                     </VStack>
                     <Text fontSize="16px" fontWeight="700" color="primary.400">
                       {prettifyNum(day.steps)}
@@ -244,18 +244,18 @@ const WeeklyStats = () => {
             {/* Summary Cards */}
             <HStack space="3">
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">30-Day Total</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">30-Day Total</Text>
                 <Text fontSize="20px" fontWeight="800" color="primary.400" testID="statistics-month-total">
                   {prettifyNum(monthTotal)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">{stepsToDistance(monthTotal)} km</Text>
+                <Text fontSize="11px" color="gray.600">{stepsToDistance(monthTotal)} km</Text>
               </Box>
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Daily Avg</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Daily Avg</Text>
                 <Text fontSize="20px" fontWeight="800" color="secondary.900">
                   {prettifyNum(monthAvg)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">steps/day</Text>
+                <Text fontSize="11px" color="gray.600">steps/day</Text>
               </Box>
             </HStack>
 
@@ -287,7 +287,7 @@ const WeeklyStats = () => {
                           ]}
                         />
                       </View>
-                      <Text fontSize="11px" color="gray.400">
+                      <Text fontSize="11px" color="gray.600">
                         Avg: {prettifyNum(week.avg)} steps/day
                       </Text>
                     </VStack>

@@ -82,7 +82,7 @@ const TripHistory = () => {
             <Text fontSize="18px" fontWeight="600" color="gray.600" testID="trip-history-empty">
               No trips yet
             </Text>
-            <Text fontSize="14px" color="gray.400" textAlign="center">
+            <Text fontSize="14px" color="gray.600" textAlign="center">
               Past trips appear here when you start another route.
             </Text>
           </VStack>
@@ -100,7 +100,7 @@ const TripHistory = () => {
             >
               <HStack justifyContent="space-between" alignItems="flex-start">
                 <VStack flex="1" space="1">
-                  <Text fontSize="11px" color="gray.400" fontWeight="500">
+                  <Text fontSize="11px" color="gray.600" fontWeight="500">
                     {trip.startedTime
                       ? moment(trip.startedTime).format('MMM D, YYYY')
                       : ''}
@@ -112,7 +112,7 @@ const TripHistory = () => {
                     {trip.starting?.title || 'Unknown'}
                   </Text>
                   <HStack alignItems="center" space="1">
-                    <Text fontSize="12px" color="gray.400">{'→'}</Text>
+                    <Text fontSize="12px" color="gray.600">{'→'}</Text>
                     <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1}>
                       {trip.destination?.title || 'Unknown'}
                     </Text>
@@ -136,25 +136,25 @@ const TripHistory = () => {
 
               <HStack mt="12px" space="4" flexWrap="wrap">
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Distance</Text>
+                  <Text fontSize="11px" color="gray.600">Distance</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {trip.distance ? prettifyNum(trip.distance.toFixed(1)) : '0'} km
                   </Text>
                 </VStack>
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Steps</Text>
+                  <Text fontSize="11px" color="gray.600">Steps</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {prettifyNum(trip.steps || 0)}
                   </Text>
                 </VStack>
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Walked</Text>
+                  <Text fontSize="11px" color="gray.600">Walked</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {stepsToDistance(trip.steps)} km
                   </Text>
                 </VStack>
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Duration</Text>
+                  <Text fontSize="11px" color="gray.600">Duration</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {formatDuration(trip.startedTime, trip.completedDate)}
                   </Text>
@@ -181,7 +181,7 @@ const TripHistory = () => {
                 accessibilityLabel="Remove this trip from history"
                 accessibilityRole="button"
               >
-                <Text fontSize="12px" color="red.400" fontWeight="500">
+                <Text fontSize="12px" color="red.700" fontWeight="500">
                   Remove
                 </Text>
               </Pressable>
