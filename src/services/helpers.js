@@ -1,13 +1,13 @@
 import AppleHealthKit from 'react-native-health'
+import { Platform } from 'react-native'
 import moment from 'moment'
-import { getUserData, getUserSettings, setUserSettings } from './database'
+import { getCurrentAccountId, getUserData, getUserSettings, setUserSettings } from './database'
 import {
-  calcDistance,
   getCityDetails,
   getLocationDetails,
   getPlaceDetails
 } from './maps'
-import { hasCompletedPaymentFlow } from './subscription'
+import { hasActiveSubscription } from './subscription'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export const calcSteps = (steps = 0) => {
@@ -16,8 +16,7 @@ export const calcSteps = (steps = 0) => {
 
 export const getDestinationStep = (idx, route) => {
   if (idx < 0 || !route || route.length === 0) return null
-  if (idx >= route.length - 1) return route
-  return route.slice(0, idx)
+  return route.slice(0, idx + 1)
 }
 
 export const prettifyNum = (num = 0) => {
@@ -35,80 +34,68 @@ export const stepsToDistance = (steps = 0) => {
 }
 
 export const calcProgress = (steps = 0, distance = 1) => {
-  return (calcSteps(steps) / distance) * 100
+  if (!(distance > 0)) return 0
+  return Math.max(0, Math.min((calcSteps(steps) / distance) * 100, 100))
 }
 
 export const calcRemaining = (steps = 0, distance = 1) => {
-  return prettifyNum((((distance - calcSteps(steps)) * 100) / 100).toFixed(2))
+  return prettifyNum(Math.max(distance - calcSteps(steps), 0).toFixed(2))
 }
 
-export const getStepsNumAtDate = async (date = null) =>
-  new Promise((resolve, reject) => {
-    AppleHealthKit.getDailyStepCountSamples(
-      {
-        startDate: date
-      },
-      (callbackError, results) => {
-        if (callbackError) {
-          console.log('getStepsNum Error', callbackError)
-          resolve(callbackError)
-        } else {
-          resolve(results)
-        }
-      }
-    )
-  })
+export const calcDistance = (start, end) => {
+  const radians = (value) => value * Math.PI / 180
+  const latitude = radians(end.latitude - start.latitude)
+  const longitude = radians(end.longitude - start.longitude)
+  const a = Math.sin(latitude / 2) ** 2 + Math.sin(longitude / 2) ** 2 *
+    Math.cos(radians(start.latitude)) * Math.cos(radians(end.latitude))
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(1 - a, 0)))
+}
 
-export const getStepsNum = async (date = null) =>
-  new Promise((resolve, reject) => {
-    AppleHealthKit.getAuthStatus(
-      {
-        permissions: {
-          read: [AppleHealthKit.Constants.Permissions.StepCount],
-          write: []
-        }
-      },
-      async (error, result) => {
-        console.log('getAuthStatus', error, result)
-        if (
-          !!error ||
-          !result ||
-          (result?.permissions?.read || []).length === 0
-        ) {
-          resolve(error)
-        } else if (result.permissions.read[0] !== 1) {
-          resolve('notAllowed')
-        } else {
-          AppleHealthKit.getDailyStepCountSamples(
-            {
-              startDate: date
-            },
-            (callbackError, results) => {
-              if (callbackError) {
-                console.log('getStepsNum Error', callbackError)
-                resolve(callbackError)
-              } else {
-                console.log('getDailyStepCountSamples results', results.length)
-                resolve(results)
-              }
-            }
-          )
-        }
-      }
+export const getTripProgressIndex = (steps, distance, route) => {
+  if (!route?.length) return -1
+
+  const fraction = calcProgress(steps, distance) / 100
+  if (fraction === 0) return 0
+  if (fraction === 1) return route.length - 1
+
+  const distances = [0]
+  for (let i = 1; i < route.length; i++) {
+    distances.push(distances[i - 1] + calcDistance(route[i - 1], route[i]))
+  }
+  const traveled = distances[distances.length - 1] * fraction
+  const nextPoint = distances.findIndex((value) => value > traveled)
+  return nextPoint < 0 ? 0 : nextPoint - 1
+}
+
+export const getStepsNumAtDate = async (
+  date = moment().startOf('day').toISOString(),
+  uid = getCurrentAccountId()
+) => {
+  if (Platform.OS !== 'ios' || !uid || !AppleHealthKit?.getDailyStepCountSamples) return null
+  const settings = await getUserSettings(uid)
+  if (!settings.health || getCurrentAccountId() !== uid) return null
+
+  // HealthKit intentionally hides read authorization. An empty result can mean
+  // either that Health has no samples for this interval or that access is off.
+  return new Promise((resolve) => {
+    AppleHealthKit.getDailyStepCountSamples(
+      { startDate: date },
+      (error, samples) => resolve(
+        !error && getCurrentAccountId() === uid && Array.isArray(samples) ? samples : null
+      )
     )
   })
+}
 
 export const getStats = async () => {
   const stats = [
-    { id: 'today', date: moment().toISOString() },
-    { id: 'yesterday', date: moment().subtract(1, 'days').toISOString() },
-    { id: 'OneDayBefore', date: moment().subtract(2, 'days').toISOString() },
-    { id: 'TwoDaysBefore', date: moment().subtract(3, 'days').toISOString() },
-    { id: 'ThreeDaysBefore', date: moment().subtract(4, 'days').toISOString() }
+    { id: 'today', date: moment().startOf('day').toISOString() },
+    { id: 'yesterday', date: moment().subtract(1, 'days').startOf('day').toISOString() },
+    { id: 'OneDayBefore', date: moment().subtract(2, 'days').startOf('day').toISOString() },
+    { id: 'TwoDaysBefore', date: moment().subtract(3, 'days').startOf('day').toISOString() },
+    { id: 'ThreeDaysBefore', date: moment().subtract(4, 'days').startOf('day').toISOString() }
   ]
-  const results = await getStepsNumAtDate(stats[4].date)
-  console.log('results', results)
-  if (!results) return stats
+  const results = (await getStepsNumAtDate(stats[4].date)) || []
 
   for (let i = 0; i < stats.length; i++) {
     const stat = stats[i]
@@ -165,7 +152,7 @@ export const getTopPlace = (places) => {
       (place.types || []).length * 10 +
       (place.user_ratings_total || 0) +
       (place.rating || 0) * 20 +
-      place.photos.length * 15
+      (place.photos || []).length * 15
   })
   return places.sort((a, b) => b.score - a.score)[0]
 }
@@ -242,186 +229,107 @@ export const calcBreakpointsProgress = (
 }
 
 export const checkCity = async (destinationPoint, oldCities = []) => {
-  console.log('checkCity', destinationPoint)
-  const newCities = []
-  if (!destinationPoint) return newCities
+  if (!destinationPoint) return []
   const data = await getLocationDetails(destinationPoint)
-  const { results } = data || {}
-  let city = null
-  for (let r = 0; r < (results || []).length; r++) {
-    const { address_components } = results[r]
-    for (let t = 0; t < address_components.length; t++) {
-      const address = address_components[t]
-      const types = address.types || []
-      if (types.find((x) => x === 'locality')) {
-        city = { name: address.long_name }
-      }
-      if (
-        !city?.name &&
-        types.find((x) => x === 'administrative_area_level_2')
-      ) {
-        city = { name: address.long_name }
-      }
-      if (types.find((x) => x === 'administrative_area_level_1')) {
-        city.state = address.long_name
-      }
-      if (types.find((x) => x === 'country')) {
-        city.country = address.short_name
-      }
-    }
-    if (!!city) break
-  }
+  for (const result of data?.results || []) {
+    const components = result.address_components || []
+    const findComponent = (type) => components.find(({ types }) => types?.includes(type))
+    const locality = findComponent('locality') || findComponent('administrative_area_level_2')
+    if (!locality?.long_name) continue
 
-  if (!city?.name) return newCities
-  const cityName = `${city.name}, ${city.state || ''}, ${city.country || ''}`
-  const details = await getCityDetails(city.name)
-  const prediction =
-    (details?.predictions || []).length > 0 ? details.predictions[0] : null
-  if (!prediction) return newCities
-  const place = await getPlaceDetails(prediction.place_id)
+    const name = [
+      locality.long_name,
+      findComponent('administrative_area_level_1')?.long_name,
+      findComponent('country')?.short_name
+    ].filter(Boolean).join(', ')
+    if (oldCities.some((city) => city.name === name)) return []
 
-  if (!!city && !oldCities.find((x) => x.place_id === prediction.place_id)) {
-    newCities.push({
-      place_id: prediction.place_id,
-      name: cityName,
-      photos: place.result.photos || []
-    })
+    const details = await getCityDetails(name)
+    const prediction = details?.predictions?.[0]
+    if (!prediction || oldCities.some((city) => city.place_id === prediction.place_id)) return []
+
+    const place = await getPlaceDetails(prediction.place_id)
+    return [{ place_id: prediction.place_id, name, photos: place?.result?.photos || [] }]
   }
-  return newCities
+  return []
 }
 
-export const updateProgress = async (queryClient) => {
-  // Everytime Progress Changes
-  const { name, startedTime, createdTime } = (await getUserData()) || {}
-  const userSettings = (await getUserSettings()) || {}
-  const {
-    steps,
-    route,
-    distance,
-    breakPoints,
-    badges,
-    cities,
-    health,
-    completed
-  } = userSettings
-  if (!name) return { success: false }
+export const hasActiveTrip = (settings) => !!settings?.curatedRouteId &&
+  settings.route?.length > 0 && settings.distance > 0 && Array.isArray(settings.badges)
 
-  try {
-    // Get steps from startedTime till now
-    const stepsRes = await getStepsNum(
-      startedTime || createdTime || moment().startOf('day').toISOString()
-    )
-    if (!stepsRes || !Array.isArray(stepsRes) || !health)
-      return {
-        success: false,
-        error: 'Could not fetch steps count from Apple Health'
-      }
-    if (!route || !distance || !breakPoints)
-      return { success: false, error: 'No trip is configured' }
+const syncTrip = async (uid, queryClient) => {
+  const settings = (await getUserSettings(uid)) || {}
+  if (Platform.OS !== 'ios' || !settings.health) return { status: 'off' }
+  if (!hasActiveTrip(settings)) return { status: 'no-trip' }
+  if (settings.completed) return { status: 'complete' }
 
-    const totalSteps = stepsRes.reduce((sum, item) => sum + item.value, 0) // 122280
-    const progress = calcSteps(totalSteps)
-    const radius = getRadius(distance)
+  const { createdTime } = (await getUserData(uid)) || {}
+  const start = settings.startedTime || createdTime || moment().startOf('day').toISOString()
+  const samples = await getStepsNumAtDate(start, uid)
+  if (!samples) return { status: 'unavailable' }
+  if (samples.length === 0) return { status: 'empty' }
 
-    console.log('progress', totalSteps, steps, progress, distance, completed)
+  const { steps = 0, distance, badges } = settings
+  const totalSteps = samples.reduce((sum, item) => sum + (Number(item?.value) || 0), 0)
+  // Health access can be restricted to recent records. Keep recorded trip progress
+  // when a partial query returns fewer steps, and rebase only when the trip resets.
+  if (totalSteps <= steps) return { status: 'ready' }
 
-    // Check if total steps has changed
-    if ((totalSteps === steps && progress < distance) || !!completed)
-      return {
-        success: false,
-        error: 'Total steps did not change or trip is completed'
-      }
+  const traveled = Math.min(Number(calcSteps(totalSteps)), distance)
+  const newBadges = badges.map((badge) => ({
+    ...badge,
+    progress: Math.min(traveled / badge.distance * 100, 100)
+  }))
+  const alerts = newBadges.filter((badge, index) => badge.progress === 100 && badges[index].progress < 100)
 
-    console.log('new progress')
-
-    const progressIdx = Math.round(
-      (calcProgress(totalSteps, distance) / 100) * route?.length
-    ) // 222280
-    const progressRoute = getDestinationStep(progressIdx, route)
-    const destinationPoint =
-      !!progressRoute && progressRoute.length > 0
-        ? progressRoute[progressRoute.length - 1]
-        : route[0]
-
-    console.log('new progress 1', destinationPoint)
-
-    // Calculate distance from progress to each break point
-    const newBadges = calcBreakpointsProgress(
-      progressIdx,
-      destinationPoint,
-      route,
-      breakPoints,
-      badges,
-      radius
-    )
-
-    console.log('new progress 2', newBadges.length)
-
-    //  Check if city is new then add city badge
-    const newCities = await checkCity(destinationPoint, cities)
-
-    console.log('new progress 3', newCities.length)
-
-    await setUserSettings({
-      ...userSettings,
-      steps: totalSteps,
-      badges: newBadges,
-      cities: [...cities, ...newCities],
-      completed: progress >= distance ? moment().toISOString() : undefined
-    })
-
-    await queryClient?.invalidateQueries(['settings'])
-    await queryClient?.invalidateQueries(['stats'])
-
-    const alerts = []
-    newCities.forEach((city) => {
-      alerts.push({ type: 'cities', name: city.name })
-    })
-
-    console.log('new progress 4', alerts.length)
-
-    return { success: true, alerts }
-  } catch (error) {
-    console.log(error.code, error.message)
+  const current = await getUserSettings(uid)
+  if (getCurrentAccountId() !== uid || !current?.health || current.completed ||
+      current.tripId !== settings.tripId || current.startedTime !== settings.startedTime) {
+    return { status: 'no-trip' }
   }
-  return { success: true }
+
+  const completed = traveled === distance
+  await setUserSettings({
+    ...current,
+    steps: totalSteps,
+    badges: newBadges,
+    completed: completed ? moment().toISOString() : undefined
+  }, uid)
+
+  await Promise.all([
+    queryClient?.invalidateQueries(['settings']),
+    queryClient?.invalidateQueries(['stats'])
+  ])
+
+  return { status: completed ? 'complete' : 'ready', alerts }
+}
+
+const progressSyncs = new Map()
+
+export const updateProgress = (queryClient) => {
+  const uid = getCurrentAccountId()
+  if (!uid) return Promise.resolve({ status: 'off' })
+  if (!progressSyncs.has(uid)) {
+    const sync = syncTrip(uid, queryClient)
+      .catch(() => ({ status: 'unavailable' }))
+      .finally(() => progressSyncs.delete(uid))
+    progressSyncs.set(uid, sync)
+  }
+  return progressSyncs.get(uid)
 }
 
 export const checkFlow = async (user) => {
-  // Everytime Progress Changes
-  const { name, startedTime, createdTime } = (await getUserData()) || {}
-  const userSettings = (await getUserSettings()) || {}
-  const { steps, route, distance, breakPoints, health, completed } =
-    userSettings
-  if (!user || !name) {
+  if (!user) {
     const onboardingDone = await AsyncStorage.getItem('onboarding_completed')
     return onboardingDone ? 'Welcome' : 'Onboarding'
   }
 
-  // Check if user has completed payment flow
-  const paymentFlowCompleted = await hasCompletedPaymentFlow()
-  if (!paymentFlowCompleted) {
-    return 'CreditCard'
+  const settings = (await getUserSettings(user.uid)) || {}
+  if (Platform.OS === 'ios' && !settings.healthSetupCompleted && !settings.health) {
+    return 'AppleHealth'
   }
-
-  try {
-    // Get steps from startedTime till now
-    const stepsRes = await getStepsNum(
-      startedTime || createdTime || moment().startOf('day').toISOString()
-    )
-    if (!stepsRes || !Array.isArray(stepsRes) || !health) {
-      return 'AppleHealth'
-    }
-    if (!route || !distance || !breakPoints) {
-      return 'Trip'
-    }
-  } catch (error) {
-    console.log(error.code, error.message)
-  }
-  return 'Main'
+  return hasActiveTrip(settings) ? 'Main' : 'Trip'
 }
-
-import { hasActiveSubscription } from './subscription'
 
 export const checkSubscriptionStatus = async () => {
   try {

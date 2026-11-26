@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
-import { View } from 'native-base'
+import React, { useEffect, useState } from 'react'
+import { Button, Center, Spinner, Text, VStack } from 'native-base'
 import Welcome from '../screens/Welcome'
-import VideoIntro from '../screens/VideoIntro'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import auth from '@react-native-firebase/auth'
@@ -14,51 +13,73 @@ import AppleHealth from '../screens/AppleHealth'
 import Trip from '../screens/Trip'
 import { PlaceRoutes } from './Place'
 import { checkFlow } from '../services/helpers'
+import { getUserData } from '../services/database'
+import { authErrorMessage } from '../services/authErrors'
+import { getAccountEntryRoute } from '../services/users'
 import { navigationRef } from './RootNavigation'
-import Subscription from '../screens/Subscription'
-import CreditCard from '../screens/CreditCard'
-import SubscriptionSelection from '../screens/SubscriptionSelection'
 import PrivacyPolicy from '../screens/PrivacyPolicy'
 import TripHistory from '../screens/TripHistory'
 import WeeklyStats from '../screens/WeeklyStats'
 import CuratedRoutes from '../screens/CuratedRoutes'
-import ShareProgress from '../screens/ShareProgress'
 import Onboarding from '../screens/Onboarding'
 import NotificationSettings from '../screens/NotificationSettings'
-import Challenges from '../screens/Challenges'
-import Races from '../screens/Races'
-import RaceDetail from '../screens/RaceDetail'
-import Leaderboards from '../screens/Leaderboards'
-import ShareMoment from '../screens/ShareMoment'
-import GroupDetail from '../screens/GroupDetail'
-import Referrals from '../screens/Referrals'
 
 const { Navigator, Screen } = createNativeStackNavigator()
 
 export const Routes = () => {
   const [initScreen, setInitScreen] = useState(null)
-  const [user, setUser] = useState(undefined)
+  const [bootError, setBootError] = useState(null)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    let authFlag = true
-    auth().onAuthStateChanged((_user) => {
-      if (!authFlag) return
-      authFlag = false
-      setUser(_user)
-    })
-  }, [])
-
-  useEffect(() => {
-    if (typeof user !== 'undefined') {
-      checkFlow(user).then(async (flow) => {
-        setInitScreen(flow)
-        SplashScreen.hide()
-      })
+    let settled = false
+    let started = false
+    const finish = (flow, error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      if (flow) setInitScreen(flow)
+      else setBootError(authErrorMessage(error?.code, 'TravelFit could not start. Check your connection and try again.'))
+      SplashScreen.hide()
     }
-  }, [user])
+    const timeout = setTimeout(() => finish(), 10000)
+    const unsubscribe = auth().onAuthStateChanged(async (user) => {
+      if (started || settled) return
+      started = true
+      try {
+        const flow = user && !(await getUserData(user.uid)).name
+          ? await getAccountEntryRoute(user)
+          : await checkFlow(user)
+        finish(flow)
+      } catch (error) {
+        finish(null, error)
+      }
+    })
 
-  if (!initScreen)
-    return <View style={{ flex: 1, backgroundColor: '#F3F3F6' }} />
+    return () => {
+      settled = true
+      clearTimeout(timeout)
+      unsubscribe()
+    }
+  }, [attempt])
+
+  if (!initScreen) {
+    return (
+      <Center flex={1} backgroundColor="#F3F3F6" px="6">
+        {bootError ? (
+          <VStack space="4" alignItems="center">
+            <Text textAlign="center">{bootError}</Text>
+            <Button onPress={() => {
+              setBootError(null)
+              setAttempt((value) => value + 1)
+            }}>
+              Try again
+            </Button>
+          </VStack>
+        ) : <Spinner accessibilityLabel="Starting TravelFit" />}
+      </Center>
+    )
+  }
 
   return (
     <NavigationContainer ref={navigationRef}>
@@ -69,28 +90,16 @@ export const Routes = () => {
         <Screen name="Main" component={Main} />
         <Screen name="AppleHealth" component={AppleHealth} />
         <Screen name="Trip" component={Trip} />
-        <Screen name="VideoIntro" component={VideoIntro} />
         <Screen name="Welcome" component={Welcome} />
         <Screen name="SignUp" component={SignUp} />
         <Screen name="Login" component={Login} />
         <Screen name="Reset" component={Reset} />
-        <Screen name="Subscription" component={Subscription} />
-        <Screen name="CreditCard" component={CreditCard} />
-        <Screen name="SubscriptionSelection" component={SubscriptionSelection} />
         <Screen name="PrivacyPolicy" component={PrivacyPolicy} />
         <Screen name="TripHistory" component={TripHistory} />
         <Screen name="WeeklyStats" component={WeeklyStats} />
         <Screen name="CuratedRoutes" component={CuratedRoutes} />
-        <Screen name="ShareProgress" component={ShareProgress} />
         <Screen name="Onboarding" component={Onboarding} />
         <Screen name="NotificationSettings" component={NotificationSettings} />
-        <Screen name="Challenges" component={Challenges} />
-        <Screen name="Races" component={Races} />
-        <Screen name="RaceDetail" component={RaceDetail} />
-        <Screen name="Leaderboards" component={Leaderboards} />
-        <Screen name="ShareMoment" component={ShareMoment} />
-        <Screen name="GroupDetail" component={GroupDetail} />
-        <Screen name="Referrals" component={Referrals} />
       </Navigator>
       <PlaceRoutes />
     </NavigationContainer>

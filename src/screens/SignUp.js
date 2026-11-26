@@ -5,10 +5,9 @@ import { useForm } from 'react-hook-form'
 import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
 import auth from '@react-native-firebase/auth'
-import { setProfile } from '../services/users'
-import moment from 'moment'
-import { setUserData } from '../services/database'
-import { createStripeCustomer } from '../services/api'
+
+import { getAccountEntryRoute } from '../services/users'
+import { authErrorMessage } from '../services/authErrors'
 
 const SignUp = () => {
   const { reset, navigate } = useNavigation()
@@ -30,27 +29,12 @@ const SignUp = () => {
         email,
         password
       )
-      const profile = {
-        name,
-        email,
-        createdTime: moment().startOf('day').toISOString()
-      }
-      await setProfile(profile)
-      await setUserData(profile)
-      // Create Stripe customer for this new user
-      await createStripeCustomer(email, name).catch((err) =>
-        console.log('Stripe customer will be created on CreditCard screen:', err)
-      )
-      // Navigate to credit card screen after successful signup
-      reset({
-        index: 0,
-        routes: [{ name: 'CreditCard' }]
-      })
+      const route = await getAccountEntryRoute(user, name.trim())
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (e) {
-      console.log('handleLogIn', e)
       toast.show({
         status: 'error',
-        description: e.message
+        description: authErrorMessage(e.code, 'Could not finish creating your account. Try again.')
       })
     }
   }
@@ -73,23 +57,35 @@ const SignUp = () => {
   )
 
   return (
-    <AuthScreen title="Join Us" googleEnabled={true} footer={footer}>
+    <AuthScreen title="Join Us" appleEnabled={true} footer={footer}>
       <FormInput
         id="name"
+        testID="sign-up-name"
         w="100%"
         mt="20px"
         variant="primary"
         placeholder="Name"
+        autoCorrect={false}
         control={control}
         errors={errors}
-        validation={{ required: true }}
+        validation={{
+          required: true,
+          validate: (name) => {
+            const length = name.trim().length
+            return (length > 0 && length <= 100) || 'Enter a name with 1 to 100 characters.'
+          }
+        }}
       />
       <FormInput
         id="email"
+        testID="sign-up-email"
         w="100%"
         mt="16px"
         variant="primary"
         placeholder="Email Address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
         control={control}
         errors={errors}
         validation={{
@@ -102,6 +98,7 @@ const SignUp = () => {
       />
       <FormInput
         id="password"
+        testID="sign-up-password"
         type="password"
         w="100%"
         mt="16px"
@@ -118,6 +115,7 @@ const SignUp = () => {
         isLoading={isSubmitting}
         onPress={handleSubmit(handleRegister)}
         accessibilityLabel="Create your account"
+        testID="sign-up-submit"
       >
         Register
       </Button>

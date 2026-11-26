@@ -18,6 +18,7 @@ const PrivacyPolicy = () => {
           onPress={goBack}
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          testID="privacy-back"
         >
           <BackSVG />
         </Pressable>
@@ -29,92 +30,41 @@ const PrivacyPolicy = () => {
               Privacy Policy
             </Text>
             <Text fontSize="12px" color="gray.500">
-              Last updated: February 2026
+              Last updated November 2026
             </Text>
 
             <VStack space="4">
               <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                1. Information We Collect
+                Your account
               </Text>
               <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                TravelFit collects the following information to provide our service:
-              </Text>
-              <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                - Account information: name, email address, and authentication credentials when you create an account.{'\n'}
-                - Health data: step count data from Apple HealthKit, used solely to track your virtual trip progress. We read StepCount data only.{'\n'}
-                - Payment information: processed securely through Stripe and Apple In-App Purchase. We never see or store your full card number.{'\n'}
-                - Usage data: trip routes, progress, badges, and achievements to provide the app experience.
+                Firebase Authentication handles sign-in. TravelFit stores your name, email address,
+                and account creation date in Firebase to maintain your profile.
               </Text>
 
               <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                2. How We Use Your Health Data
+                Steps and trips
               </Text>
               <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                Your health data (step count) is used exclusively to calculate your progress along your virtual trip route. We do not:{'\n\n'}
-                - Use your health data for advertising or marketing{'\n'}
-                - Share your health data with third parties{'\n'}
-                - Store your health data in iCloud{'\n'}
-                - Write any data to Apple HealthKit{'\n'}
-                - Use your health data for any purpose other than displaying your trip progress
+                With your permission, TravelFit reads step counts from Apple Health to track your
+                virtual trips, daily goal, and achievements. Your step counts, trip progress,
+                and goals are stored on this device. You can change Apple Health access in iOS Settings.
+                The app uses Apple Maps to display virtual routes.
               </Text>
 
               <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                3. Data Storage
+                Delete your account
               </Text>
               <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                Your account data is stored securely using Firebase by Google. Trip progress
-                and settings are stored locally on your device and in your Firebase account.
-                Payment data is stored and processed by Stripe and Apple, not on our servers.
+                Open Profile and choose Delete Account to remove your sign-in and profile.
+                This also clears TravelFit data for your account on this device.
               </Text>
 
               <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                4. Third-Party Services
+                Contact
               </Text>
               <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                TravelFit uses the following third-party services:{'\n\n'}
-                - Firebase (Google): Authentication, data storage, and analytics{'\n'}
-                - Stripe: Payment processing{'\n'}
-                - Apple In-App Purchase: Subscription management on iOS{'\n'}
-                - Google Maps: Route visualization and place information{'\n'}
-                - Apple HealthKit: Step count data (with your explicit permission)
-              </Text>
-
-              <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                5. Your Rights
-              </Text>
-              <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                You have the right to:{'\n\n'}
-                - Access your personal data{'\n'}
-                - Request deletion of your account and data{'\n'}
-                - Revoke HealthKit access at any time through iOS Settings{'\n'}
-                - Cancel your subscription at any time{'\n'}
-                - Opt out of analytics data collection
-              </Text>
-
-              <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                6. Data Retention
-              </Text>
-              <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                We retain your account data for as long as your account is active. If you
-                delete your account, we will remove your personal data within 30 days.
-                Health data is not retained on our servers — it is only read from HealthKit
-                in real-time.
-              </Text>
-
-              <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                7. Children's Privacy
-              </Text>
-              <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                TravelFit is not intended for children under 13. We do not knowingly
-                collect personal information from children under 13.
-              </Text>
-
-              <Text fontSize="18px" fontWeight="600" accessibilityRole="header">
-                8. Contact Us
-              </Text>
-              <Text fontSize="14px" color="gray.700" lineHeight="22px">
-                If you have questions about this privacy policy or your data, please
-                contact us at privacy@travelfit.app.
+                For privacy questions about this beta, use Send Beta Feedback in TestFlight.
               </Text>
             </VStack>
 

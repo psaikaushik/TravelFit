@@ -1,32 +1,44 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import moment from 'moment'
+import { getCurrentAccountId, getData, storeData } from './database'
 
 const TRIP_HISTORY_KEY = 'trip_history'
 
-const getTripHistory = async () => {
+const historyWrites = new Map()
+
+const getTripHistory = async (uid, options) => {
   try {
-    const raw = await AsyncStorage.getItem(TRIP_HISTORY_KEY)
-    if (!raw || raw === 'null') return []
-    return JSON.parse(raw)
-  } catch (e) {
-    console.log('getTripHistory error:', e)
+    const trips = JSON.parse(await getData(TRIP_HISTORY_KEY, uid, options))
+    return Array.isArray(trips) ? trips : []
+  } catch (error) {
+    if (options?.strict) throw error
     return []
   }
 }
 
-const saveTripHistory = async (trips) => {
-  try {
-    await AsyncStorage.setItem(TRIP_HISTORY_KEY, JSON.stringify(trips))
-  } catch (e) {
-    console.log('saveTripHistory error:', e)
-  }
+const saveTripHistory = (trips, uid) =>
+  storeData(TRIP_HISTORY_KEY, JSON.stringify(trips), uid)
+
+// Starting a route and deleting history both edit the same saved list.
+const updateHistory = (uid, update) => {
+  const operation = (historyWrites.get(uid) || Promise.resolve()).catch(() => {}).then(async () => {
+    if (getCurrentAccountId() !== uid) return
+    const history = await getTripHistory(uid, { strict: true })
+    if (getCurrentAccountId() !== uid) return
+    const updated = update(history)
+    await saveTripHistory(updated, uid)
+    return updated
+  })
+  historyWrites.set(uid, operation)
+  return operation.finally(() => {
+    if (historyWrites.get(uid) === operation) historyWrites.delete(uid)
+  })
 }
 
-const archiveCurrentTrip = async (settings) => {
-  if (!settings?.starting || !settings?.destination) return
+const archiveCurrentTrip = async (settings, uid = getCurrentAccountId()) => {
+  if (!uid || !settings?.starting || !settings?.destination) return
 
   const trip = {
-    id: `trip_${Date.now()}`,
+    id: `trip_${settings.tripId || settings.startedTime || Date.now()}`,
     starting: settings.starting,
     destination: settings.destination,
     distance: settings.distance || 0,
@@ -34,23 +46,19 @@ const archiveCurrentTrip = async (settings) => {
     startedTime: settings.startedTime,
     completed: settings.completed || null,
     completedDate: settings.completed || moment().toISOString(),
-    badges: (settings.badges || []).filter((b) => b && b.progress > 0).length,
+    badges: (settings.badges || []).filter((b) => b && b.progress >= 100).length,
     totalBadges: (settings.badges || []).length,
     cities: (settings.cities || []).length,
     duration: settings.duration || 0
   }
 
-  const history = await getTripHistory()
-  history.unshift(trip)
-  await saveTripHistory(history)
-  return trip
+  const updated = await updateHistory(uid, (history) => [trip, ...history.filter(({ id }) => id !== trip.id)])
+  return updated ? trip : undefined
 }
 
-const deleteTripFromHistory = async (tripId) => {
-  const history = await getTripHistory()
-  const updated = history.filter((t) => t.id !== tripId)
-  await saveTripHistory(updated)
-  return updated
+const deleteTripFromHistory = async (tripId, uid = getCurrentAccountId()) => {
+  if (!uid) return
+  return updateHistory(uid, (history) => history.filter((trip) => trip.id !== tripId))
 }
 
 export { getTripHistory, saveTripHistory, archiveCurrentTrip, deleteTripFromHistory }

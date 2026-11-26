@@ -12,6 +12,7 @@ import {
 } from 'native-base'
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getCurrentAccountId } from '../services/database'
 import { getTripHistory, deleteTripFromHistory } from '../services/tripHistory'
 import { prettifyNum, stepsToDistance } from '../services/helpers'
 import moment from 'moment'
@@ -22,15 +23,28 @@ const TripHistory = () => {
   const toast = useToast()
   const queryClient = useQueryClient()
 
+  const uid = getCurrentAccountId()
+  const queryKey = ['trip-history', uid]
   const { data: trips = [], isLoading } = useQuery(
-    ['trip-history'],
-    getTripHistory
+    queryKey,
+    () => getTripHistory(uid),
+    { enabled: !!uid }
   )
 
   const handleDelete = async (tripId) => {
-    await deleteTripFromHistory(tripId)
-    queryClient.invalidateQueries(['trip-history'])
-    toast.show({ status: 'info', description: 'Trip removed from history' })
+    if (!uid || getCurrentAccountId() !== uid) return
+    try {
+      const updated = await deleteTripFromHistory(tripId, uid)
+      if (!updated || getCurrentAccountId() !== uid) return
+      await queryClient.invalidateQueries(queryKey)
+      if (getCurrentAccountId() === uid) {
+        toast.show({ status: 'info', description: 'Trip removed from history' })
+      }
+    } catch {
+      if (getCurrentAccountId() === uid) {
+        toast.show({ status: 'error', description: 'Could not remove the trip. Try again.' })
+      }
+    }
   }
 
   const formatDuration = (startedTime, completedDate) => {
@@ -47,7 +61,7 @@ const TripHistory = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F3F6' }}>
       <StatusBar barStyle="dark-content" />
       <Flex direction="row" align="center" px="16px" py="12px">
-        <Pressable onPress={goBack} p="4px" accessibilityLabel="Go back" accessibilityRole="button">
+        <Pressable onPress={goBack} p="4px" accessibilityLabel="Go back" accessibilityRole="button" testID="trip-history-back">
           <BackSVG />
         </Pressable>
         <Text fontSize="20px" fontWeight="700" ml="12px" accessibilityRole="header">
@@ -65,11 +79,11 @@ const TripHistory = () => {
         {!isLoading && trips.length === 0 && (
           <VStack alignItems="center" mt="60px" space="3">
             <Text fontSize="48px">{'🗺️'}</Text>
-            <Text fontSize="18px" fontWeight="600" color="gray.600">
+            <Text fontSize="18px" fontWeight="600" color="gray.600" testID="trip-history-empty">
               No trips yet
             </Text>
-            <Text fontSize="14px" color="gray.400" textAlign="center">
-              Completed trips will appear here.{'\n'}Start a new trip to begin your journey!
+            <Text fontSize="14px" color="gray.600" textAlign="center">
+              Past trips appear here when you start another route.
             </Text>
           </VStack>
         )}
@@ -86,19 +100,19 @@ const TripHistory = () => {
             >
               <HStack justifyContent="space-between" alignItems="flex-start">
                 <VStack flex="1" space="1">
-                  <Text fontSize="11px" color="gray.400" fontWeight="500">
+                  <Text fontSize="11px" color="gray.600" fontWeight="500">
                     {trip.startedTime
                       ? moment(trip.startedTime).format('MMM D, YYYY')
                       : ''}
                     {trip.completed
                       ? ` — ${moment(trip.completedDate).format('MMM D, YYYY')}`
-                      : ' — In progress'}
+                      : ' — Unfinished'}
                   </Text>
-                  <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1}>
+                  <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1} testID="trip-history-start">
                     {trip.starting?.title || 'Unknown'}
                   </Text>
                   <HStack alignItems="center" space="1">
-                    <Text fontSize="12px" color="gray.400">{'→'}</Text>
+                    <Text fontSize="12px" color="gray.600">{'→'}</Text>
                     <Text fontSize="16px" fontWeight="700" color="primary.400" numberOfLines={1}>
                       {trip.destination?.title || 'Unknown'}
                     </Text>
@@ -114,7 +128,7 @@ const TripHistory = () => {
                 {!trip.completed && (
                   <Box bg="orange.100" px="8px" py="3px" borderRadius="full" ml="8px">
                     <Text fontSize="11px" fontWeight="700" color="orange.700">
-                      Active
+                      Archived
                     </Text>
                   </Box>
                 )}
@@ -122,25 +136,25 @@ const TripHistory = () => {
 
               <HStack mt="12px" space="4" flexWrap="wrap">
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Distance</Text>
+                  <Text fontSize="11px" color="gray.600">Distance</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {trip.distance ? prettifyNum(trip.distance.toFixed(1)) : '0'} km
                   </Text>
                 </VStack>
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Steps</Text>
+                  <Text fontSize="11px" color="gray.600">Steps</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {prettifyNum(trip.steps || 0)}
                   </Text>
                 </VStack>
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Walked</Text>
+                  <Text fontSize="11px" color="gray.600">Walked</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {stepsToDistance(trip.steps)} km
                   </Text>
                 </VStack>
                 <VStack>
-                  <Text fontSize="11px" color="gray.400">Duration</Text>
+                  <Text fontSize="11px" color="gray.600">Duration</Text>
                   <Text fontSize="14px" fontWeight="700" color="primary.400">
                     {formatDuration(trip.startedTime, trip.completedDate)}
                   </Text>
@@ -167,7 +181,7 @@ const TripHistory = () => {
                 accessibilityLabel="Remove this trip from history"
                 accessibilityRole="button"
               >
-                <Text fontSize="12px" color="red.400" fontWeight="500">
+                <Text fontSize="12px" color="red.700" fontWeight="500">
                   Remove
                 </Text>
               </Pressable>

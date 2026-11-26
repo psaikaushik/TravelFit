@@ -5,6 +5,8 @@ const callFunction = async (name, data = {}) => {
   return result.data
 }
 
+export const deleteAccount = (expectedUid) => callFunction('deleteAccount', { expectedUid })
+
 // Stripe
 export const createStripeCustomer = (email, name) => {
   return callFunction('createCustomer', { email, name })

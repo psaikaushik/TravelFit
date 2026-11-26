@@ -1,0 +1,29 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "functions": {
+    "source": "functions",
+    "codebase": "beta"
+  },
+  "react-native": {
+    "analytics_auto_collection_enabled": false
+  },
+  "emulators": {
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 19099
+    },
+    "database": {
+      "host": "127.0.0.1",
+      "port": 19000
+    },
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 19501
+    },
+    "ui": {
+      "enabled": false
+    }
+  }
+}

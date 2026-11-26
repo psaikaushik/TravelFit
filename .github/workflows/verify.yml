@@ -1,0 +1,336 @@
+name: Verify TravelFit
+
+on:
+  pull_request:
+  push:
+    branches: [master, release/fitness-recovery]
+  workflow_dispatch:
+    inputs:
+      ios_device_archive:
+        description: Preflight an unsigned iPhone Release archive
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install pinned npm version
+        run: npm install --global npm@10.9.4
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --runInBand
+      - name: Build production JavaScript bundle
+        run: |
+          npm run bundle:ios -- \
+            --bundle-output "$RUNNER_TEMP/travelfit-main.jsbundle" \
+            --assets-dest "$RUNNER_TEMP/travelfit-assets" \
+            --max-workers 2
+      - name: Verify Cloud Functions dependencies and syntax
+        run: |
+          npm ci --prefix functions --engine-strict
+          node --check functions/index.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify account flows against local Firebase emulators
+        run: |
+          npx --yes firebase-tools@15.37.0 emulators:exec \
+            --project demo-travelfit-audit --only auth,database,functions \
+            'node scripts/verify-firebase.cjs'
+  ios-simulator:
+    if: github.ref == 'refs/heads/release/fitness-recovery' && !inputs.ios_device_archive
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      RCT_NO_LAUNCH_PACKAGER: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install JavaScript dependencies
+        run: |
+          npm install --global npm@10.9.4
+          npm ci
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Select Xcode 26
+        id: xcode
+        run: |
+          xcode=$(ruby -e 'puts Dir["/Applications/Xcode_26*.app"].max_by { |path| File.basename(path).scan(/\d+/).map(&:to_i) }')
+          test -n "$xcode"
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+          echo "build=$(xcodebuild -version | awk '/^Build version/ {print $3}')" >> "$GITHUB_OUTPUT"
+      - name: Restore CocoaPods downloads
+        id: pod-downloads
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+          key: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: travelfit-pods-${{ runner.os }}-${{ runner.arch }}-
+      - name: Restore installed CocoaPods
+        id: installed-pods
+        uses: actions/cache/restore@v4
+        with:
+          path: ios/Pods
+          key: travelfit-installed-pods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'Gemfile.lock', 'ios/Podfile.lock', 'ios/TravelFit.xcodeproj/project.pbxproj') }}
+          restore-keys: travelfit-installed-pods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-
+      - name: Install locked iOS dependencies
+        working-directory: ios
+        run: bundle exec pod install --deployment
+      - name: Save installed CocoaPods
+        if: steps.installed-pods.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios/Pods
+          key: ${{ steps.installed-pods.outputs.cache-primary-key }}
+      - name: Save CocoaPods downloads
+        if: steps.pod-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+          key: ${{ steps.pod-downloads.outputs.cache-primary-key }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure the simulator-only Firebase and Health fixtures
+        run: |
+          python3 scripts/configure-ios-simulator-fixtures.py
+          bundle exec ruby scripts/configure-ios-ui-tests.rb --simulator
+      - name: Restore native simulator build
+        id: native-build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/travelfit-derived-data/Build
+            ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
+          key: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-${{ github.sha }}
+          restore-keys: travelfit-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('package-lock.json', 'ios/Podfile.lock') }}-
+      - name: Build the Release app with Xcode simulator keychain entitlements
+        id: simulator-build
+        timeout-minutes: 30
+        run: bash scripts/run-ios-simulator-e2e.sh build
+      - name: Save native simulator build
+        if: ${{ !cancelled() && steps.native-build.outputs.cache-hit != 'true' && (steps.simulator-build.outcome == 'success' || steps.simulator-build.outcome == 'failure') }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/travelfit-derived-data/Build
+            ${{ runner.temp }}/travelfit-derived-data/ModuleCache.noindex
+          key: ${{ steps.native-build.outputs.cache-primary-key }}
+      - name: Boot the selected iPhone simulator
+        timeout-minutes: 8
+        run: bash scripts/run-ios-simulator-e2e.sh boot
+      - name: Run TravelFit end to end in the Release simulator
+        timeout-minutes: 30
+        env:
+          FUNCTIONS_DISCOVERY_TIMEOUT: '60'
+        run: |
+          npm ci --prefix functions --engine-strict
+          npx --yes firebase-tools@15.37.0 emulators:exec \
+            --project demo-travelfit-audit --only auth,database,functions \
+            'bash scripts/run-ios-simulator-e2e.sh test'
+      - name: Report simulator build diagnostics
+        if: always() && github.event.repository.private == true && steps.simulator-build.outcome == 'failure'
+        run: |
+          build="$RUNNER_TEMP/travelfit-ios-build.xcresult"
+          if [ -d "$build" ]; then
+            xcrun xcresulttool get build-results --path "$build" || true
+          fi
+      - name: Report simulator test counts
+        if: always()
+        run: |
+          result="$RUNNER_TEMP/travelfit-ios.xcresult"
+          if [ -d "$result" ]; then
+            xcrun xcresulttool get test-results summary --path "$result" 2>/dev/null |
+              jq '({totalTestCount, passedTests, failedTests, skippedTests, expectedFailures}
+                   | with_entries(select(.value | type == "number")))
+                  + {failedControls: [ .testFailures[]?.failureText
+                      | strings
+                      | match("(TravelFit (did not retain input for|did not show|could not activate)|Missing input) [a-zA-Z0-9-]{1,64}( exists=(true|false) hittable=(true|false) enabled=(true|false))?$").string ],
+                     failedLabels: [ .testFailures[]?.failureText
+                      | strings
+                      | match("Expected (?<identifier>[a-zA-Z0-9-]{1,64}) to display ").captures[0].string ],
+                     nativeFailures: [ .testFailures[]?.failureText
+                      | strings
+                      | if test("keyboard focus"; "i") then "keyboard focus"
+                        elif test("synthesize event"; "i") then "input event synthesis"
+                        elif test("matching snapshot"; "i") then "accessibility snapshot"
+                        elif test("AX loaded notification"; "i") then "accessibility startup"
+                        else empty end ]}' 2>/dev/null ||
+              echo 'Simulator test counts are unavailable.'
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event.repository.private == true
+        with:
+          name: ios-simulator-result
+          path: ${{ runner.temp }}/travelfit-ios.xcresult
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: github.event.repository.private == true && steps.simulator-build.outcome == 'failure' && !cancelled()
+        with:
+          name: ios-simulator-build-result
+          path: ${{ runner.temp }}/travelfit-ios-build.xcresult
+          if-no-files-found: ignore
+      - name: Export simulator attachments locally
+        if: always()
+        run: |
+          result="$RUNNER_TEMP/travelfit-ios.xcresult"
+          if [ -d "$result" ]; then
+            xcrun xcresulttool export attachments \
+              --path "$result" \
+              --output-path "$RUNNER_TEMP/travelfit-ios-attachments" >/dev/null 2>&1
+          fi
+      - name: Stage public simulator screenshots
+        if: always() && github.event.repository.private != true
+        run: |
+          python3 - "$RUNNER_TEMP/travelfit-ios-attachments" "$RUNNER_TEMP/travelfit-ios-screenshots" <<'PY'
+          from pathlib import Path
+          import shutil
+          import sys
+
+          source, destination = map(Path, sys.argv[1:])
+          png_signature = b'\x89PNG\r\n\x1a\n'
+          count = 0
+          for path in sorted(source.glob('*')):
+              if path.suffix.lower() != '.png' or path.is_symlink() or not path.is_file():
+                  continue
+              with path.open('rb') as image:
+                  if image.read(len(png_signature)) != png_signature:
+                      continue
+              count += 1
+              destination.mkdir(exist_ok=True)
+              shutil.copyfile(path, destination / f'screenshot-{count:02d}.png')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event.repository.private != true
+        with:
+          name: ios-simulator-screenshots
+          path: ${{ runner.temp }}/travelfit-ios-screenshots/*.png
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event.repository.private == true
+        with:
+          name: ios-simulator-attachments
+          path: ${{ runner.temp }}/travelfit-ios-attachments
+          if-no-files-found: ignore
+  ios-device-archive:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/fitness-recovery' && inputs.ios_device_archive
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      RCT_NO_LAUNCH_PACKAGER: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install locked JavaScript dependencies
+        run: |
+          npm install --global npm@10.9.4
+          npm ci --engine-strict
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Select Xcode 26
+        run: |
+          xcode=$(ruby -e 'puts Dir["/Applications/Xcode_26*.app"].max_by { |path| File.basename(path).scan(/\d+/).map(&:to_i) }')
+          test -n "$xcode"
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - name: Install locked iOS dependencies
+        working-directory: ios
+        run: bundle exec pod install --deployment
+      - name: Add demo configuration for the archive build only
+        run: |
+          if git grep -q 'ios-simulator-fixture' -- index.js; then
+            echo 'The device archive must use the unmodified app entry point.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          config = {
+              'API_KEY': 'AIza' + '0' * 35,
+              'BUNDLE_ID': 'com.travelfit.app',
+              'DATABASE_URL': 'https://demo-travelfit-archive.firebaseio.com',
+              'GCM_SENDER_ID': '100000000000',
+              'GOOGLE_APP_ID': '1:100000000000:ios:0000000000000000000000',
+              'IS_ANALYTICS_ENABLED': False,
+              'PLIST_VERSION': '1',
+              'PROJECT_ID': 'demo-travelfit-archive',
+          }
+          with Path('ios/GoogleService-Info.local.plist').open('xb') as file:
+              plistlib.dump(config, file)
+          PY
+          git diff --exit-code -- index.js ios/TravelFit/Info.plist
+      - name: Archive the unsigned iPhone Release app
+        timeout-minutes: 30
+        run: |
+          xcodebuild -quiet archive \
+            -workspace ios/TravelFit.xcworkspace -scheme TravelFit \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/travelfit-device-derived-data" \
+            -archivePath "$RUNNER_TEMP/TravelFitDevice.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
+      - name: Verify the unsigned device archive contents
+        run: |
+          python3 - "$RUNNER_TEMP/TravelFitDevice.xcarchive" "$GITHUB_RUN_NUMBER" <<'PY'
+          import plistlib
+          import re
+          import runpy
+          import sys
+          from pathlib import Path
+
+          app = Path(sys.argv[1]) / 'Products/Applications/TravelFit.app'
+          with (app / 'Info.plist').open('rb') as file:
+              info = plistlib.load(file)
+          version = info.get('CFBundleShortVersionString', '')
+          if (info.get('CFBundleIdentifier') != 'com.travelfit.app'
+                  or info.get('CFBundleSupportedPlatforms') != ['iPhoneOS']
+                  or info.get('CFBundleVersion') != sys.argv[2]
+                  or not re.fullmatch(r'\d+(\.\d+){1,2}', version)
+                  or not (app / 'main.jsbundle').stat().st_size):
+              raise SystemExit('Unexpected unsigned iPhone app archive metadata or bundle.')
+          with (app / 'GoogleService-Info.plist').open('rb') as file:
+              config = plistlib.load(file)
+          if config.get('PROJECT_ID') != 'demo-travelfit-archive':
+              raise SystemExit('The unsigned archive must contain the synthetic Firebase app.')
+          runpy.run_path('scripts/verify-ios-release.py')['verify_privacy'](app)
+          print(f'Verified unsigned TravelFit {version} ({sys.argv[2]}) iPhone archive and privacy manifests.')
+          PY

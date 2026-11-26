@@ -1,13 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getCurrentAccountId, getData, storeData } from './database'
 import moment from 'moment'
 import { getStepsNumAtDate } from './helpers'
 
 const STREAK_KEY = 'streak_data'
 const DEFAULT_DAILY_GOAL = 10000
 
-const getStreakData = async () => {
+const getStreakData = async (uid) => {
   try {
-    const raw = await AsyncStorage.getItem(STREAK_KEY)
+    const raw = await getData(STREAK_KEY, uid)
     if (!raw || raw === 'null') {
       return {
         dailyGoal: DEFAULT_DAILY_GOAL,
@@ -32,18 +32,21 @@ const getStreakData = async () => {
   }
 }
 
-const saveStreakData = async (data) => {
+const saveStreakData = async (data, uid) => {
   try {
-    await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(data))
+    await storeData(STREAK_KEY, JSON.stringify(data), uid)
   } catch (e) {
     console.log('saveStreakData error:', e)
   }
 }
 
 const setDailyGoal = async (goal) => {
-  const data = await getStreakData()
+  const uid = getCurrentAccountId()
+  if (!uid) return
+
+  const data = await getStreakData(uid)
   data.dailyGoal = goal
-  await saveStreakData(data)
+  await saveStreakData(data, uid)
   return data
 }
 
@@ -61,52 +64,28 @@ const getTodaySteps = async () => {
   }
 }
 
-const getDailyStepsForDate = async (date) => {
-  try {
-    const startDate = moment(date).startOf('day').toISOString()
-    const results = await getStepsNumAtDate(startDate)
-    if (!results || !Array.isArray(results)) return 0
-    return results
-      .filter((x) => moment(date).isSame(x.startDate, 'day'))
-      .reduce((sum, item) => sum + item.value, 0)
-  } catch (e) {
-    return 0
-  }
-}
+// If today's goal is still in progress, a streak can continue from yesterday.
+const calculateStreak = async (uid = getCurrentAccountId()) => {
+  const data = await getStreakData(uid)
+  if (!uid || uid !== getCurrentAccountId()) return data
 
-/**
- * Recalculates the streak by looking back through recent days.
- * A streak is consecutive days where steps >= dailyGoal.
- * Today counts if goal is already met.
- */
-const calculateStreak = async () => {
-  const data = await getStreakData()
-  const { dailyGoal } = data
   const today = moment().startOf('day')
+  const earliest = today.clone().subtract(364, 'days')
+  const samples = await getStepsNumAtDate(earliest.toISOString())
+  if (!samples?.length || uid !== getCurrentAccountId()) return data
 
-  // Check today first
-  const todaySteps = await getTodaySteps()
-  const goalReachedToday = todaySteps >= dailyGoal
-
-  let streak = 0
-
-  // If today's goal is met, count today
-  if (goalReachedToday) {
-    streak = 1
+  const totals = new Map()
+  for (const sample of samples) {
+    const date = moment(sample.startDate).format('YYYY-MM-DD')
+    totals.set(date, (totals.get(date) || 0) + (Number(sample.value) || 0))
   }
 
-  // Look backwards from yesterday (or today if not met, we break immediately)
-  const startDay = goalReachedToday ? 1 : 0
-  for (let i = startDay; i < 365; i++) {
-    const checkDate = moment(today).subtract(i === 0 ? 0 : i, 'days')
-    if (i === 0 && goalReachedToday) continue // already counted today
-
-    const daySteps = await getDailyStepsForDate(checkDate)
-    if (daySteps >= dailyGoal) {
-      streak++
-    } else {
-      break
-    }
+  const goalReachedToday = (totals.get(today.format('YYYY-MM-DD')) || 0) >= data.dailyGoal
+  const day = today.clone().subtract(goalReachedToday ? 0 : 1, 'days')
+  let streak = 0
+  while (!day.isBefore(earliest) && (totals.get(day.format('YYYY-MM-DD')) || 0) >= data.dailyGoal) {
+    streak++
+    day.subtract(1, 'days')
   }
 
   const longestStreak = Math.max(data.longestStreak || 0, streak)
@@ -117,10 +96,12 @@ const calculateStreak = async () => {
     longestStreak,
     goalReachedToday,
     goalReachedDate: goalReachedToday ? today.toISOString() : data.goalReachedDate,
-    lastStreakDate: streak > 0 ? today.toISOString() : data.lastStreakDate
+    lastStreakDate: streak > 0
+      ? today.clone().subtract(goalReachedToday ? 0 : 1, 'days').toISOString()
+      : data.lastStreakDate
   }
 
-  await saveStreakData(updatedData)
+  await saveStreakData(updatedData, uid)
   return updatedData
 }
 
@@ -129,7 +110,8 @@ const calculateStreak = async () => {
  * Also returns whether this is the FIRST time it was reached today (for celebration).
  */
 const checkDailyGoal = async () => {
-  const data = await getStreakData()
+  const uid = getCurrentAccountId()
+  const data = await getStreakData(uid)
   const todaySteps = await getTodaySteps()
   const goalMet = todaySteps >= data.dailyGoal
   const today = moment().startOf('day').toISOString()
@@ -144,7 +126,7 @@ const checkDailyGoal = async () => {
 
   if (isFirstTimeToday) {
     // Mark as celebrated and recalculate streak
-    const updated = await calculateStreak()
+    const updated = await calculateStreak(uid)
     return {
       goalMet: true,
       isFirstTimeToday: true,
@@ -172,20 +154,13 @@ const checkDailyGoal = async () => {
 const getStreakSummary = async () => {
   const data = await getStreakData()
   const todaySteps = await getTodaySteps()
-  const today = moment().startOf('day')
-
-  // If goalReachedDate is not today, reset goalReachedToday
-  const goalReachedToday = data.goalReachedDate &&
-    moment(data.goalReachedDate).isSame(today, 'day')
-    ? data.goalReachedToday
-    : todaySteps >= data.dailyGoal
 
   return {
     todaySteps,
     dailyGoal: data.dailyGoal,
     currentStreak: data.currentStreak,
     longestStreak: data.longestStreak || 0,
-    goalReachedToday,
+    goalReachedToday: todaySteps >= data.dailyGoal,
     progress: Math.min((todaySteps / data.dailyGoal) * 100, 100)
   }
 }

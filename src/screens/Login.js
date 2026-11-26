@@ -5,9 +5,9 @@ import { Text, Button, Flex, useToast } from 'native-base'
 import { useForm } from 'react-hook-form'
 import FormInput from '../components/FormInput'
 import AuthScreen from '../components/AuthScreen'
-import { getProfile } from '../services/users'
-import { setUserData } from '../services/database'
-import { createStripeCustomer } from '../services/api'
+
+import { getAccountEntryRoute } from '../services/users'
+import { authErrorMessage } from '../services/authErrors'
 
 const Login = () => {
   const { reset, navigate } = useNavigation()
@@ -30,24 +30,12 @@ const Login = () => {
     try {
       const { email, password } = data
       const { user } = await auth().signInWithEmailAndPassword(email, password)
-      console.log('user', user)
-      const profile = await getProfile()
-      console.log('profile', profile)
-      await setUserData(profile)
-      // Ensure Stripe customer exists for this user
-      await createStripeCustomer(profile?.email || email, profile?.name).catch((err) =>
-        console.log('Stripe customer will be created on CreditCard screen:', err)
-      )
-      // Navigate to credit card screen after successful login
-      reset({
-        index: 0,
-        routes: [{ name: 'CreditCard' }]
-      })
+      const route = await getAccountEntryRoute(user)
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (e) {
-      console.log('handleLogIn', e)
       toast.show({
         status: 'error',
-        description: e.message
+        description: authErrorMessage(e.code, 'Could not log in. Try again.')
       })
     }
   }
@@ -76,13 +64,17 @@ const Login = () => {
   )
 
   return (
-    <AuthScreen title="Welcome back" googleEnabled={true} footer={footer}>
+    <AuthScreen title="Welcome back" appleEnabled={true} footer={footer}>
       <FormInput
         id="email"
+        testID="log-in-email"
         w="100%"
         mt="30px"
         variant="primary"
         placeholder="Email Address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
         control={control}
         errors={errors}
         validation={{
@@ -95,6 +87,7 @@ const Login = () => {
       />
       <FormInput
         id="password"
+        testID="log-in-password"
         type="password"
         w="100%"
         mt="16px"
@@ -112,6 +105,7 @@ const Login = () => {
           variant="link"
           width="auto"
           onPress={handleReset}
+          testID="log-in-forgot-password"
         >
           Forgot password
         </Button>
@@ -123,6 +117,7 @@ const Login = () => {
         isLoading={isSubmitting}
         onPress={handleSubmit(handleLogIn)}
         accessibilityLabel="Log in to your account"
+        testID="log-in-submit"
       >
         Log in
       </Button>

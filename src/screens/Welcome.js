@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useIsFocused, useNavigation } from '@react-navigation/native'
 import {
   SafeAreaView,
@@ -10,18 +10,16 @@ import {
   Alert,
   Platform
 } from 'react-native'
-import { GoogleSignin } from '@react-native-google-signin/google-signin'
 import { appleAuth, AppleButton } from '@invertase/react-native-apple-authentication'
 import auth from '@react-native-firebase/auth'
-import GoogleIcon from '../assets/icons/google.svg'
-import { getProfile, setProfile } from '../services/users'
-import { setUserData } from '../services/database'
-import { createStripeCustomer } from '../services/api'
-import moment from 'moment'
+
+import { authErrorMessage } from '../services/authErrors'
+import { getAccountEntryRoute } from '../services/users'
 
 const Welcome = () => {
   const { navigate, reset } = useNavigation()
   const isFocused = useIsFocused()
+  const [appleLoading, setAppleLoading] = useState(false)
 
   const handleRegister = () => {
     navigate('SignUp')
@@ -31,56 +29,8 @@ const Welcome = () => {
     navigate('Login')
   }
 
-  const handleGoogleSignIn = async () => {
-    try {
-      // Configure Google Sign-In
-      await GoogleSignin.configure({
-        webClientId: '10048863785-mv1ommb6ja9djftbnnkrnh5cskd7850p.apps.googleusercontent.com',
-        offlineAccess: true,
-      })
-
-      // Check if your device supports Google Play
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
-      
-      // Get the users ID token
-      const { idToken } = await GoogleSignin.signIn()
-
-      // Create a Google credential with the token
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken)
-
-      // Sign-in the user with the credential
-      const { user } = await auth().signInWithCredential(googleCredential)
-      
-      // Create or get user profile
-      let profile = await getProfile()
-      if (!profile) {
-        profile = {
-          name: user.displayName,
-          email: user.email,
-          createdTime: moment().startOf('day').toISOString()
-        }
-        await setProfile(profile)
-      }
-      await setUserData(profile)
-      
-      // Navigate to credit card screen after successful Google sign-in
-      reset({
-        index: 0,
-        routes: [{ name: 'CreditCard' }]
-      })
-    } catch (error) {
-      console.log('Google Sign-In Error:', error)
-      if (error.code !== 'SIGN_IN_CANCELLED') {
-        Alert.alert(
-          'Sign In Error',
-          'Failed to sign in with Google. Please try again.',
-          [{ text: 'OK' }]
-        )
-      }
-    }
-  }
-
   const handleAppleSignIn = async () => {
+    setAppleLoading(true)
     try {
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
@@ -94,31 +44,16 @@ const Welcome = () => {
       const { identityToken, nonce } = appleAuthRequestResponse
       const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce)
       const { user } = await auth().signInWithCredential(appleCredential)
-
-      let profile = await getProfile()
-      if (!profile) {
-        const fullName = appleAuthRequestResponse.fullName
-        const displayName = fullName
-          ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim()
-          : user.displayName || ''
-        profile = {
-          name: displayName,
-          email: user.email || appleAuthRequestResponse.email || '',
-          createdTime: moment().startOf('day').toISOString()
-        }
-        await setProfile(profile)
-      }
-      await setUserData(profile)
-      await createStripeCustomer(profile.email, profile.name).catch(() => {})
-      reset({
-        index: 0,
-        routes: [{ name: 'CreditCard' }]
-      })
+      const fullName = appleAuthRequestResponse.fullName
+      const name = [fullName?.givenName, fullName?.familyName].filter(Boolean).join(' ')
+      const route = await getAccountEntryRoute(user, name || user.displayName)
+      if (route) reset({ index: 0, routes: [{ name: route }] })
     } catch (error) {
-      console.log('Apple Sign-In Error:', error)
       if (error.code !== appleAuth.Error.CANCELED) {
-        Alert.alert('Sign In Error', 'Failed to sign in with Apple. Please try again.')
+        Alert.alert('Sign In Error', authErrorMessage(error.code, 'Failed to sign in with Apple. Please try again.'))
       }
+    } finally {
+      setAppleLoading(false)
     }
   }
 
@@ -132,14 +67,10 @@ const Welcome = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1A2225' }}>
       <Text style={styles.appName}>TravelFit</Text>
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text style={styles.title} accessibilityRole="header">Unleash Your Health</Text>
+        <Text style={styles.title} accessibilityRole="header">Walk here. Explore somewhere new.</Text>
       </View>
-      <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Start now, create an account">
-        <Text style={styles.welcomeText}>Start Now</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} accessibilityRole="button" accessibilityLabel="Continue with Google">
-        <GoogleIcon width={24} height={24} />
-        <Text style={styles.googleText}>Continue with Google</Text>
+      <TouchableOpacity style={styles.welcomeBtn} onPress={handleRegister} accessibilityRole="button" accessibilityLabel="Start now, create an account" testID="welcome-sign-up">
+        <Text style={styles.welcomeText}>Create an account</Text>
       </TouchableOpacity>
       {Platform.OS === 'ios' && appleAuth.isSupported && (
         <AppleButton
@@ -152,20 +83,25 @@ const Welcome = () => {
             marginBottom: 10,
             borderRadius: 20
           }}
-          onPress={handleAppleSignIn}
+          onPress={appleLoading ? undefined : handleAppleSignIn}
         />
       )}
-      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} accessibilityRole="button" accessibilityLabel="Already have an account, log in">
-        <Text style={styles.loginText}>Already have an account</Text>
+      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} accessibilityRole="button" accessibilityLabel="Already have an account, log in" testID="welcome-log-in">
+        <Text style={styles.loginText}>Log in</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.privacyBtn}
+        accessibilityRole="link"
+        testID="welcome-privacy"
+        onPress={() => navigate('PrivacyPolicy')}
+      >
+        <Text style={styles.privacyText}>Privacy Policy</Text>
       </TouchableOpacity>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flex: 1
-  },
   appName: {
     fontSize: 24,
     marginTop: 10,
@@ -174,7 +110,8 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   title: {
-    fontSize: 42,
+    fontSize: 38,
+    paddingHorizontal: 20,
     marginTop: 20,
     textAlign: 'center',
     color: '#FFFFFF',
@@ -183,7 +120,6 @@ const styles = StyleSheet.create({
   loginBtn: {
     height: 52,
     marginHorizontal: 20,
-    marginBottom: 20,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center'
@@ -192,6 +128,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFFFFF',
     fontWeight: '600'
+  },
+  privacyBtn: {
+    padding: 12,
+    marginBottom: 12,
+    alignSelf: 'center'
+  },
+  privacyText: {
+    color: '#FFFFFF',
+    textDecorationLine: 'underline'
   },
   welcomeBtn: {
     height: 52,
@@ -204,30 +149,6 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 20,
     fontWeight: '700'
-  },
-  googleBtn: {
-    height: 52,
-    marginHorizontal: 20,
-    marginBottom: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  googleText: {
-    fontSize: 18,
-    color: '#000000',
-    fontWeight: '600',
-    marginLeft: 12
   }
 })
 

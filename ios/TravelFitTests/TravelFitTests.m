@@ -1,66 +1,74 @@
 #import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
 
-#import <React/RCTLog.h>
-#import <React/RCTRootView.h>
-
-#define TIMEOUT_SECONDS 600
-#define TEXT_TO_LOOK_FOR @"Welcome to React"
-
 @interface TravelFitTests : XCTestCase
 
 @end
 
 @implementation TravelFitTests
 
-- (BOOL)findSubviewInView:(UIView *)view matching:(BOOL (^)(UIView *view))test
+- (UIView *)view:(UIView *)view withLabel:(NSString *)label
 {
-  if (test(view)) {
-    return YES;
+  if ([view.accessibilityLabel isEqualToString:label]) {
+    return view;
   }
   for (UIView *subview in [view subviews]) {
-    if ([self findSubviewInView:subview matching:test]) {
-      return YES;
+    UIView *match = [self view:subview withLabel:label];
+    if (match) {
+      return match;
     }
   }
-  return NO;
+  return nil;
 }
 
-- (void)testRendersWelcomeScreen
+- (UIView *)waitForLabel:(NSString *)label alongsideLabel:(NSString *)otherLabel
 {
-  UIViewController *vc = [[[RCTSharedApplication() delegate] window] rootViewController];
-  NSDate *date = [NSDate dateWithTimeIntervalSinceNow:TIMEOUT_SECONDS];
-  BOOL foundElement = NO;
+  NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:25];
+  while ([deadline timeIntervalSinceNow] > 0) {
+    UIView *root = UIApplication.sharedApplication.delegate.window.rootViewController.view;
+    UIView *control = [self view:root withLabel:label];
+    if (root.window && control && [self view:root withLabel:otherLabel]) {
+      return control;
+    }
+    [[NSRunLoop mainRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+  }
+  return nil;
+}
 
-  __block NSString *redboxError = nil;
-#ifdef DEBUG
-  RCTSetLogFunction(
-      ^(RCTLogLevel level, RCTLogSource source, NSString *fileName, NSNumber *lineNumber, NSString *message) {
-        if (level >= RCTLogLevelError) {
-          redboxError = message;
-        }
-      });
-#endif
+- (void)attachWindowWithName:(NSString *)name
+{
+  UIWindow *window = UIApplication.sharedApplication.delegate.window;
+  if (window && !CGRectIsEmpty(window.bounds)) {
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithBounds:window.bounds];
+    UIImage *screenshot = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+      [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:YES];
+    }];
+    XCTAttachment *attachment = [XCTAttachment attachmentWithImage:screenshot];
+    attachment.name = name;
+    attachment.lifetime = XCTAttachmentLifetimeKeepAlways;
+    [self addAttachment:attachment];
+  }
+}
 
-  while ([date timeIntervalSinceNow] > 0 && !foundElement && !redboxError) {
-    [[NSRunLoop mainRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-    [[NSRunLoop mainRunLoop] runMode:NSRunLoopCommonModes beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-
-    foundElement = [self findSubviewInView:vc.view
-                                  matching:^BOOL(UIView *view) {
-                                    if ([view.accessibilityLabel isEqualToString:TEXT_TO_LOOK_FOR]) {
-                                      return YES;
-                                    }
-                                    return NO;
-                                  }];
+- (void)testLaunchesFitnessOnboarding
+{
+  UIView *skip = [self waitForLabel:@"Skip" alongsideLabel:@"Next"];
+  [self attachWindowWithName:@"TravelFit onboarding"];
+  XCTAssertNotNil(skip, @"The fitness onboarding screen did not show its Skip and Next controls.");
+  if (!skip) {
+    return;
   }
 
-#ifdef DEBUG
-  RCTSetLogFunction(RCTDefaultLogFunction);
-#endif
+  BOOL activated = [skip accessibilityActivate];
+  XCTAssertTrue(activated, @"The onboarding Skip control did not respond to accessibility activation.");
+  if (!activated) {
+    return;
+  }
 
-  XCTAssertNil(redboxError, @"RedBox error: %@", redboxError);
-  XCTAssertTrue(foundElement, @"Couldn't find element with text '%@' in %d seconds", TEXT_TO_LOOK_FOR, TIMEOUT_SECONDS);
+  UIView *createAccount = [self waitForLabel:@"Start now, create an account"
+                             alongsideLabel:@"Already have an account, log in"];
+  [self attachWindowWithName:@"TravelFit welcome"];
+  XCTAssertNotNil(createAccount, @"Skipping onboarding did not open the fitness welcome screen.");
 }
 
 @end

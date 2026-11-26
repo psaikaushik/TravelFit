@@ -21,10 +21,11 @@ const fetchWeeklyData = async () => {
   const days = []
   const startDate = moment().subtract(6, 'days').startOf('day').toISOString()
   const results = await getStepsNumAtDate(startDate)
+  if (!results?.length) return []
 
   for (let i = 6; i >= 0; i--) {
     const date = moment().subtract(i, 'days')
-    const daySteps = (results || [])
+    const daySteps = results
       .filter((x) => date.isSame(x.startDate, 'day'))
       .reduce((sum, item) => sum + item.value, 0)
     days.push({
@@ -42,18 +43,19 @@ const fetchMonthlyData = async () => {
   const weeks = []
   const startDate = moment().subtract(29, 'days').startOf('day').toISOString()
   const results = await getStepsNumAtDate(startDate)
+  if (!results?.length) return []
 
   // Group into 4 weeks + remaining days
-  for (let w = 0; w < 4; w++) {
+  for (let w = 0; w < 5; w++) {
     const weekStart = moment().subtract(29 - w * 7, 'days')
-    const weekEnd = moment(weekStart).add(6, 'days')
+    const weekEnd = moment.min(moment(weekStart).add(6, 'days'), moment())
     let totalSteps = 0
     let dayCount = 0
 
     for (let d = 0; d < 7; d++) {
       const date = moment(weekStart).add(d, 'days')
       if (date.isAfter(moment())) break
-      const daySteps = (results || [])
+      const daySteps = results
         .filter((x) => date.isSame(x.startDate, 'day'))
         .reduce((sum, item) => sum + item.value, 0)
       totalSteps += daySteps
@@ -74,8 +76,10 @@ const WeeklyStats = () => {
   const { goBack } = useNavigation()
   const [activeTab, setActiveTab] = useState(0)
 
-  const { data: weekData = [] } = useQuery(['weekly-stats'], fetchWeeklyData)
-  const { data: monthData = [] } = useQuery(['monthly-stats'], fetchMonthlyData)
+  const { data: weekData = [], isLoading: weekLoading } = useQuery(['weekly-stats'], fetchWeeklyData)
+  const { data: monthData = [], isLoading: monthLoading } = useQuery(['monthly-stats'], fetchMonthlyData)
+  const hasSamples = (activeTab === 0 ? weekData : monthData).length > 0
+  const loading = activeTab === 0 ? weekLoading : monthLoading
 
   const weekTotal = weekData.reduce((sum, d) => sum + d.steps, 0)
   const weekAvg = weekData.length > 0 ? Math.round(weekTotal / weekData.length) : 0
@@ -94,7 +98,7 @@ const WeeklyStats = () => {
       <StatusBar barStyle="dark-content" />
 
       <Flex direction="row" align="center" px="16px" py="12px">
-        <Pressable onPress={goBack} p="4px" accessibilityLabel="Go back" accessibilityRole="button">
+        <Pressable onPress={goBack} p="4px" accessibilityLabel="Go back" accessibilityRole="button" testID="statistics-back">
           <BackSVG />
         </Pressable>
         <Text fontSize="20px" fontWeight="700" ml="12px" accessibilityRole="header">
@@ -111,6 +115,7 @@ const WeeklyStats = () => {
             onPress={() => setActiveTab(i)}
             accessibilityLabel={`Show ${tab.toLowerCase()} stats`}
             accessibilityRole="tab"
+            testID={`statistics-${tab.toLowerCase()}-tab`}
           >
             <Box
               bg={activeTab === i ? 'primary.400' : 'transparent'}
@@ -131,31 +136,38 @@ const WeeklyStats = () => {
       </HStack>
 
       <ScrollView flex="1" px="20px" showsVerticalScrollIndicator={false}>
+        {!hasSamples && (
+          <Text mt="6" color="gray.700" accessibilityLiveRegion="polite">
+            {loading
+              ? 'Loading step totals…'
+              : 'No Apple Health step samples for this period. Check access in the Health app.'}
+          </Text>
+        )}
         {/* Weekly View */}
-        {activeTab === 0 && (
+        {hasSamples && activeTab === 0 && (
           <VStack space="4" pb="40px">
             {/* Summary Cards */}
             <HStack space="3">
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Total Steps</Text>
-                <Text fontSize="20px" fontWeight="800" color="primary.400">
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Total Steps</Text>
+                <Text fontSize="20px" fontWeight="800" color="primary.400" testID="statistics-week-total">
                   {prettifyNum(weekTotal)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">{stepsToDistance(weekTotal)} km</Text>
+                <Text fontSize="11px" color="gray.600">{stepsToDistance(weekTotal)} km</Text>
               </Box>
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Daily Avg</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Daily Avg</Text>
                 <Text fontSize="20px" fontWeight="800" color="secondary.900">
                   {prettifyNum(weekAvg)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">steps/day</Text>
+                <Text fontSize="11px" color="gray.600">steps/day</Text>
               </Box>
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Best Day</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Best Day</Text>
                 <Text fontSize="20px" fontWeight="800" color="green.600">
                   {prettifyNum(weekBest)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">steps</Text>
+                <Text fontSize="11px" color="gray.600">steps</Text>
               </Box>
             </HStack>
 
@@ -214,7 +226,7 @@ const WeeklyStats = () => {
                       <Text fontSize="14px" fontWeight={day.isToday ? '700' : '500'} color="primary.400">
                         {day.isToday ? 'Today' : day.fullLabel}
                       </Text>
-                      <Text fontSize="12px" color="gray.400">{stepsToDistance(day.steps)} km</Text>
+                      <Text fontSize="12px" color="gray.600">{stepsToDistance(day.steps)} km</Text>
                     </VStack>
                     <Text fontSize="16px" fontWeight="700" color="primary.400">
                       {prettifyNum(day.steps)}
@@ -227,23 +239,23 @@ const WeeklyStats = () => {
         )}
 
         {/* Monthly View */}
-        {activeTab === 1 && (
+        {hasSamples && activeTab === 1 && (
           <VStack space="4" pb="40px">
             {/* Summary Cards */}
             <HStack space="3">
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">30-Day Total</Text>
-                <Text fontSize="20px" fontWeight="800" color="primary.400">
+                <Text fontSize="11px" color="gray.600" fontWeight="500">30-Day Total</Text>
+                <Text fontSize="20px" fontWeight="800" color="primary.400" testID="statistics-month-total">
                   {prettifyNum(monthTotal)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">{stepsToDistance(monthTotal)} km</Text>
+                <Text fontSize="11px" color="gray.600">{stepsToDistance(monthTotal)} km</Text>
               </Box>
               <Box flex="1" bg="white" borderRadius="16px" p="16px" alignItems="center">
-                <Text fontSize="11px" color="gray.400" fontWeight="500">Daily Avg</Text>
+                <Text fontSize="11px" color="gray.600" fontWeight="500">Daily Avg</Text>
                 <Text fontSize="20px" fontWeight="800" color="secondary.900">
                   {prettifyNum(monthAvg)}
                 </Text>
-                <Text fontSize="11px" color="gray.400">steps/day</Text>
+                <Text fontSize="11px" color="gray.600">steps/day</Text>
               </Box>
             </HStack>
 
@@ -275,7 +287,7 @@ const WeeklyStats = () => {
                           ]}
                         />
                       </View>
-                      <Text fontSize="11px" color="gray.400">
+                      <Text fontSize="11px" color="gray.600">
                         Avg: {prettifyNum(week.avg)} steps/day
                       </Text>
                     </VStack>

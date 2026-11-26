@@ -16,17 +16,25 @@ const Login = () => {
   } = useForm()
 
   const handleReset = async (data) => {
-    try {
-      const { email } = data
-      const user = await auth().sendPasswordResetEmail(email)
-      console.log('user', user)
+    const showConfirmation = () => {
       toast.show({
         status: 'success',
-        description: 'Password reset email sent'
+        description: 'If an account exists for that address, you’ll receive a reset link.'
       })
       goBack()
-    } catch (e) {
-      console.log('handleLogIn', e)
+    }
+    try {
+      await auth().sendPasswordResetEmail(data.email.trim())
+      showConfirmation()
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') {
+        showConfirmation()
+        return
+      }
+      toast.show({
+        status: 'error',
+        description: 'Could not send the reset link. Check your connection and try again.'
+      })
     }
   }
 
@@ -34,10 +42,14 @@ const Login = () => {
     <AuthScreen title="Reset Password">
       <FormInput
         id="email"
+        testID="reset-password-email"
         w="100%"
         mt="30px"
         variant="primary"
         placeholder="Email Address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
         control={control}
         errors={errors}
         validation={{
@@ -54,6 +66,7 @@ const Login = () => {
         mt="40px"
         isLoading={isSubmitting}
         onPress={handleSubmit(handleReset)}
+        testID="reset-password-submit"
       >
         Send Reset Link
       </Button>

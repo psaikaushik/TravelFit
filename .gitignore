@@ -21,6 +21,7 @@ DerivedData
 *.ipa
 *.xcuserstate
 ios/.xcode.env.local
+ios/GoogleService-Info.local.plist
 
 # Android/IntelliJ
 #
@@ -67,3 +68,7 @@ buck-out/
 ios/boost/
 ios/boost_*.tar.bz2
 ios/boost_unary_function_fix.patch
+
+# Firebase emulator logs
+/firebase-debug.log
+/database-debug.log

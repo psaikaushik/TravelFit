@@ -1,3 +1,81 @@
+import { calcDistance } from '../services/helpers'
+
+// These original virtual paths connect approximate landmark locations.
+// They are designed for progress on the map, not for navigation on foot.
+export const VIRTUAL_ROUTES = [
+  {
+    id: 'central-park',
+    title: 'Across Central Park',
+    city: 'New York City',
+    waypoints: [
+      { name: 'Harlem Meer', latitude: 40.7977, longitude: -73.9519 },
+      { name: 'Conservatory Garden', latitude: 40.7935, longitude: -73.9527 },
+      { name: 'The Reservoir', latitude: 40.7868, longitude: -73.9602 },
+      { name: 'The Met', latitude: 40.7794, longitude: -73.9632 }
+    ]
+  },
+  {
+    id: 'golden-gate',
+    title: 'Golden Gate Waterfront',
+    city: 'San Francisco',
+    waypoints: [
+      { name: 'Golden Gate Overlook', latitude: 37.8077, longitude: -122.4773 },
+      { name: 'Torpedo Wharf', latitude: 37.8091, longitude: -122.4699 },
+      { name: 'Crissy Field', latitude: 37.8047, longitude: -122.4609 }
+    ]
+  },
+  {
+    id: 'seattle-waterfront',
+    title: 'Along the Seattle Waterfront',
+    city: 'Seattle',
+    waypoints: [
+      { name: 'Olympic Sculpture Park', latitude: 47.6166, longitude: -122.3554 },
+      { name: 'Pier 62', latitude: 47.6092, longitude: -122.3452 },
+      { name: 'Seattle Aquarium', latitude: 47.6076, longitude: -122.3434 },
+      { name: 'Pier 55', latitude: 47.6062, longitude: -122.3408 }
+    ]
+  }
+]
+
+export const buildCuratedTrip = ({ id, title, city, waypoints }) => {
+  const [{ name: origin, latitude, longitude }] = waypoints
+  const route = [{ latitude, longitude }]
+  let distance = 0
+
+  const badges = waypoints.slice(1).map((waypoint, index) => {
+    const previous = waypoints[index]
+    const segmentDistance = calcDistance(previous, waypoint)
+    const count = Math.max(1, Math.ceil(segmentDistance / 0.03))
+    for (let step = 1; step <= count; step++) {
+      const fraction = step / count
+      route.push({
+        latitude: previous.latitude + (waypoint.latitude - previous.latitude) * fraction,
+        longitude: previous.longitude + (waypoint.longitude - previous.longitude) * fraction
+      })
+    }
+    distance += segmentDistance
+    return {
+      place_id: `${id}-${index + 1}`,
+      name: waypoint.name,
+      vicinity: city,
+      coordinate: route[route.length - 1],
+      distance,
+      progress: 0
+    }
+  })
+
+  return {
+    curatedRouteId: id,
+    title,
+    starting: { title: origin, coordinate: route[0] },
+    destination: { title: badges[badges.length - 1].name, coordinate: route[route.length - 1] },
+    distance,
+    route,
+    breakPoints: badges.map(({ coordinate }) => coordinate),
+    badges
+  }
+}
+
 const CURATED_ROUTES = [
   {
     id: 'nyc-dc',

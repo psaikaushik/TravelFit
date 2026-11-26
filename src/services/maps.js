@@ -7,6 +7,7 @@ import {
 } from './api'
 import {
   calcBreakpointsProgress,
+  calcDistance,
   calcProgress,
   getDestinationStep,
   getRadius,
@@ -46,19 +47,7 @@ export const getPlaceDetails = async (id, fields = 'photo') => {
   return mapsGetPlaceDetails(id, fields)
 }
 
-export const calcDistance = (coordinate1, coordinate2) => {
-  const toRad = (val) => (val * Math.PI) / 180
-  let R = 6371 // KM
-  let dLat = toRad(coordinate2.latitude - coordinate1.latitude)
-  let dLon = toRad(coordinate2.longitude - coordinate1.longitude)
-  let lat1 = toRad(coordinate1.latitude)
-  let lat2 = toRad(coordinate2.latitude)
-  let a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
-  let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
+export { calcDistance }
 
 export const getPlaces = async (steps, route, badges, distance) => {
   const promises = []

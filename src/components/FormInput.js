@@ -16,6 +16,7 @@ const FormInput = ({
   <FormControl isInvalid={!!errors[id]}>
     <Controller
       control={control}
+      defaultValue=""
       render={({ field: { onChange, onBlur, value, name, ref } }) => (
         <Input
           {...rest}

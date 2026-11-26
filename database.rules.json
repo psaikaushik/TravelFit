@@ -1,149 +1,28 @@
 {
   "rules": {
+    ".read": false,
+    ".write": false,
+    "account_deletions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid && data.val() === true"
+      }
+    },
     "users": {
       "$uid": {
-        ".read": true,
-        ".write": "$uid === auth.uid"
-      }
-    },
-    "stripe_customers": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": false
-      }
-    },
-    "friends": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        "$friendId": {
-          ".write": "$uid === auth.uid || $friendId === auth.uid"
-        }
-      }
-    },
-    "friend_requests": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        "$fromUid": {
-          ".write": "$fromUid === auth.uid || $uid === auth.uid"
-        }
-      }
-    },
-    "groups": {
-      "$groupId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-    "user_groups": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid || auth != null"
-      }
-    },
-    "group_invites": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        "$groupId": {
-          ".write": "auth != null"
-        }
-      }
-    },
-    "group_activity": {
-      "$groupId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-    "races": {
-      ".read": "auth != null",
-      "$raceId": {
-        ".write": "auth != null"
-      }
-    },
-    "user_races": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid || auth != null"
-      }
-    },
-    "race_invites": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        "$raceId": {
-          ".write": "auth != null"
-        }
-      }
-    },
-    "user_progress": {
-      "$uid": {
-        ".read": "auth != null",
-        ".write": "$uid === auth.uid"
-      }
-    },
-    "leaderboards": {
-      ".read": "auth != null",
-      "weekly": {
-        "$weekKey": {
-          "$uid": {
-            ".write": "$uid === auth.uid"
-          }
-        }
-      },
-      "monthly": {
-        "$monthKey": {
-          "$uid": {
-            ".write": "$uid === auth.uid"
-          }
-        }
-      },
-      "alltime": {
-        "$uid": {
-          ".write": "$uid === auth.uid"
-        }
-      },
-      "routes": {
-        "$routeKey": {
-          "$uid": {
-            ".write": "$uid === auth.uid"
-          }
-        }
-      }
-    },
-    "referrals": {
-      "codes_by_user": {
-        "$uid": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
-        }
-      },
-      "users_by_code": {
-        ".read": "auth != null",
-        "$code": {
-          ".write": "auth != null"
-        }
-      },
-      "referred_by": {
-        "$uid": {
-          ".read": "$uid === auth.uid",
-          ".write": "auth != null"
-        }
-      },
-      "successful": {
-        "$uid": {
-          ".read": "$uid === auth.uid",
-          ".write": "auth != null"
-        }
-      },
-      "rewards": {
-        "$uid": {
-          ".read": "$uid === auth.uid",
-          ".write": "auth != null"
-        }
-      },
-      "stats": {
-        "$uid": {
-          ".read": "$uid === auth.uid",
-          ".write": "auth != null"
+        ".read": "auth != null && auth.uid === $uid && !root.child('account_deletions').child($uid).exists()",
+        ".write": "auth != null && auth.uid === $uid && !root.child('account_deletions').child($uid).exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['name', 'email', 'createdTime'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 320"
+        },
+        "createdTime": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     }
