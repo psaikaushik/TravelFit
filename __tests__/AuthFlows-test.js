@@ -17,20 +17,19 @@ jest.mock('@react-native-firebase/auth', () => () => mockAuth)
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => mockNavigation }))
 jest.mock('../src/services/users', () => ({ getAccountEntryRoute: jest.fn() }))
 jest.mock('../src/components/AuthScreen', () => ({ children }) => children)
-jest.mock('../src/components/FormInput', () => {
-  const { createElement } = require('react')
-  const { useController } = require('react-hook-form')
-  return ({ id, control, validation }) => {
-    const { field } = useController({ name: id, control, rules: validation, defaultValue: '' })
-    return createElement('Field', { id, onChangeText: field.onChange })
+jest.mock('native-base', () => {
+  const FormControl = ({ children }) => children
+  FormControl.ErrorMessage = 'ErrorMessage'
+  return {
+    Button: 'Button',
+    Flex: 'Flex',
+    FormControl,
+    Input: 'Field',
+    Text: 'Text',
+    WarningOutlineIcon: 'WarningOutlineIcon',
+    useToast: () => mockToast
   }
 })
-jest.mock('native-base', () => ({
-  Button: 'Button',
-  Flex: 'Flex',
-  Text: 'Text',
-  useToast: () => mockToast
-}))
 
 let tree
 const render = (Component) => act(() => {
@@ -66,6 +65,8 @@ test('new customer signs up and enters Health setup without payment', async () =
   mockAuth.createUserWithEmailAndPassword.mockResolvedValue({ user })
   getAccountEntryRoute.mockResolvedValue('AppleHealth')
   render(SignUp)
+  const nameInput = tree.root.findAllByType('Field').find((field) => field.props.id === 'name')
+  expect(nameInput.props).toMatchObject({ autoCorrect: false, value: '' })
   fill({ name: '  Test Walker  ', email: 'new@example.com', password: 'test-password' })
   await press('Register')
   expect(mockAuth.createUserWithEmailAndPassword).toHaveBeenCalledWith('new@example.com', 'test-password')

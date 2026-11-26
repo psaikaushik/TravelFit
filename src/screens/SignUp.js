@@ -65,6 +65,7 @@ const SignUp = () => {
         mt="20px"
         variant="primary"
         placeholder="Name"
+        autoCorrect={false}
         control={control}
         errors={errors}
         validation={{
