@@ -151,8 +151,9 @@ final class TravelFitUITests: XCTestCase {
         let skip = element("onboarding-skip")
         let ready = NSPredicate { _, _ in welcome.exists || skip.exists }
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
-                       "TravelFit did not open onboarding or Welcome")
+        let result = XCTWaiter.wait(for: [expectation], timeout: 60)
+        if result != .completed { attach("Screen at app startup") }
+        XCTAssertEqual(result, .completed, "TravelFit did not show onboarding-or-welcome")
         if skip.exists {
             attach("Onboarding")
             skip.tap()

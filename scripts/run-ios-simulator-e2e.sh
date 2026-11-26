@@ -104,9 +104,6 @@ PY
     ;;
   test)
     node scripts/verify-firebase.cjs simulator-ready
-    xcrun simctl install "$simulator" "$app"
-    xcrun simctl launch "$simulator" com.travelfit.app
-    xcrun simctl terminate "$simulator" com.travelfit.app
     result="$RUNNER_TEMP/travelfit-ios.xcresult"
     first_result="$RUNNER_TEMP/travelfit-ios-first-attempt.xcresult"
     first_log="$RUNNER_TEMP/travelfit-ios-first-attempt.log"
