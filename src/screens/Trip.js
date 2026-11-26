@@ -32,7 +32,7 @@ const Trip = () => {
       if (getCurrentAccountId() !== uid) return
 
       const startedTime = new Date().toISOString()
-      await setUserSettings({
+      const settings = {
         ...trip,
         tripId: startedTime,
         startedTime,
@@ -40,16 +40,17 @@ const Trip = () => {
         healthSetupCompleted: previous.healthSetupCompleted,
         steps: 0,
         cities: []
-      }, uid)
+      }
+      await setUserSettings(settings, uid)
 
       if (getCurrentAccountId() !== uid) return
-      await Promise.all([
-        queryClient.invalidateQueries(['settings']),
-        queryClient.invalidateQueries(['stats'])
-      ])
-      if (getCurrentAccountId() === uid) {
-        navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
-      }
+      await queryClient.cancelQueries(['settings'], { exact: true })
+      if (getCurrentAccountId() !== uid) return
+
+      // The map can render the saved route while other query data refreshes.
+      queryClient.setQueryData(['settings'], settings)
+      void queryClient.invalidateQueries(['stats'])
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
     } catch {
       if (getCurrentAccountId() === uid) {
         toast.show({ status: 'error', description: 'Could not start your trip. Please try again.' })

@@ -107,9 +107,14 @@ const confirm = async () => {
   await act(async () => { await alertAction('Start new route').onPress() })
 }
 
-it('starts a first route directly and preserves the account’s Health choice', async () => {
-  await mountPicker({ health: false, healthSetupCompleted: true })
+it('opens the saved first route while stats are still refreshing', async () => {
+  const previous = { health: false, healthSetupCompleted: true }
+  await mountPicker(previous)
   const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    .mockReturnValue(new Promise(() => {}))
+  let finishRead
+  const pendingRead = new Promise((resolve) => { finishRead = resolve })
+  const read = queryClient.fetchQuery(['settings'], () => pendingRead, { staleTime: 0 }).catch(() => {})
   const button = routeButton(firstRoute)
   expect(button.props).toMatchObject({
     accessible: true,
@@ -119,6 +124,8 @@ it('starts a first route directly and preserves the account’s Health choice', 
   })
 
   await act(async () => { await button.props.onAccessibilityTap() })
+  finishRead(previous)
+  await read
 
   expect(alert).not.toHaveBeenCalled()
   const saved = await getUserSettings('walker')
@@ -130,7 +137,8 @@ it('starts a first route directly and preserves the account’s Health choice', 
   })
   expect(saved.startedTime).toBe(saved.tripId)
   expect(await getTripHistory('walker')).toEqual([])
-  expect(invalidate).toHaveBeenCalledWith(['settings'])
+  expect(queryClient.getQueryData(['settings'])).toEqual(saved)
+  expect(invalidate).toHaveBeenCalledTimes(1)
   expect(invalidate).toHaveBeenCalledWith(['stats'])
   expect(mockNavigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Main' }] })
 })
@@ -212,28 +220,28 @@ it('discards a replacement confirmation opened by a previous account', async () 
   expect(mockNavigation.reset).not.toHaveBeenCalled()
 })
 
-it('keeps navigation with the current account if auth changes while refresh is pending', async () => {
+it('keeps navigation with the current account if auth changes while saving', async () => {
   await mountPicker({ health: true, healthSetupCompleted: true })
-  let finishRefresh
-  const refreshPending = new Promise((resolve) => { finishRefresh = resolve })
-  let firstInvalidation
-  const invalidationStarted = new Promise((resolve) => { firstInvalidation = resolve })
-  const invalidate = jest.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => {
-    firstInvalidation()
-    return refreshPending
+  let finishWrite
+  const pendingWrite = new Promise((resolve) => { finishWrite = resolve })
+  let beginWrite
+  const writeStarted = new Promise((resolve) => { beginWrite = resolve })
+  AsyncStorage.setItem.mockImplementationOnce(() => {
+    beginWrite()
+    return pendingWrite
   })
 
   await act(async () => {
     const press = routeButton(firstRoute).props.onPress()
-    await invalidationStarted
+    await writeStarted
     mockUser = { uid: 'other-walker' }
-    finishRefresh()
+    finishWrite()
     await press
   })
 
   expect(mockNavigation.reset).not.toHaveBeenCalled()
+  expect(queryClient.getQueryData(['settings'])).toEqual({ health: true, healthSetupCompleted: true })
   expect(await getUserSettings('other-walker')).toEqual({})
-  invalidate.mockRestore()
 })
 
 
