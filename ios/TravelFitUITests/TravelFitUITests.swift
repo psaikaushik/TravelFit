@@ -39,6 +39,7 @@ final class TravelFitUITests: XCTestCase {
             assertVisible("Privacy Policy")
             attach("Privacy policy")
             tap("privacy-back")
+            assertVisible("welcome-sign-up")
             register(name: "Avery Walker", email: firstEmail)
             attach("Apple Health setup")
             tap("health-skip")
@@ -163,6 +164,8 @@ final class TravelFitUITests: XCTestCase {
 
     private func register(name: String, email: String) {
         tap("welcome-sign-up")
+        assertVisible("sign-up-name")
+        attach("Signup form")
         fill("sign-up-name", with: name)
         fill("sign-up-email", with: email)
         fill("sign-up-password", with: password, secure: true)
